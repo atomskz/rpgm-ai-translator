@@ -1,0 +1,11 @@
+{
+  "Aria": {
+    "translation": "Ария",
+    "gender": "female",
+    "speechStyle": "уверенная, краткая, без чрезмерной фамильярности"
+  },
+  "Moonfall": {
+    "gender": "neutral",
+    "description": "топоним, не персонаж"
+  }
+}

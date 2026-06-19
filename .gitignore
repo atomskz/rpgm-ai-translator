@@ -1,0 +1,30 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+work/
+translated-patch/
+
+# Local runs and generated artifacts
+out/
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# Secrets
+apikey.txt
+*.key
+
+# Real game/project inputs must not be committed.
+test/game/
+my-game/
+translated-patch/
+
+# Translation memory can contain proprietary text.
+*.jsonl

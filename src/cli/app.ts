@@ -1,0 +1,442 @@
+import path from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { MvMzEngineDetector } from "../core/engine-detector/index.js";
+import { RpgMakerMvMzExtractor } from "../core/extractors/index.js";
+import {
+  readTranslationResultsFile,
+  readTranslationUnitsFile,
+  writeTranslationResultsFile,
+  writeTranslationUnitsFile
+} from "../core/translation-units/index.js";
+import { createReport, summarizeReport, writeReportFile } from "../core/reports/index.js";
+import {
+  DefaultValidator,
+  filterTranslationsWithoutValidationErrors,
+  validateTranslationResults
+} from "../core/validators/index.js";
+import { JsonlTranslationMemory, translateWithMemory } from "../core/memory/index.js";
+import { applyFontPatch } from "../core/font-patch/index.js";
+import { reviewTranslations } from "../core/review/index.js";
+import {
+  candidatesToDraftGlossary,
+  extractCharacterCandidates,
+  inferCharacterGlossary
+} from "../core/characters/index.js";
+import { createProvider } from "../providers/index.js";
+import { loadCharacterGlossary, loadGlossary } from "../config/index.js";
+import type { TranslateOptions } from "../core/types.js";
+
+export type CliIO = {
+  stdout: (text: string) => void;
+  stderr: (text: string) => void;
+};
+
+export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<number> {
+  const [command, ...args] = argv;
+
+  try {
+    if (!command || command === "--help" || command === "-h" || command === "help") {
+      io.stdout(helpText());
+      return 0;
+    }
+
+    if (command === "detect") {
+      const projectPath = requireArg(args[0], "project path");
+      const detected = await new MvMzEngineDetector().detect(projectPath);
+      io.stdout(`${JSON.stringify(detected, null, 2)}\n`);
+      return 0;
+    }
+
+    if (command === "extract") {
+      const projectPath = requireArg(args[0], "project path");
+      const out = readOption(args, "--out");
+      const reportPath = readOption(args, "--report");
+      const units = await new RpgMakerMvMzExtractor().extract(projectPath, {
+        includeEventComments: hasFlag(args, "--include-comments"),
+        includePlugins: hasFlag(args, "--include-plugins")
+      });
+      if (out) {
+        await writeTranslationUnitsFile(out, units);
+      } else {
+        io.stdout(`${JSON.stringify(units, null, 2)}\n`);
+      }
+      await maybeWriteReport(reportPath, createReport({ units }), io);
+      return 0;
+    }
+
+    if (command === "apply") {
+      const projectPath = requireArg(args[0], "project path");
+      const translationsPath = requireArg(args[1], "translations path");
+      const mode = readOption(args, "--mode") ?? "patch";
+      const outDir = readOption(args, "--out");
+      const backupDir = readOption(args, "--backup");
+      const fontPath = readOption(args, "--font");
+      const numberFontPath = readOption(args, "--number-font");
+      const translations = await readTranslationResultsFile(translationsPath);
+      const result = await new RpgMakerMvMzExtractor().applyTranslations(projectPath, translations, {
+        mode: mode as "patch" | "in-place",
+        outDir,
+        backupDir,
+        includePlugins: hasFlag(args, "--include-plugins")
+      });
+      if (mode === "patch" && outDir && fontPath) {
+        await applyFontPatch(projectPath, outDir, { fontPath, numberFontPath });
+      }
+      io.stdout(`${JSON.stringify(result, null, 2)}\n`);
+      return 0;
+    }
+
+    if (command === "patch-font") {
+      const projectPath = requireArg(args[0], "project path");
+      const outDir = requireOption(args, "--out");
+      const fontPath = requireOption(args, "--font");
+      const numberFontPath = readOption(args, "--number-font");
+      const result = await applyFontPatch(projectPath, outDir, { fontPath, numberFontPath });
+      io.stdout(`${JSON.stringify(result, null, 2)}\n`);
+      return 0;
+    }
+
+    if (command === "translate") {
+      const unitsPath = requireArg(args[0], "units path");
+      const providerName = readOption(args, "--provider") ?? "mock";
+      assertProviderReady(providerName);
+      const out = readOption(args, "--out");
+      const reportPath = readOption(args, "--report");
+      const memoryPath = readOption(args, "--memory");
+      const glossaryPath = readOption(args, "--glossary");
+      const targetLanguage = readOption(args, "--target") ?? "ru";
+      const model = readOption(args, "--model");
+      const batchSize = readPositiveIntegerOption(args, "--batch-size");
+      const retryAttempts = readNonNegativeIntegerOption(args, "--retry-attempts");
+      const timeoutMs = readPositiveIntegerOption(args, "--timeout-ms");
+      const units = await readTranslationUnitsFile(unitsPath);
+      const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
+      const provider = createProvider(providerName);
+      const results = await translateWithMemory(
+        units,
+        provider,
+        {
+          targetLanguage,
+          model,
+          glossary,
+          batchSize,
+          retryAttempts,
+          timeoutMs,
+          onProgress: createProgressLogger(io)
+        },
+        memoryPath ? new JsonlTranslationMemory(memoryPath) : undefined
+      );
+      const payload = `${JSON.stringify(results, null, 2)}\n`;
+      if (out) {
+        await writeTranslationResultsFile(out, results);
+      } else {
+        io.stdout(payload);
+      }
+      await maybeWriteReport(reportPath, createReport({ units, translations: results }), io);
+      return 0;
+    }
+
+    if (command === "review") {
+      const unitsPath = requireArg(args[0], "units path");
+      const translationsPath = requireArg(args[1], "translations path");
+      const providerName = readOption(args, "--provider") ?? "mock";
+      assertProviderReady(providerName);
+      const out = requireOption(args, "--out");
+      const targetLanguage = readOption(args, "--target") ?? "ru";
+      const model = readOption(args, "--model");
+      const batchSize = readPositiveIntegerOption(args, "--batch-size");
+      const timeoutMs = readPositiveIntegerOption(args, "--timeout-ms");
+      const glossaryPath = readOption(args, "--glossary");
+      const charactersPath = readOption(args, "--characters");
+      const units = await readTranslationUnitsFile(unitsPath);
+      const translations = await readTranslationResultsFile(translationsPath);
+      const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
+      const characterGlossary = charactersPath ? await loadCharacterGlossary(charactersPath) : undefined;
+      const result = await reviewTranslations(units, translations, createProvider(providerName), {
+        targetLanguage,
+        model,
+        batchSize,
+        timeoutMs,
+        glossary,
+        characterGlossary,
+        onProgress: createProgressLogger(io)
+      });
+      await writeTranslationResultsFile(out, result.translations);
+      io.stdout(`Reviewed: ${result.reviewed}, failed: ${result.failed}, skipped: ${result.skipped}\n`);
+      return 0;
+    }
+
+    if (command === "characters") {
+      const unitsPath = requireArg(args[0], "units path");
+      const out = requireOption(args, "--out");
+      const translationsPath = readOption(args, "--translations");
+      const providerName = readOption(args, "--provider") ?? "mock";
+      if (providerName !== "none" && !hasFlag(args, "--draft-only")) {
+        assertProviderReady(providerName);
+      }
+      const targetLanguage = readOption(args, "--target") ?? "ru";
+      const model = readOption(args, "--model");
+      const batchSize = readPositiveIntegerOption(args, "--batch-size");
+      const timeoutMs = readPositiveIntegerOption(args, "--timeout-ms");
+      const units = await readTranslationUnitsFile(unitsPath);
+      const translations = translationsPath ? await readTranslationResultsFile(translationsPath) : [];
+      const candidates = extractCharacterCandidates(units, translations, {
+        includeDialogueMentions: hasFlag(args, "--include-mentions")
+      });
+      const glossary =
+        providerName === "none" || hasFlag(args, "--draft-only")
+          ? candidatesToDraftGlossary(candidates)
+          : await inferCharacterGlossary(candidates, createProvider(providerName), {
+              targetLanguage,
+              model,
+              batchSize,
+              timeoutMs
+            });
+      await writeJson(out, glossary);
+      io.stdout(`Character candidates: ${candidates.length}. Wrote ${Object.keys(glossary).length} character entries.\n`);
+      return 0;
+    }
+
+    if (command === "validate") {
+      const unitsPath = requireArg(args[0], "units path");
+      const translationsPath = requireArg(args[1], "translations path");
+      const out = readOption(args, "--out");
+      const glossaryPath = readOption(args, "--glossary");
+      const units = await readTranslationUnitsFile(unitsPath);
+      const translations = await readTranslationResultsFile(translationsPath);
+      const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
+      const validationIssues = validateTranslationResults(units, translations, new DefaultValidator(glossary));
+      const report = createReport({ units, translations, validationIssues });
+      if (out) {
+        await writeReportFile(out, report);
+        io.stdout(`${summarizeReport(report)}\n`);
+      } else {
+        io.stdout(`${JSON.stringify(report, null, 2)}\n`);
+      }
+      return 0;
+    }
+
+    if (command === "run") {
+      const projectPath = requireArg(args[0], "project path");
+      const outDir = requireOption(args, "--out");
+      const providerName = readOption(args, "--provider") ?? "mock";
+      assertProviderReady(providerName);
+      const targetLanguage = readOption(args, "--target") ?? "ru";
+      const model = readOption(args, "--model");
+      const batchSize = readPositiveIntegerOption(args, "--batch-size");
+      const retryAttempts = readNonNegativeIntegerOption(args, "--retry-attempts");
+      const timeoutMs = readPositiveIntegerOption(args, "--timeout-ms");
+      const glossaryPath = readOption(args, "--glossary");
+      const charactersPath = readOption(args, "--characters");
+      const fontPath = readOption(args, "--font");
+      const numberFontPath = readOption(args, "--number-font");
+      const memoryPath = readOption(args, "--memory") ?? path.join(outDir, "translation-memory.jsonl");
+      const detector = new MvMzEngineDetector();
+      const detected = await detector.detect(projectPath);
+      if (detected.engine === "unknown") {
+        throw new Error(`Unsupported or unknown RPG Maker engine for '${projectPath}'`);
+      }
+
+      const units = await new RpgMakerMvMzExtractor(detector).extract(projectPath, {
+        includeEventComments: hasFlag(args, "--include-comments"),
+        includePlugins: hasFlag(args, "--include-plugins")
+      });
+      await mkdir(outDir, { recursive: true });
+      await writeTranslationUnitsFile(path.join(outDir, "units.json"), units);
+      io.stdout(
+        `Detected ${detected.engine}. Extracted ${units.length} units from ${new Set(units.map((unit) => unit.filePath)).size} files.\n`
+      );
+      const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
+      const characterGlossary = charactersPath ? await loadCharacterGlossary(charactersPath) : undefined;
+      const provider = createProvider(providerName);
+      let translations = await translateWithMemory(
+        units,
+        provider,
+        {
+          targetLanguage,
+          model,
+          glossary,
+          batchSize,
+          retryAttempts,
+          timeoutMs,
+          onProgress: createProgressLogger(io)
+        },
+        new JsonlTranslationMemory(memoryPath)
+      );
+      if (hasFlag(args, "--review")) {
+        const reviewResult = await reviewTranslations(units, translations, provider, {
+          targetLanguage,
+          model,
+          glossary,
+          characterGlossary,
+          batchSize,
+          timeoutMs,
+          onProgress: createProgressLogger(io)
+        });
+        translations = reviewResult.translations;
+        io.stdout(`Reviewed: ${reviewResult.reviewed}, failed: ${reviewResult.failed}, skipped: ${reviewResult.skipped}\n`);
+      }
+      const validationIssues = validateTranslationResults(units, translations, new DefaultValidator(glossary));
+      const safeTranslations = filterTranslationsWithoutValidationErrors(translations, validationIssues);
+      await new RpgMakerMvMzExtractor(detector).applyTranslations(projectPath, safeTranslations, {
+        mode: "patch",
+        outDir,
+        includePlugins: hasFlag(args, "--include-plugins")
+      });
+      if (fontPath) {
+        await applyFontPatch(projectPath, outDir, { fontPath, numberFontPath });
+      }
+      await writeTranslationResultsFile(path.join(outDir, "translations.json"), translations);
+      const report = createReport({ units, translations, validationIssues, engine: detected.engine });
+      await writeReportFile(path.join(outDir, "report.json"), report);
+      io.stdout(`${summarizeReport(report)}\n`);
+      return 0;
+    }
+
+    io.stderr(`Unknown command: ${command}\n\n${helpText()}`);
+    return 1;
+  } catch (error: unknown) {
+    io.stderr(`${error instanceof Error ? error.message : String(error)}\n`);
+    return 1;
+  }
+}
+
+export function helpText(): string {
+  return `Usage:
+  rpgm-ai-translator --help
+  rpgm-ai-translator detect ./game
+  rpgm-ai-translator extract ./game --out ./work/units.json [--include-comments] [--include-plugins] [--report ./work/report.json]
+  rpgm-ai-translator translate ./work/units.json --provider mock --out ./work/translations.json [--batch-size 20] [--retry-attempts 1] [--timeout-ms 60000] [--memory ./work/memory.jsonl] [--glossary ./glossary.json] [--report ./work/report.json]
+  rpgm-ai-translator characters ./work/units.json --out ./work/characters.json [--translations ./work/translations.json] [--provider mock|deepseek|none] [--include-mentions]
+  rpgm-ai-translator review ./work/units.json ./work/translations.json --provider deepseek --target ru --out ./work/translations.reviewed.json [--characters ./characters.json] [--glossary ./glossary.json]
+  rpgm-ai-translator validate ./work/units.json ./work/translations.json --out ./work/report.json [--glossary ./glossary.json]
+  rpgm-ai-translator apply ./game ./work/translations.json --mode patch --out ./translated-patch [--include-plugins] [--font ./font.ttf]
+  rpgm-ai-translator apply ./game ./work/translations.json --mode in-place [--backup ./backup]
+  rpgm-ai-translator patch-font ./game --out ./translated-patch --font ./font.ttf [--number-font ./font-bold.ttf]
+  rpgm-ai-translator run ./game --provider mock --target ru --out ./translated-patch [--batch-size 20] [--retry-attempts 1] [--timeout-ms 60000] [--glossary ./glossary.json] [--characters ./characters.json] [--review] [--include-plugins] [--font ./font.ttf]
+`;
+}
+
+function createProgressLogger(io: CliIO): NonNullable<TranslateOptions["onProgress"]> {
+  let memoryHits = 0;
+  return (event) => {
+    if (event.type === "memory-hit") {
+      memoryHits += 1;
+      if (memoryHits === 1 || memoryHits % 100 === 0) {
+        io.stdout(`Memory hits: ${memoryHits}/${event.total}\n`);
+      }
+      return;
+    }
+
+    if (event.type === "batch-start") {
+      io.stdout(
+        `Translating batch ${event.batchIndex}/${event.batchCount} (${event.batchSize} units, completed ${event.completed}/${event.total})...\n`
+      );
+      return;
+    }
+
+    if (event.type === "review-batch-start") {
+      io.stdout(
+        `Reviewing batch ${event.batchIndex}/${event.batchCount} (${event.batchSize} units, completed ${event.completed}/${event.total})...\n`
+      );
+      return;
+    }
+
+    if (event.type === "review-batch-complete") {
+      io.stdout(
+        `Completed review batch ${event.batchIndex}/${event.batchCount}: reviewed ${event.reviewed}, failed ${event.failed}, completed ${event.completed}/${event.total}\n`
+      );
+      return;
+    }
+
+    if (event.type === "batch-retry") {
+      io.stdout(
+        `Retrying batch ${event.batchIndex}/${event.batchCount}, attempt ${event.attempt + 1}/${event.maxAttempts}: ${event.message}\n`
+      );
+      return;
+    }
+
+    io.stdout(
+      `Completed batch ${event.batchIndex}/${event.batchCount}: translated ${event.translated}, failed ${event.failed}, completed ${event.completed}/${event.total}\n`
+    );
+  };
+}
+
+function assertProviderReady(providerName: string): void {
+  if (providerName === "deepseek" && !process.env.DEEPSEEK_API_KEY?.trim()) {
+    throw new Error("DEEPSEEK_API_KEY is required when using --provider deepseek");
+  }
+}
+
+async function maybeWriteReport(
+  reportPath: string | undefined,
+  report: ReturnType<typeof createReport>,
+  io: CliIO
+): Promise<void> {
+  if (!reportPath) {
+    return;
+  }
+
+  await writeReportFile(reportPath, report);
+  io.stdout(`${summarizeReport(report)}\n`);
+}
+
+async function writeJson(filePath: string, value: unknown): Promise<void> {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+function readOption(args: string[], name: string): string | undefined {
+  const index = args.indexOf(name);
+  return index >= 0 ? args[index + 1] : undefined;
+}
+
+function readPositiveIntegerOption(args: string[], name: string): number | undefined {
+  const value = readOption(args, name);
+  if (value == null) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return parsed;
+}
+
+function readNonNegativeIntegerOption(args: string[], name: string): number | undefined {
+  const value = readOption(args, name);
+  if (value == null) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`${name} must be a non-negative integer`);
+  }
+  return parsed;
+}
+
+function hasFlag(args: string[], name: string): boolean {
+  return args.includes(name);
+}
+
+function requireArg(value: string | undefined, label: string): string {
+  if (!value) {
+    throw new Error(`Missing ${label}`);
+  }
+  return value;
+}
+
+function requireOption(args: string[], name: string): string {
+  const value = readOption(args, name);
+  if (!value) {
+    throw new Error(`Missing required option ${name}`);
+  }
+  return value;
+}
+
+const defaultIO: CliIO = {
+  stdout: (text) => process.stdout.write(text),
+  stderr: (text) => process.stderr.write(text)
+};
