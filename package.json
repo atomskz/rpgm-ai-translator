@@ -3,12 +3,22 @@
   "version": "0.1.0",
   "description": "AI-assisted translation pipeline for RPG Maker MV/MZ games.",
   "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "bin": {
     "rpgm-ai-translator": "./dist/cli/index.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "docs",
+    "examples"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "eslint .",
+    "prepack": "npm run build",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -19,6 +29,14 @@
     "deepseek"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/atomskz/rpgm-ai-translator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/atomskz/rpgm-ai-translator/issues"
+  },
+  "homepage": "https://github.com/atomskz/rpgm-ai-translator#readme",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^20.14.10",
