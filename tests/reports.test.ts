@@ -2,7 +2,7 @@ import { mkdtemp, readFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
-import { createReport, summarizeReport, writeReportFile } from "../src/core/reports/index.js";
+import { createReport, readReportFile, summarizeReport, writeReportFile } from "../src/core/reports/index.js";
 import type { TranslationResult, TranslationUnit, ValidationIssue } from "../src/core/types.js";
 
 describe("reports", () => {
@@ -64,6 +64,7 @@ describe("reports", () => {
     await writeReportFile(reportPath, report);
 
     expect(JSON.parse(await readFile(reportPath, "utf8"))).toEqual(report);
+    await expect(readReportFile(reportPath)).resolves.toEqual(report);
   });
 });
 

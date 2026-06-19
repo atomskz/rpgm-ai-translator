@@ -101,7 +101,8 @@ describe("prompt builder", () => {
           currentTranslation: "Я готов.",
           normalizedSource: "I am ready.",
           category: "dialogue",
-          context: { speaker: "Aria", eventId: 1 }
+          context: { speaker: "Aria", eventId: 1 },
+          issues: [{ id: "Map001.events.1.pages.0.list.1.parameters.0", severity: "warning", code: "MAX_LENGTH_EXCEEDED", message: "Too long" }]
         }
       ],
       {
@@ -121,7 +122,12 @@ describe("prompt builder", () => {
       units: [
         {
           id: "Map001.events.1.pages.0.list.1.parameters.0",
-          currentTranslation: "Я готов."
+          currentTranslation: "Я готов.",
+          validationIssues: [
+            {
+              code: "MAX_LENGTH_EXCEEDED"
+            }
+          ]
         }
       ]
     });

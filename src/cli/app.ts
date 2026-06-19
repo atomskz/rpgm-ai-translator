@@ -8,7 +8,7 @@ import {
   writeTranslationResultsFile,
   writeTranslationUnitsFile
 } from "../core/translation-units/index.js";
-import { createReport, summarizeReport, writeReportFile } from "../core/reports/index.js";
+import { createReport, readReportFile, summarizeReport, writeReportFile } from "../core/reports/index.js";
 import {
   DefaultValidator,
   filterTranslationsWithoutValidationErrors,
@@ -17,6 +17,7 @@ import {
 import { JsonlTranslationMemory, translateWithMemory } from "../core/memory/index.js";
 import { applyFontPatch } from "../core/font-patch/index.js";
 import { reviewTranslations } from "../core/review/index.js";
+import { repairTranslations } from "../core/repair/index.js";
 import {
   candidatesToDraftGlossary,
   extractCharacterCandidates,
@@ -24,7 +25,7 @@ import {
 } from "../core/characters/index.js";
 import { createProvider } from "../providers/index.js";
 import { loadCharacterGlossary, loadGlossary } from "../config/index.js";
-import type { TranslateOptions } from "../core/types.js";
+import type { TranslateOptions, ValidationIssue } from "../core/types.js";
 
 export type CliIO = {
   stdout: (text: string) => void;
@@ -165,6 +166,45 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
       });
       await writeTranslationResultsFile(out, result.translations);
       io.stdout(`Reviewed: ${result.reviewed}, failed: ${result.failed}, skipped: ${result.skipped}\n`);
+      return 0;
+    }
+
+    if (command === "repair") {
+      const unitsPath = requireArg(args[0], "units path");
+      const translationsPath = requireArg(args[1], "translations path");
+      const reportPath = requireOption(args, "--report");
+      const out = requireOption(args, "--out");
+      const providerName = readOption(args, "--provider") ?? "mock";
+      assertProviderReady(providerName);
+      const targetLanguage = readOption(args, "--target") ?? "ru";
+      const model = readOption(args, "--model");
+      const batchSize = readPositiveIntegerOption(args, "--batch-size");
+      const timeoutMs = readPositiveIntegerOption(args, "--timeout-ms");
+      const glossaryPath = readOption(args, "--glossary");
+      const charactersPath = readOption(args, "--characters");
+      const issueCodes = readIssueCodesOption(args, "--codes");
+      const units = await readTranslationUnitsFile(unitsPath);
+      const translations = await readTranslationResultsFile(translationsPath);
+      const report = await readReportFile(reportPath);
+      const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
+      const characterGlossary = charactersPath ? await loadCharacterGlossary(charactersPath) : undefined;
+      io.stdout(
+        `Repairing translations for ${issueCodes ? issueCodes.join(",") : "all"} validation issue codes...\n`
+      );
+      const result = await repairTranslations(units, translations, report.validationIssues, createProvider(providerName), {
+        targetLanguage,
+        model,
+        batchSize,
+        timeoutMs,
+        glossary,
+        characterGlossary,
+        issueCodes,
+        onProgress: createProgressLogger(io)
+      });
+      await writeTranslationResultsFile(out, result.translations);
+      io.stdout(
+        `Repaired: ${result.repaired}, translated: ${result.translated}, reviewed: ${result.reviewed}, failed: ${result.failed}, skipped: ${result.skipped}\n`
+      );
       return 0;
     }
 
@@ -316,6 +356,7 @@ export function helpText(): string {
   rpgm-ai-translator translate ./work/units.json --provider mock --out ./work/translations.json [--batch-size 20] [--retry-attempts 1] [--timeout-ms 60000] [--memory ./work/memory.jsonl] [--glossary ./glossary.json] [--report ./work/report.json]
   rpgm-ai-translator characters ./work/units.json --out ./work/characters.json [--translations ./work/translations.json] [--provider mock|deepseek|none] [--include-mentions]
   rpgm-ai-translator review ./work/units.json ./work/translations.json --provider deepseek --target ru --out ./work/translations.reviewed.json [--characters ./characters.json] [--glossary ./glossary.json]
+  rpgm-ai-translator repair ./work/units.json ./work/translations.json --report ./work/report.json --provider deepseek --target ru --out ./work/translations.repaired.json [--codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION]
   rpgm-ai-translator validate ./work/units.json ./work/translations.json --out ./work/report.json [--glossary ./glossary.json]
   rpgm-ai-translator apply ./game ./work/translations.json --mode patch --out ./translated-patch [--include-plugins] [--font ./font.ttf]
   rpgm-ai-translator apply ./game ./work/translations.json --mode in-place [--backup ./backup]
@@ -424,6 +465,24 @@ function readNonNegativeIntegerOption(args: string[], name: string): number | un
   return parsed;
 }
 
+function readIssueCodesOption(args: string[], name: string): ValidationIssue["code"][] | undefined {
+  const value = readOption(args, name);
+  if (value == null) {
+    return undefined;
+  }
+
+  const codes = value
+    .split(",")
+    .map((code) => code.trim())
+    .filter((code) => code.length > 0);
+  for (const code of codes) {
+    if (!isValidationIssueCode(code)) {
+      throw new Error(`${name} contains unknown validation issue code '${code}'`);
+    }
+  }
+  return codes as ValidationIssue["code"][];
+}
+
 function hasFlag(args: string[], name: string): boolean {
   return args.includes(name);
 }
@@ -442,6 +501,29 @@ function requireOption(args: string[], name: string): string {
   }
   return value;
 }
+
+function isValidationIssueCode(value: string): value is ValidationIssue["code"] {
+  return VALIDATION_ISSUE_CODES.has(value as ValidationIssue["code"]);
+}
+
+const VALIDATION_ISSUE_CODES = new Set<ValidationIssue["code"]>([
+  "INVALID_JSON",
+  "ID_MISMATCH",
+  "UNKNOWN_TRANSLATION_ID",
+  "MISSING_TRANSLATION",
+  "MISSING_PLACEHOLDER",
+  "EXTRA_PLACEHOLDER",
+  "DUPLICATE_PLACEHOLDER",
+  "CONTROL_CODE_CHANGED",
+  "NUMBER_CHANGED",
+  "VARIABLE_CHANGED",
+  "MAX_LENGTH_EXCEEDED",
+  "MAX_LINES_EXCEEDED",
+  "EMPTY_TRANSLATION",
+  "UNCHANGED_TRANSLATION",
+  "GLOSSARY_VIOLATION",
+  "TECHNICAL_TOKEN_CHANGED"
+]);
 
 const defaultIO: CliIO = {
   stdout: (text) => process.stdout.write(text),

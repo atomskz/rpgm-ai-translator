@@ -105,6 +105,91 @@ describe("CLI", () => {
     ]);
   });
 
+  it("repairs translations listed in a validation report", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-cli-repair-"));
+    const unitsPath = path.join(root, "units.json");
+    const translationsPath = path.join(root, "translations.json");
+    const reportPath = path.join(root, "report.json");
+    const outPath = path.join(root, "translations.repaired.json");
+    await writeFile(
+      unitsPath,
+      `${JSON.stringify(
+        [
+          {
+            id: "Actors.1.name",
+            source: "Aria",
+            normalizedSource: "Aria",
+            filePath: "data/Actors.json",
+            jsonPath: "1.name",
+            engine: "rpgmaker-mv",
+            category: "name",
+            hash: "hash"
+          }
+        ],
+        null,
+        2
+      )}\n`,
+      "utf8"
+    );
+    await writeFile(translationsPath, "[]\n", "utf8");
+    await writeFile(
+      reportPath,
+      `${JSON.stringify(
+        {
+          engine: "rpgmaker-mv",
+          filesScanned: 1,
+          unitsExtracted: 1,
+          unitsTranslated: 0,
+          fromMemory: 0,
+          failed: 0,
+          validationIssues: [
+            {
+              id: "Actors.1.name",
+              severity: "error",
+              code: "MISSING_TRANSLATION",
+              message: "Missing translation"
+            }
+          ]
+        },
+        null,
+        2
+      )}\n`,
+      "utf8"
+    );
+
+    const output: string[] = [];
+    const exitCode = await runCli(
+      [
+        "repair",
+        unitsPath,
+        translationsPath,
+        "--report",
+        reportPath,
+        "--provider",
+        "mock",
+        "--target",
+        "ru",
+        "--out",
+        outPath
+      ],
+      {
+        stdout: (text) => output.push(text),
+        stderr: () => undefined
+      }
+    );
+
+    const repaired = JSON.parse(await readFile(outPath, "utf8"));
+    expect(exitCode).toBe(0);
+    expect(output.join("")).toContain("Repaired: 1");
+    expect(repaired).toEqual([
+      expect.objectContaining({
+        id: "Actors.1.name",
+        translation: "[ru] Aria",
+        metadata: { repaired: true, repairMode: "translate" }
+      })
+    ]);
+  });
+
   it("uses glossary during validation", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-cli-glossary-"));
     const unitsPath = path.join(root, "units.json");

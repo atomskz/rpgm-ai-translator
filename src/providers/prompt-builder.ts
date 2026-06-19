@@ -134,7 +134,8 @@ export function buildReviewUserPayload(batch: ReviewUnit[], options: ReviewOptio
       category: unit.category,
       context: unit.context ?? {},
       constraints: unit.constraints ?? {},
-      placeholders: unit.placeholders ?? []
+      placeholders: unit.placeholders ?? [],
+      validationIssues: unit.issues ?? []
     })),
     expectedResponse: {
       translations: [

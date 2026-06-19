@@ -232,6 +232,7 @@ export type ReviewUnit = {
   context?: TranslationUnit["context"];
   constraints?: TranslationUnit["constraints"];
   placeholders?: Placeholder[];
+  issues?: ValidationIssue[];
 };
 
 export type TranslationReport = {

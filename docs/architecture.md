@@ -19,6 +19,7 @@ and provider code does not know how to patch RPG Maker projects.
 - `src/core/memory`: JSONL translation memory and deduped translation batches.
 - `src/core/characters`: character candidate extraction and character glossary generation.
 - `src/core/review`: second-pass translation review grouped by map/event context.
+- `src/core/repair`: targeted repair of translations referenced by validation reports.
 - `src/core/font-patch`: RPG Maker MZ font patch support.
 - `src/providers`: LLM provider adapters and prompt builders.
 
@@ -43,7 +44,7 @@ write report.json
 The manual pipeline exposes the same stages as individual commands:
 
 ```text
-detect -> extract -> translate -> characters -> review -> validate -> apply
+detect -> extract -> translate -> characters -> review -> validate -> repair -> validate -> apply
 ```
 
 ## Engine Adapters
@@ -80,8 +81,8 @@ backup first, but patch mode remains the recommended default.
 
 ## Current Limitations
 
-- Text fitting is diagnostic only; too-long translations are reported but not
-  automatically shortened yet.
+- Text fitting is not automatic in `run`; too-long translations are reported and can
+  be targeted with the `repair` command.
 - JSONL memory rewrites the memory file on each update; SQLite or batched writes
   would scale better.
 - Plugin support is intentionally conservative and will miss some plugin-specific

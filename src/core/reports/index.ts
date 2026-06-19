@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { EngineId, TranslationReport, TranslationResult, TranslationUnit, ValidationIssue } from "../types.js";
 
@@ -36,6 +36,23 @@ export async function writeReportFile(filePath: string, report: TranslationRepor
   await writeFile(filePath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 }
 
+export async function readReportFile(filePath: string): Promise<TranslationReport> {
+  const raw = await readFile(filePath, "utf8");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error: unknown) {
+    throw new Error(`Invalid report JSON in '${filePath}': ${error instanceof Error ? error.message : String(error)}`, {
+      cause: error
+    });
+  }
+
+  if (!isTranslationReport(parsed)) {
+    throw new Error("Report file must contain a translation report object");
+  }
+  return parsed;
+}
+
 export function summarizeReport(report: TranslationReport): string {
   const errorCount = report.validationIssues.filter((issue) => issue.severity === "error").length;
   const warningCount = report.validationIssues.filter((issue) => issue.severity === "warning").length;
@@ -48,4 +65,20 @@ export function summarizeReport(report: TranslationReport): string {
     `Failed: ${report.failed}`,
     `Validation issues: ${report.validationIssues.length} (${errorCount} errors, ${warningCount} warnings)`
   ].join("\n");
+}
+
+function isTranslationReport(value: unknown): value is TranslationReport {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return false;
+  }
+  const candidate = value as Partial<TranslationReport>;
+  return (
+    (candidate.engine === "rpgmaker-mv" || candidate.engine === "rpgmaker-mz") &&
+    typeof candidate.filesScanned === "number" &&
+    typeof candidate.unitsExtracted === "number" &&
+    typeof candidate.unitsTranslated === "number" &&
+    typeof candidate.fromMemory === "number" &&
+    typeof candidate.failed === "number" &&
+    Array.isArray(candidate.validationIssues)
+  );
 }

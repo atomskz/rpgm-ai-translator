@@ -153,14 +153,31 @@ node dist/cli/index.js review ./work/units.json ./work/translations.raw.json \
 node dist/cli/index.js validate ./work/units.json ./work/translations.reviewed.json \
   --out ./work/report.json
 
-node dist/cli/index.js apply ./game ./work/translations.reviewed.json \
-  --mode patch \
-  --include-plugins \
-  --out ./work/patch
+node dist/cli/index.js repair ./work/units.json ./work/translations.reviewed.json \
+  --report ./work/report.json \
+  --provider deepseek \
+  --model deepseek-chat \
+  --target ru \
+  --codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION \
+  --characters ./work/characters.json \
+  --out ./work/translations.repaired.json
 ```
 
 If the report contains validation errors, fix or repair translations before applying
 the patch. The `run` command applies only translations without validation errors.
+
+After `repair`, run `validate` again and apply the repaired file when the report is
+acceptable:
+
+```bash
+node dist/cli/index.js validate ./work/units.json ./work/translations.repaired.json \
+  --out ./work/report.repaired.json
+
+node dist/cli/index.js apply ./game ./work/translations.repaired.json \
+  --mode patch \
+  --include-plugins \
+  --out ./work/patch
+```
 
 ## Fonts
 
