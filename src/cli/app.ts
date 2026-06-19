@@ -413,7 +413,7 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
 }
 
 export function helpText(): string {
-  return `rpgm-ai-translator 0.1.0
+  return `rpgm-ai-translator 0.1.1
 AI-assisted translation pipeline for RPG Maker MV/MZ games.
 
 Usage:
