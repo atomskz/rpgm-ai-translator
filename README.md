@@ -1,19 +1,24 @@
 # rpgm-ai-translator
 
-CLI pipeline for AI-assisted translation of RPG Maker MV/MZ games.
+`rpgm-ai-translator` is a CLI pipeline for AI-assisted translation of RPG Maker
+MV/MZ games.
 
-The project extracts translatable text from RPG Maker JSON data, protects RPG Maker
+AI disclosure: this project was developed with assistance from the Codex AI coding
+agent. Human review is still required for translation quality, legal compliance,
+and release decisions.
+
+The tool extracts translatable text from RPG Maker JSON data, protects RPG Maker
 control codes, translates through provider adapters such as DeepSeek, validates the
 result, and writes a safe patch folder without modifying the original game.
 
 ```text
-detect -> extract -> translate -> characters -> review -> validate -> apply patch -> report
+detect -> extract -> translate -> characters -> review -> validate -> repair -> apply patch -> report
 ```
 
 ## Status
 
 This is an alpha tool for technical translators. It already works on real MV/MZ
-projects, but it still expects validation reports and some manual review.
+projects, but it still expects validation reports and manual review.
 
 Supported:
 
@@ -28,29 +33,52 @@ Supported:
 - JSONL translation memory;
 - character glossary generation and review pass;
 - glossary validation;
+- targeted repair for validation issues;
 - safe patch output;
-- optional MZ font patching.
+- optional RPG Maker MZ font patching.
 
 Not supported yet:
 
-- VX Ace, VX, XP;
+- RPG Maker VX Ace, VX, XP;
 - GUI;
 - OCR or screenshot review;
 - guaranteed extraction from every plugin-specific format;
-- fully automatic text fitting inside the one-shot `run` command;
+- guaranteed automatic text fitting;
 - distribution of translated commercial game assets.
 
-## Install
+## Requirements
 
-Use Node.js 20.19 or newer.
+Install these dependencies before building from source:
+
+- Node.js `20.19.0` or newer;
+- npm, included with Node.js;
+- git, for cloning the repository;
+- a POSIX-like shell for the examples below;
+- `DEEPSEEK_API_KEY`, only when using `--provider deepseek`.
+
+No native compiler toolchain is required by the current dependency set.
+
+## Build From Source
+
+Clone and install dependencies:
 
 ```bash
-npm install
-npm run build
-npm test
+git clone git@github.com:atomskz/rpgm-ai-translator.git
+cd rpgm-ai-translator
+npm ci
 ```
 
-During development you can run the built CLI directly:
+Run the local checks:
+
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run build
+npm run pack:check
+```
+
+Run the built CLI directly:
 
 ```bash
 node dist/cli/index.js --help
@@ -62,33 +90,23 @@ After package installation, the binary name is:
 rpgm-ai-translator
 ```
 
-## Quick Mock Run
+## Quick Start
 
-The mock provider does not call an API. It prefixes every source string with
+Use the mock provider first. It does not call an API and prefixes source text with
 `[ru]`, which is useful for checking extraction and patch writing.
 
 ```bash
 npm run build
 
-node dist/cli/index.js run ./game \
-  --provider mock \
-  --target ru \
-  --include-plugins \
-  --out ./out/mock-patch
-```
-
-The repository includes a synthetic, asset-free MZ sample that is safe to use for a
-smoke test:
-
-```bash
 node dist/cli/index.js run ./examples/mz-sample \
   --provider mock \
   --target ru \
   --include-plugins \
+  --repair \
   --out ./out/mz-sample-patch
 ```
 
-The output folder will contain:
+The output folder contains:
 
 - patched RPG Maker files;
 - `units.json`;
@@ -96,53 +114,35 @@ The output folder will contain:
 - `translation-memory.jsonl`;
 - `report.json`.
 
-## DeepSeek Run
+## Usage
+
+### Detect A Game
+
+```bash
+node dist/cli/index.js detect ./game
+```
+
+The command prints the detected engine, data directory, plugin file path, confidence,
+and detection reasons as JSON.
+
+### Extract Translation Units
+
+```bash
+node dist/cli/index.js extract ./game \
+  --include-plugins \
+  --out ./work/units.json \
+  --report ./work/extract-report.json
+```
+
+Use `--include-comments` if event comments should be included. Use
+`--include-plugins` cautiously because plugin formats vary heavily between games.
+
+### Translate With DeepSeek
 
 Set the API key through the environment. Do not commit keys or `.env` files.
 
 ```bash
 export DEEPSEEK_API_KEY=sk-...
-
-node dist/cli/index.js run ./game \
-  --provider deepseek \
-  --model deepseek-chat \
-  --target ru \
-  --batch-size 10 \
-  --retry-attempts 2 \
-  --timeout-ms 30000 \
-  --memory ./out/deepseek-memory.jsonl \
-  --include-plugins \
-  --out ./out/deepseek-patch
-```
-
-Add a review pass when you have a character glossary:
-
-```bash
-node dist/cli/index.js run ./game \
-  --provider deepseek \
-  --model deepseek-chat \
-  --target ru \
-  --characters ./out/characters.json \
-  --review \
-  --repair \
-  --repair-attempts 1 \
-  --out ./out/deepseek-reviewed-patch
-```
-
-`--repair` runs a validation-targeted repair pass before applying the patch. Use
-`--repair-codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION` to limit which validation
-issues are sent back to the provider.
-
-## Manual Pipeline
-
-Use the manual pipeline when you want to inspect or edit each phase.
-
-```bash
-node dist/cli/index.js detect ./game
-
-node dist/cli/index.js extract ./game \
-  --include-plugins \
-  --out ./work/units.json
 
 node dist/cli/index.js translate ./work/units.json \
   --provider deepseek \
@@ -153,21 +153,41 @@ node dist/cli/index.js translate ./work/units.json \
   --timeout-ms 30000 \
   --memory ./work/translation-memory.jsonl \
   --out ./work/translations.raw.json
+```
 
+`--batch-size` is the number of translation units sent to the provider in one
+request. Smaller batches are slower but safer for large or context-heavy strings.
+
+### Generate Character Glossary
+
+```bash
 node dist/cli/index.js characters ./work/units.json \
   --translations ./work/translations.raw.json \
   --provider deepseek \
   --model deepseek-chat \
   --target ru \
   --out ./work/characters.json
+```
 
+Review `characters.json` manually. Gender, role, and speech style inference is
+heuristic and should be corrected before the review pass.
+
+### Review Dialogue
+
+```bash
 node dist/cli/index.js review ./work/units.json ./work/translations.raw.json \
   --provider deepseek \
   --model deepseek-chat \
   --target ru \
   --characters ./work/characters.json \
   --out ./work/translations.reviewed.json
+```
 
+The review pass focuses on dialogue and choices grouped by map/event context.
+
+### Validate And Repair
+
+```bash
 node dist/cli/index.js validate ./work/units.json ./work/translations.reviewed.json \
   --out ./work/report.json
 
@@ -179,24 +199,49 @@ node dist/cli/index.js repair ./work/units.json ./work/translations.reviewed.jso
   --codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION \
   --characters ./work/characters.json \
   --out ./work/translations.repaired.json
-```
 
-If the report contains validation errors, fix or repair translations before applying
-the patch. The `run` command applies only translations without validation errors.
-
-After `repair`, run `validate` again and apply the repaired file when the report is
-acceptable:
-
-```bash
 node dist/cli/index.js validate ./work/units.json ./work/translations.repaired.json \
   --out ./work/report.repaired.json
+```
 
+Repair is provider-assisted, not magic. Always inspect the final report before
+shipping a patch.
+
+### Apply Patch
+
+```bash
 node dist/cli/index.js apply ./game ./work/translations.repaired.json \
   --mode patch \
   --include-plugins \
   --report ./work/report.repaired.json \
   --out ./work/patch
 ```
+
+When `--report` is provided, translations with validation errors are skipped.
+Warnings are reported but still applied.
+
+### One-Command Pipeline
+
+```bash
+node dist/cli/index.js run ./game \
+  --provider deepseek \
+  --model deepseek-chat \
+  --target ru \
+  --batch-size 10 \
+  --retry-attempts 2 \
+  --timeout-ms 30000 \
+  --memory ./out/deepseek-memory.jsonl \
+  --include-plugins \
+  --review \
+  --characters ./out/characters.json \
+  --repair \
+  --repair-attempts 1 \
+  --repair-codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION \
+  --out ./out/deepseek-patch
+```
+
+The `run` command validates before applying and writes only translations without
+validation errors to the patch folder.
 
 ## Fonts
 
@@ -254,7 +299,12 @@ Do not commit or publish:
 Distribute patches responsibly. This project is meant to help translate legally
 owned games and should not be used to redistribute copyrighted assets.
 
-## Development
+## Development Notes
+
+The core logic is provider-independent. New engines and providers should be added
+through adapters rather than by coupling provider code to extract/apply logic.
+
+Useful commands:
 
 ```bash
 npm run typecheck
@@ -264,5 +314,5 @@ npm run build
 npm run pack:check
 ```
 
-The core logic is provider-independent. New engines and providers should be added
-through adapters rather than by coupling provider code to extract/apply logic.
+See [docs/architecture.md](docs/architecture.md) for module boundaries and pipeline
+details.
