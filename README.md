@@ -261,6 +261,7 @@ npm run typecheck
 npm run lint
 npm test
 npm run build
+npm run pack:check
 ```
 
 The core logic is provider-independent. New engines and providers should be added
