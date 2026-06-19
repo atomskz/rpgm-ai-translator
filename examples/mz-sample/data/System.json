@@ -1,0 +1,42 @@
+{
+  "gameTitle": "Moonfall Sample",
+  "currencyUnit": "G",
+  "armorTypes": [
+    "",
+    "Light Armor"
+  ],
+  "elements": [
+    "",
+    "Fire",
+    "Ice"
+  ],
+  "equipTypes": [
+    "",
+    "Weapon",
+    "Shield"
+  ],
+  "skillTypes": [
+    "",
+    "Magic"
+  ],
+  "weaponTypes": [
+    "",
+    "Sword"
+  ],
+  "terms": {
+    "basic": [
+      "Level",
+      "HP",
+      "MP"
+    ],
+    "commands": [
+      "Fight",
+      "Escape",
+      "Item"
+    ]
+  },
+  "advanced": {
+    "mainFontFilename": "GameFont.ttf",
+    "numberFontFilename": "GameFont.ttf"
+  }
+}

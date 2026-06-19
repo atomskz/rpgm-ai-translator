@@ -3,7 +3,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["dist/**", "node_modules/**", "coverage/**", "out/**", "test/game/**"]
+    ignores: ["dist/**", "node_modules/**", "coverage/**", "out/**", "test/game/**", "examples/mz-sample/**"]
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

@@ -1,0 +1,13 @@
+[
+  null,
+  {
+    "id": 1,
+    "name": "Potion",
+    "description": "Restores \\V[1] HP."
+  },
+  {
+    "id": 2,
+    "name": "Ether",
+    "description": "Restores 10 MP."
+  }
+]

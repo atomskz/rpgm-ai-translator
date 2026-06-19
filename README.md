@@ -76,6 +76,17 @@ node dist/cli/index.js run ./game \
   --out ./out/mock-patch
 ```
 
+The repository includes a synthetic, asset-free MZ sample that is safe to use for a
+smoke test:
+
+```bash
+node dist/cli/index.js run ./examples/mz-sample \
+  --provider mock \
+  --target ru \
+  --include-plugins \
+  --out ./out/mz-sample-patch
+```
+
 The output folder will contain:
 
 - patched RPG Maker files;

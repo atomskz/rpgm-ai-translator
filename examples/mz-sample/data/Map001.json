@@ -1,0 +1,67 @@
+{
+  "displayName": "Old Road",
+  "events": [
+    null,
+    {
+      "id": 1,
+      "name": "Innkeeper",
+      "pages": [
+        {
+          "list": [
+            {
+              "code": 101,
+              "parameters": [
+                "",
+                0,
+                0,
+                2,
+                "Innkeeper"
+              ]
+            },
+            {
+              "code": 401,
+              "parameters": [
+                "Hello, \\N[1]! You received \\I[64] Potion."
+              ]
+            },
+            {
+              "code": 102,
+              "parameters": [
+                [
+                  "Rest",
+                  "Leave"
+                ],
+                0,
+                0,
+                2,
+                0
+              ]
+            },
+            {
+              "code": 122,
+              "parameters": [
+                1,
+                1,
+                0,
+                4,
+                "\"Find Aria on the Old Road.\""
+              ]
+            },
+            {
+              "code": 357,
+              "parameters": [
+                "SamplePopup",
+                "showMessage",
+                "",
+                {
+                  "messageText": "Silver Ring",
+                  "iconId": "64"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
