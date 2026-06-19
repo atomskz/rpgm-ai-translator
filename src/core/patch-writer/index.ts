@@ -91,11 +91,11 @@ async function prepareJsonFile(
 
   for (const { unit, result } of entries) {
     const currentValue = getJsonPath(data, unit.jsonPath);
-    if (currentValue !== encodedSource(unit)) {
+    if (currentSourceValue(currentValue, unit) !== unit.source) {
       skipped += 1;
       continue;
     }
-    setJsonPath(data, unit.jsonPath, encodeTranslation(unit, restorePlaceholders(result.translation, unit.placeholders)));
+    setJsonPath(data, unit.jsonPath, encodeTranslation(unit, currentValue, restorePlaceholders(result.translation, unit.placeholders)));
     unitsApplied += 1;
   }
 
@@ -120,11 +120,11 @@ async function preparePluginsFile(
 
   for (const { unit, result } of entries) {
     const currentValue = getPluginParameter(plugins, unit.jsonPath);
-    if (currentValue !== unit.source) {
+    if (currentSourceValue(currentValue, unit) !== unit.source) {
       skipped += 1;
       continue;
     }
-    setPluginParameter(plugins, unit.jsonPath, restorePlaceholders(result.translation, unit.placeholders));
+    setPluginParameter(plugins, unit.jsonPath, encodeTranslation(unit, currentValue, restorePlaceholders(result.translation, unit.placeholders)));
     unitsApplied += 1;
   }
 
@@ -214,18 +214,47 @@ function timestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, "-");
 }
 
-function encodedSource(unit: TranslationUnit): string {
+function currentSourceValue(currentValue: unknown, unit: TranslationUnit): string | undefined {
   if (unit.constraints?.sourceEncoding === "json-string-literal") {
-    return JSON.stringify(unit.source);
+    return currentValue === JSON.stringify(unit.source) ? unit.source : undefined;
   }
 
-  return unit.source;
+  if (unit.constraints?.sourceEncoding === "json-stringified-json") {
+    if (typeof currentValue !== "string" || !unit.constraints.encodedJsonPath) {
+      return undefined;
+    }
+    const parsed = parseEncodedJson(currentValue);
+    const nestedValue = parsed == null ? undefined : getJsonPath(parsed, unit.constraints.encodedJsonPath);
+    return typeof nestedValue === "string" ? nestedValue : undefined;
+  }
+
+  return typeof currentValue === "string" ? currentValue : undefined;
 }
 
-function encodeTranslation(unit: TranslationUnit, translation: string): string {
+function encodeTranslation(unit: TranslationUnit, currentValue: unknown, translation: string): string {
   if (unit.constraints?.sourceEncoding === "json-string-literal") {
     return JSON.stringify(translation);
   }
 
+  if (unit.constraints?.sourceEncoding === "json-stringified-json") {
+    if (typeof currentValue !== "string" || !unit.constraints.encodedJsonPath) {
+      throw new Error(`Cannot encode JSON-stringified translation for '${unit.id}'`);
+    }
+    const parsed = parseEncodedJson(currentValue);
+    if (parsed == null) {
+      throw new Error(`Invalid JSON-stringified source for '${unit.id}'`);
+    }
+    setJsonPath(parsed, unit.constraints.encodedJsonPath, translation);
+    return JSON.stringify(parsed);
+  }
+
   return translation;
+}
+
+function parseEncodedJson(raw: string): unknown | undefined {
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return undefined;
+  }
 }

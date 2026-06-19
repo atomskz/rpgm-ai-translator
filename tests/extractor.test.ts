@@ -33,7 +33,15 @@ describe("RpgMakerMvMzExtractor", () => {
                 { code: 122, parameters: [1, 1, 0, 4, JSON.stringify("Find the lost ring.")] },
                 {
                   code: 357,
-                  parameters: ["LL_InfoPopupWIndow", "showMessage", "", { messageText: "Silver Ring" }]
+                  parameters: [
+                    "LL_InfoPopupWIndow",
+                    "showMessage",
+                    "",
+                    {
+                      messageText: "Silver Ring",
+                      choices: JSON.stringify([{ label: "Give the ring?" }, { label: "Keep it" }])
+                    }
+                  ]
                 }
               ]
             }
@@ -56,7 +64,9 @@ describe("RpgMakerMvMzExtractor", () => {
       "Map001.events.1.pages.0.list.2.parameters.0.0",
       "Map001.events.1.pages.0.list.2.parameters.0.1",
       "Map001.events.1.pages.0.list.3.parameters.4",
-      "Map001.events.1.pages.0.list.4.parameters.3.messageText"
+      "Map001.events.1.pages.0.list.4.parameters.3.messageText",
+      "Map001.events.1.pages.0.list.4.parameters.3.choices.$json.0.label",
+      "Map001.events.1.pages.0.list.4.parameters.3.choices.$json.1.label"
     ]);
 
     const dialogue = units.find((unit) => unit.id === "Map001.events.1.pages.0.list.1.parameters.0");
@@ -73,6 +83,11 @@ describe("RpgMakerMvMzExtractor", () => {
       source: "Silver Ring",
       category: "system",
       constraints: { maxLines: 1, maxLength: 48 }
+    });
+    expect(units.find((unit) => unit.id === "Map001.events.1.pages.0.list.4.parameters.3.choices.$json.0.label")).toMatchObject({
+      source: "Give the ring?",
+      jsonPath: "events.1.pages.0.list.4.parameters.3.choices",
+      constraints: { sourceEncoding: "json-stringified-json", encodedJsonPath: "0.label" }
     });
   });
 
@@ -239,6 +254,7 @@ describe("RpgMakerMvMzExtractor", () => {
           status: true,
           parameters: {
             CommandName: "Auto Recover",
+            Commands: JSON.stringify([{ label: "Quest Log" }]),
             BackgroundImage: "MainMenu",
             Enabled: "true",
             Formula: "$gameVariables.value(1)",
@@ -261,6 +277,19 @@ describe("RpgMakerMvMzExtractor", () => {
         jsonPath: "0.parameters.CommandName",
         category: "plugin-parameter",
         context: { eventName: "MenuPlugin" }
+      })
+    );
+    expect(withPlugins).toContainEqual(
+      expect.objectContaining({
+        id: "plugins.0.parameters.Commands.$json.0.label",
+        source: "Quest Log",
+        filePath: "js/plugins.js",
+        jsonPath: "0.parameters.Commands",
+        category: "plugin-parameter",
+        constraints: expect.objectContaining({
+          sourceEncoding: "json-stringified-json",
+          encodedJsonPath: "0.label"
+        })
       })
     );
     expect(withPlugins.some((unit) => unit.source === "MainMenu")).toBe(false);

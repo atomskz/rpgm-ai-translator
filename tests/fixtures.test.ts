@@ -31,7 +31,9 @@ describe("synthetic fixtures", () => {
     expect(map.events[1].pages[0].list[1].parameters[0]).toContain(String.raw`\N[1]`);
     expect(map.events[1].pages[0].list[1].parameters[0]).toContain(String.raw`\I[64]`);
     expect(map.events[1].pages[0].list[3].parameters[4]).toContain("[ru] Find Aria");
+    expect(map.events[1].pages[0].list[4].parameters[3].choices).toContain("[ru] Give the ring?");
     expect(plugins).toContain("[ru] Quest Log");
+    expect(plugins).toContain("[ru] Open Quest Log");
     expect(output.join("")).toContain("Units translated:");
   });
 });

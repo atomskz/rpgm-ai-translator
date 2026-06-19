@@ -52,8 +52,8 @@ detect -> extract -> translate -> characters -> review -> validate -> repair -> 
 ## Engine Adapters
 
 The first engine adapter is `RpgMakerMvMzExtractor`. It handles MV/MZ JSON data,
-map events, common events, selected Control Variables string literals, and selected
-plugin command runtime text.
+map events, common events, selected Control Variables string literals, selected
+plugin command runtime text, and selected JSON-encoded plugin text fields.
 
 VX Ace, VX, and XP are intentionally out of scope for the first version. They should
 be added as separate adapters that implement the shared extractor interface.
@@ -87,7 +87,7 @@ backup first, but patch mode remains the recommended default.
   with `repair`, and can be included in the one-shot pipeline with `run --repair`.
 - JSONL memory uses cached reads and batched writes, but SQLite would scale better
   for concurrent or very large translation projects.
-- Plugin support is intentionally conservative and will miss some plugin-specific
-  text formats.
+- Plugin support is intentionally conservative. It handles explicit text fields and
+  selected JSON-encoded text fields, but will still miss some plugin-specific formats.
 - Character inference is heuristic and should be manually reviewed.
 - Documentation and release packaging are still catching up with the implementation.

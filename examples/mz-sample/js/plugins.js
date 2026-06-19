@@ -7,6 +7,7 @@ var $plugins = [
     "description": "Synthetic plugin fixture",
     "parameters": {
       "QuestCommandName": "Quest Log",
+      "ChoiceCommands": "[{\"label\":\"Open Quest Log\",\"symbol\":\"quest\"}]",
       "BackgroundImage": "MenuBackground",
       "Enabled": "true"
     }

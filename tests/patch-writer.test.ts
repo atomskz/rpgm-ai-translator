@@ -159,6 +159,74 @@ describe("patch writer", () => {
     expect(await readFile(path.join(root, "data", "Map001.json"), "utf8")).toContain("Find the lost ring.");
   });
 
+  it("writes translated JSON-encoded plugin command text inside map events", async () => {
+    const root = path.join(tmpdir(), `rpgm-encoded-command-patch-${Date.now()}`);
+    const outDir = path.join(tmpdir(), `rpgm-encoded-command-patch-out-${Date.now()}`);
+    await mkdir(path.join(root, "data"), { recursive: true });
+    await mkdir(path.join(root, "js"), { recursive: true });
+    await writeFile(path.join(root, "js", "rmmz_core.js"), "", "utf8");
+    await writeJson(path.join(root, "data", "Map001.json"), {
+      events: [
+        null,
+        {
+          id: 1,
+          name: "Choice Event",
+          pages: [
+            {
+              list: [
+                {
+                  code: 357,
+                  parameters: [
+                    "ChoicePlugin",
+                    "showChoice",
+                    "",
+                    {
+                      choices: JSON.stringify([
+                        { label: "Give the ring?", value: "give_ring" },
+                        { label: "Keep it", value: "keep_ring" }
+                      ])
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    const extractor = new RpgMakerMvMzExtractor();
+    const units = await extractor.extract(root);
+    const choiceUnit = units.find((unit) => unit.id === "Map001.events.1.pages.0.list.0.parameters.3.choices.$json.0.label");
+    expect(choiceUnit).toMatchObject({
+      source: "Give the ring?",
+      constraints: { sourceEncoding: "json-stringified-json", encodedJsonPath: "0.label" }
+    });
+
+    const result = await extractor.applyTranslations(
+      root,
+      [
+        {
+          id: choiceUnit?.id ?? "",
+          source: "Give the ring?",
+          translation: "Отдать кольцо?",
+          provider: "manual",
+          model: "manual",
+          status: "translated"
+        }
+      ],
+      { mode: "patch", outDir }
+    );
+
+    const patched = JSON.parse(await readFile(path.join(outDir, "data", "Map001.json"), "utf8"));
+    const encodedChoices = patched.events[1].pages[0].list[0].parameters[3].choices;
+    expect(result.unitsApplied).toBe(1);
+    expect(JSON.parse(encodedChoices)).toEqual([
+      { label: "Отдать кольцо?", value: "give_ring" },
+      { label: "Keep it", value: "keep_ring" }
+    ]);
+  });
+
   it("writes in-place only after creating a backup", async () => {
     const root = path.join(tmpdir(), `rpgm-in-place-${Date.now()}`);
     const backupDir = path.join(tmpdir(), `rpgm-in-place-backup-${Date.now()}`);
@@ -240,6 +308,55 @@ describe("patch writer", () => {
     expect(await readFile(path.join(root, "js", "plugins.js"), "utf8")).toContain("Auto Recover");
     expect(patchedRaw).toContain("Автолечение");
     expect(patchedRaw).toContain("autoheal");
+  });
+
+  it("writes translated JSON-encoded plugin parameters to plugins.js", async () => {
+    const root = path.join(tmpdir(), `rpgm-plugin-json-patch-${Date.now()}`);
+    const outDir = path.join(tmpdir(), `rpgm-plugin-json-patch-out-${Date.now()}`);
+    await mkdir(path.join(root, "data"), { recursive: true });
+    await mkdir(path.join(root, "js"), { recursive: true });
+    await writeFile(path.join(root, "js", "rmmz_core.js"), "", "utf8");
+    await writeFile(
+      path.join(root, "js", "plugins.js"),
+      `var $plugins = ${JSON.stringify([
+        {
+          name: "ChoicePlugin",
+          status: true,
+          parameters: {
+            Choices: JSON.stringify([{ label: "Quest Log", symbol: "quest" }])
+          }
+        }
+      ])};\n`,
+      "utf8"
+    );
+
+    const extractor = new RpgMakerMvMzExtractor();
+    const units = await extractor.extract(root, { includePlugins: true });
+    const choiceUnit = units.find((unit) => unit.id === "plugins.0.parameters.Choices.$json.0.label");
+    expect(choiceUnit).toMatchObject({
+      source: "Quest Log",
+      constraints: { sourceEncoding: "json-stringified-json", encodedJsonPath: "0.label" }
+    });
+
+    const result = await extractor.applyTranslations(
+      root,
+      [
+        {
+          id: choiceUnit?.id ?? "",
+          source: "Quest Log",
+          translation: "Журнал заданий",
+          provider: "manual",
+          model: "manual",
+          status: "translated"
+        }
+      ],
+      { mode: "patch", outDir, includePlugins: true }
+    );
+
+    const patchedRaw = await readFile(path.join(outDir, "js", "plugins.js"), "utf8");
+    expect(result.unitsApplied).toBe(1);
+    expect(patchedRaw).toContain("Журнал заданий");
+    expect(patchedRaw).toContain("quest");
   });
 });
 

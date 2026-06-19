@@ -21,6 +21,7 @@ Supported:
 - map/common event dialogue, choices, scroll text, and speaker names;
 - safe string literals in Control Variables commands, often used for quest text;
 - selected runtime plugin command text such as `messageText`;
+- selected JSON-encoded plugin text fields such as `label`, `text`, and `messageText`;
 - cautious plugin parameter extraction with `--include-plugins`;
 - DeepSeek through the OpenAI-compatible Chat Completions API;
 - mock provider for tests and dry runs;

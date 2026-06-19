@@ -437,10 +437,74 @@ function extractPluginCommandText(
           maxLength: 48
         })
       );
+      continue;
+    }
+
+    if (typeof value === "string") {
+      units.push(
+        ...extractEncodedJsonStrings(value, `${options.prefix}.${key}`, options, "system", {
+          maxLines: 1,
+          maxLength: 48
+        })
+      );
     }
   }
 
   return units;
+}
+
+function extractEncodedJsonStrings(
+  raw: string,
+  outerJsonPath: string,
+  base: Pick<UnitDraft, "absoluteFilePath" | "relativeFilePath" | "engine"> & {
+    context?: TranslationUnit["context"];
+  },
+  category: TranslationCategory,
+  constraints: TranslationUnit["constraints"]
+): UnitDraft[] {
+  const parsed = parseJsonString(raw);
+  if (parsed == null) {
+    return [];
+  }
+
+  const units: UnitDraft[] = [];
+  visitEncodedJsonStrings(parsed, "", (encodedJsonPath, key, source) => {
+    if (!isSafeEncodedJsonTextKey(key) || !isSafeRuntimeText(source)) {
+      return;
+    }
+    units.push(
+      makeDraft(base, outerJsonPath, source, category, base.context, {
+        ...constraints,
+        sourceEncoding: "json-stringified-json",
+        encodedJsonPath
+      })
+    );
+  });
+  return units;
+}
+
+function visitEncodedJsonStrings(
+  value: unknown,
+  pathPrefix: string,
+  visit: (jsonPath: string, key: string, value: string) => void
+): void {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => visitEncodedJsonStrings(item, joinJsonPath(pathPrefix, String(index)), visit));
+    return;
+  }
+
+  if (!isObject(value)) {
+    return;
+  }
+
+  for (const [key, item] of Object.entries(value)) {
+    const jsonPath = joinJsonPath(pathPrefix, key);
+    if (typeof item === "string") {
+      visit(jsonPath, key, item);
+    } else {
+      visitEncodedJsonStrings(item, jsonPath, visit);
+    }
+  }
 }
 
 function neighborContext(list: unknown[], commandIndex: number): Pick<NonNullable<TranslationUnit["context"]>, "previousLines" | "nextLines"> {
@@ -533,6 +597,22 @@ function extractPluginsJs(
             { eventName: plugin.name }
           )
         );
+        continue;
+      }
+
+      if (typeof source === "string") {
+        units.push(
+          ...extractEncodedJsonStrings(
+            source,
+            pluginParameterPath(pluginIndex, key),
+            {
+              ...base,
+              context: { eventName: plugin.name }
+            },
+            "plugin-parameter",
+            { maxLines: 1, maxLength: 48 }
+          )
+        );
       }
     }
   });
@@ -565,8 +645,12 @@ function makeDraft(
 
 function toTranslationUnit(draft: UnitDraft): TranslationUnit {
   const protectedText = protectPlaceholders(draft.source);
+  const encodedJsonSuffix =
+    draft.constraints?.sourceEncoding === "json-stringified-json" && draft.constraints.encodedJsonPath
+      ? `.$json.${draft.constraints.encodedJsonPath}`
+      : "";
   return {
-    id: `${path.basename(draft.relativeFilePath, path.extname(draft.relativeFilePath))}.${draft.jsonPath}`,
+    id: `${path.basename(draft.relativeFilePath, path.extname(draft.relativeFilePath))}.${draft.jsonPath}${encodedJsonSuffix}`,
     source: draft.source,
     normalizedSource: protectedText.text,
     filePath: draft.relativeFilePath,
@@ -586,6 +670,27 @@ function isObject(value: unknown): value is JsonObject {
 
 function isTranslatableString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function parseJsonString(raw: string): unknown | undefined {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+function joinJsonPath(prefix: string, segment: string): string {
+  return prefix ? `${prefix}.${segment}` : segment;
+}
+
+function isSafeEncodedJsonTextKey(key: string): boolean {
+  return /^(?:text|label|messageText|helpText|description|displayText|caption|title|commandName|itemName|optionName)$/i.test(key);
 }
 
 function decodeScriptStringLiteral(raw: string): string | undefined {

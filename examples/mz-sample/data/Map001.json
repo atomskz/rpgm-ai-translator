@@ -55,6 +55,7 @@
                 "",
                 {
                   "messageText": "Silver Ring",
+                  "choices": "[{\"label\":\"Give the ring?\",\"value\":\"give_ring\"},{\"label\":\"Keep it\",\"value\":\"keep_ring\"}]",
                   "iconId": "64"
                 }
               ]

@@ -38,7 +38,8 @@ export type TranslationUnit = {
     preserveControlCodes?: boolean;
     maxLines?: number;
     maxLength?: number;
-    sourceEncoding?: "json-string-literal";
+    sourceEncoding?: "json-string-literal" | "json-stringified-json";
+    encodedJsonPath?: string;
   };
   placeholders?: Placeholder[];
   hash: string;
