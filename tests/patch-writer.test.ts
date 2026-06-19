@@ -62,6 +62,53 @@ describe("patch writer", () => {
     expect(patched[1].name).toBe("Ария");
   });
 
+  it("can filter validation-error translations through a report in the CLI", async () => {
+    const root = path.join(tmpdir(), `rpgm-patch-report-cli-${Date.now()}`);
+    const outDir = path.join(tmpdir(), `rpgm-patch-report-cli-out-${Date.now()}`);
+    const translationsPath = path.join(tmpdir(), `rpgm-translations-report-${Date.now()}.json`);
+    const reportPath = path.join(tmpdir(), `rpgm-report-${Date.now()}.json`);
+    await mkdir(path.join(root, "data"), { recursive: true });
+    await mkdir(path.join(root, "js"), { recursive: true });
+    await writeFile(path.join(root, "js", "rpg_core.js"), "", "utf8");
+    await writeJson(path.join(root, "data", "Actors.json"), [
+      null,
+      { id: 1, name: "Aria", profile: String.raw`Hello \N[1].` }
+    ]);
+    await writeJson(translationsPath, [
+      { id: "Actors.1.name", source: "Aria", translation: "Ария" },
+      { id: "Actors.1.profile", source: String.raw`Hello \N[1].`, translation: "Привет без кода." }
+    ]);
+    await writeJson(reportPath, {
+      engine: "rpgmaker-mv",
+      filesScanned: 1,
+      unitsExtracted: 2,
+      unitsTranslated: 2,
+      fromMemory: 0,
+      failed: 0,
+      validationIssues: [
+        {
+          id: "Actors.1.profile",
+          severity: "error",
+          code: "MISSING_PLACEHOLDER",
+          message: "Missing placeholder <PH_1>"
+        }
+      ]
+    });
+
+    const { runCli } = await import("../src/cli/app.js");
+    const output: string[] = [];
+    const exitCode = await runCli(["apply", root, translationsPath, "--mode", "patch", "--out", outDir, "--report", reportPath], {
+      stdout: (text) => output.push(text),
+      stderr: () => undefined
+    });
+
+    const patched = JSON.parse(await readFile(path.join(outDir, "data", "Actors.json"), "utf8"));
+    expect(exitCode).toBe(0);
+    expect(output.join("")).toContain("1/2 validation-safe translations");
+    expect(patched[1].name).toBe("Ария");
+    expect(patched[1].profile).toBe(String.raw`Hello \N[1].`);
+  });
+
   it("writes translated string literals from control variable commands", async () => {
     const root = path.join(tmpdir(), `rpgm-quest-patch-${Date.now()}`);
     const outDir = path.join(tmpdir(), `rpgm-quest-patch-out-${Date.now()}`);

@@ -187,6 +187,7 @@ node dist/cli/index.js validate ./work/units.json ./work/translations.repaired.j
 node dist/cli/index.js apply ./game ./work/translations.repaired.json \
   --mode patch \
   --include-plugins \
+  --report ./work/report.repaired.json \
   --out ./work/patch
 ```
 
@@ -198,6 +199,7 @@ RPG Maker MZ games may need a font that supports the target language.
 node dist/cli/index.js apply ./game ./work/translations.reviewed.json \
   --mode patch \
   --out ./work/patch \
+  --report ./work/report.json \
   --font ./fonts/NotoSans-Regular.ttf \
   --number-font ./fonts/NotoSans-Bold.ttf
 ```

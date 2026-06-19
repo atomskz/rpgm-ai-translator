@@ -71,11 +71,18 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
       const mode = readOption(args, "--mode") ?? "patch";
       const outDir = readOption(args, "--out");
       const backupDir = readOption(args, "--backup");
+      const reportPath = readOption(args, "--report");
       const fontPath = readOption(args, "--font");
       const numberFontPath = readOption(args, "--number-font");
       const translations = await readTranslationResultsFile(translationsPath);
+      const translationsToApply = reportPath
+        ? filterTranslationsWithoutValidationErrors(translations, (await readReportFile(reportPath)).validationIssues)
+        : translations;
+      if (reportPath) {
+        io.stdout(`Using report filter: ${translationsToApply.length}/${translations.length} validation-safe translations.\n`);
+      }
       io.stdout(`Applying translations in ${mode} mode...\n`);
-      const result = await new RpgMakerMvMzExtractor().applyTranslations(projectPath, translations, {
+      const result = await new RpgMakerMvMzExtractor().applyTranslations(projectPath, translationsToApply, {
         mode: mode as "patch" | "in-place",
         outDir,
         backupDir,
@@ -358,7 +365,7 @@ export function helpText(): string {
   rpgm-ai-translator review ./work/units.json ./work/translations.json --provider deepseek --target ru --out ./work/translations.reviewed.json [--characters ./characters.json] [--glossary ./glossary.json]
   rpgm-ai-translator repair ./work/units.json ./work/translations.json --report ./work/report.json --provider deepseek --target ru --out ./work/translations.repaired.json [--codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION]
   rpgm-ai-translator validate ./work/units.json ./work/translations.json --out ./work/report.json [--glossary ./glossary.json]
-  rpgm-ai-translator apply ./game ./work/translations.json --mode patch --out ./translated-patch [--include-plugins] [--font ./font.ttf]
+  rpgm-ai-translator apply ./game ./work/translations.json --mode patch --out ./translated-patch [--include-plugins] [--font ./font.ttf] [--report ./work/report.json]
   rpgm-ai-translator apply ./game ./work/translations.json --mode in-place [--backup ./backup]
   rpgm-ai-translator patch-font ./game --out ./translated-patch --font ./font.ttf [--number-font ./font-bold.ttf]
   rpgm-ai-translator run ./game --provider mock --target ru --out ./translated-patch [--batch-size 20] [--retry-attempts 1] [--timeout-ms 60000] [--glossary ./glossary.json] [--characters ./characters.json] [--review] [--include-plugins] [--font ./font.ttf]
