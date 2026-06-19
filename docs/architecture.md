@@ -75,8 +75,9 @@ control codes, variables, numbers, glossary constraints, missing translations, a
 layout constraints such as `maxLength` and `maxLines`.
 
 The `run` command applies only translations that do not have validation errors.
-Warnings are reported but still applied. The `apply` command assumes the caller has
-already validated the translations.
+Warnings are reported but still applied. The manual `apply` command can do the
+same filtering when passed `--report`; without `--report`, it assumes the caller
+has already validated the translations.
 
 Patch mode writes changed files to a separate output folder. In-place mode creates a
 backup first, but patch mode remains the recommended default.
@@ -90,4 +91,5 @@ backup first, but patch mode remains the recommended default.
 - Plugin support is intentionally conservative. It handles explicit text fields and
   selected JSON-encoded text fields, but will still miss some plugin-specific formats.
 - Character inference is heuristic and should be manually reviewed.
-- Documentation and release packaging are still catching up with the implementation.
+- The first release packaging path exists, but changelog-driven release management
+  and tags should be maintained as part of each release.
