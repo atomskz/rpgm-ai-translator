@@ -36,7 +36,7 @@ Not supported yet:
 - GUI;
 - OCR or screenshot review;
 - guaranteed extraction from every plugin-specific format;
-- automatic fixing of text that is too long for a message window;
+- fully automatic text fitting inside the one-shot `run` command;
 - distribution of translated commercial game assets.
 
 ## Install

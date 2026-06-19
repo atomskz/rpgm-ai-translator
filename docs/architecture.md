@@ -83,8 +83,8 @@ backup first, but patch mode remains the recommended default.
 
 - Text fitting is not automatic in `run`; too-long translations are reported and can
   be targeted with the `repair` command.
-- JSONL memory rewrites the memory file on each update; SQLite or batched writes
-  would scale better.
+- JSONL memory uses cached reads and batched writes, but SQLite would scale better
+  for concurrent or very large translation projects.
 - Plugin support is intentionally conservative and will miss some plugin-specific
   text formats.
 - Character inference is heuristic and should be manually reviewed.
