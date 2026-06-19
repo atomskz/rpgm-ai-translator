@@ -126,6 +126,24 @@ describe("DefaultValidator", () => {
     expect(codes(issues)).not.toContain("CONTROL_CODE_CHANGED");
   });
 
+  it("reports changed custom plugin control codes", () => {
+    const protectedText = protectPlaceholders(String.raw`Belffie\MPD[Surprise]`);
+    const issues = validate(
+      unit({
+        source: String.raw`Belffie\MPD[Surprise]`,
+        normalizedSource: protectedText.text,
+        placeholders: protectedText.placeholders
+      }),
+      result({
+        source: String.raw`Belffie\MPD[Surprise]`,
+        translation: String.raw`Белффи\MPD[Happy]`
+      })
+    );
+
+    expect(codes(issues)).toContain("MISSING_PLACEHOLDER");
+    expect(codes(issues)).toContain("CONTROL_CODE_CHANGED");
+  });
+
   it("accepts repeated raw placeholder values when each matching placeholder occurrence is preserved", () => {
     const protectedText = protectPlaceholders(String.raw`Use \C[4]Prayer\C[0] in \C[4]Tactics\C[0].`);
     const issues = validate(

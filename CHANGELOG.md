@@ -2,6 +2,15 @@
 
 All notable changes to `rpgm-ai-translator` are documented in this file.
 
+## Unreleased
+
+### Fixed
+
+- Preserve RPG Maker Show Text speaker names by default so portrait plugins that
+  use speaker names as lookup keys do not break after translation.
+- Protect custom plugin escape codes such as `\MPD[Surprise]` as control-code
+  placeholders.
+
 ## 0.1.0 - 2026-06-19
 
 ### Added

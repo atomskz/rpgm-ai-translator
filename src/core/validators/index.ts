@@ -215,7 +215,7 @@ function extractVariables(text: string): string[] {
 }
 
 function extractTechnicalTokens(text: string): string[] {
-  return text.match(/\\(?:[VNPIC]\[\d+\]|G|\{|\}|\.|\||!|>)|%(?:\d+|(?:\.\d+)?[sdif])|\{[A-Za-z_][A-Za-z0-9_]*\}|<[^<>\n]+>/g) ?? [];
+  return text.match(/\\(?:[A-Za-z]+(?:\[[^\]\r\n]*\])?|\{|\}|\.|\||!|>)|%(?:\d+|(?:\.\d+)?[sdif])|\{[A-Za-z_][A-Za-z0-9_]*\}|<[^<>\n]+>/g) ?? [];
 }
 
 function sameMultiset(left: string[], right: string[]): boolean {

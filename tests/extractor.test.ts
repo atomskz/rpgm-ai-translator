@@ -59,7 +59,6 @@ describe("RpgMakerMvMzExtractor", () => {
       "Items.1.name",
       "Items.1.description",
       "Map001.displayName",
-      "Map001.events.1.pages.0.list.0.parameters.4",
       "Map001.events.1.pages.0.list.1.parameters.0",
       "Map001.events.1.pages.0.list.2.parameters.0.0",
       "Map001.events.1.pages.0.list.2.parameters.0.1",
@@ -74,6 +73,7 @@ describe("RpgMakerMvMzExtractor", () => {
     expect(dialogue?.normalizedSource).toBe("Hello, <PH_1>!");
     expect(dialogue?.placeholders?.[0].value).toBe(String.raw`\N[1]`);
     expect(dialogue?.constraints).toMatchObject({ maxLines: 1, maxLength: 52 });
+    expect(dialogue?.context?.speaker).toBe("Innkeeper");
     expect(units.find((unit) => unit.id === "Map001.events.1.pages.0.list.3.parameters.4")).toMatchObject({
       source: "Find the lost ring.",
       category: "system",
@@ -204,9 +204,18 @@ describe("RpgMakerMvMzExtractor", () => {
 
     const withoutComments = await new RpgMakerMvMzExtractor().extract(root);
     const withComments = await new RpgMakerMvMzExtractor().extract(root, { includeEventComments: true });
+    const withSpeakerNames = await new RpgMakerMvMzExtractor().extract(root, { includeSpeakerNames: true });
     const byId = new Map(withComments.map((unit) => [unit.id, unit]));
 
     expect(withoutComments.some((unit) => unit.source === "Translator note")).toBe(false);
+    expect(withoutComments.some((unit) => unit.id === "Map001.events.1.pages.0.list.0.parameters.4")).toBe(false);
+    expect(withSpeakerNames).toContainEqual(
+      expect.objectContaining({
+        id: "Map001.events.1.pages.0.list.0.parameters.4",
+        source: "Guard",
+        category: "name"
+      })
+    );
     expect(byId.get("Map001.events.1.pages.0.list.1.parameters.0")).toMatchObject({
       source: "First line.",
       category: "dialogue",

@@ -54,7 +54,8 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
       const reportPath = readOption(args, "--report");
       const units = await new RpgMakerMvMzExtractor().extract(projectPath, {
         includeEventComments: hasFlag(args, "--include-comments"),
-        includePlugins: hasFlag(args, "--include-plugins")
+        includePlugins: hasFlag(args, "--include-plugins"),
+        includeSpeakerNames: hasFlag(args, "--include-speaker-names")
       });
       if (out) {
         await writeTranslationUnitsFile(out, units);
@@ -86,7 +87,8 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
         mode: mode as "patch" | "in-place",
         outDir,
         backupDir,
-        includePlugins: hasFlag(args, "--include-plugins")
+        includePlugins: hasFlag(args, "--include-plugins"),
+        includeSpeakerNames: hasFlag(args, "--include-speaker-names")
       });
       if (mode === "patch" && outDir && fontPath) {
         io.stdout("Applying font patch...\n");
@@ -291,7 +293,8 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
 
       const units = await new RpgMakerMvMzExtractor(detector).extract(projectPath, {
         includeEventComments: hasFlag(args, "--include-comments"),
-        includePlugins: hasFlag(args, "--include-plugins")
+        includePlugins: hasFlag(args, "--include-plugins"),
+        includeSpeakerNames: hasFlag(args, "--include-speaker-names")
       });
       await mkdir(outDir, { recursive: true });
       await writeTranslationUnitsFile(path.join(outDir, "units.json"), units);
@@ -361,7 +364,8 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
       await new RpgMakerMvMzExtractor(detector).applyTranslations(projectPath, safeTranslations, {
         mode: "patch",
         outDir,
-        includePlugins: hasFlag(args, "--include-plugins")
+        includePlugins: hasFlag(args, "--include-plugins"),
+        includeSpeakerNames: hasFlag(args, "--include-speaker-names")
       });
       if (fontPath) {
         io.stdout("Applying font patch...\n");
@@ -388,16 +392,16 @@ export function helpText(): string {
   return `Usage:
   rpgm-ai-translator --help
   rpgm-ai-translator detect ./game
-  rpgm-ai-translator extract ./game --out ./work/units.json [--include-comments] [--include-plugins] [--report ./work/report.json]
+  rpgm-ai-translator extract ./game --out ./work/units.json [--include-comments] [--include-plugins] [--include-speaker-names] [--report ./work/report.json]
   rpgm-ai-translator translate ./work/units.json --provider mock --out ./work/translations.json [--batch-size 20] [--retry-attempts 1] [--timeout-ms 60000] [--memory ./work/memory.jsonl] [--glossary ./glossary.json] [--report ./work/report.json]
   rpgm-ai-translator characters ./work/units.json --out ./work/characters.json [--translations ./work/translations.json] [--provider mock|deepseek|none] [--include-mentions]
   rpgm-ai-translator review ./work/units.json ./work/translations.json --provider deepseek --target ru --out ./work/translations.reviewed.json [--characters ./characters.json] [--glossary ./glossary.json]
   rpgm-ai-translator repair ./work/units.json ./work/translations.json --report ./work/report.json --provider deepseek --target ru --out ./work/translations.repaired.json [--codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION]
   rpgm-ai-translator validate ./work/units.json ./work/translations.json --out ./work/report.json [--glossary ./glossary.json]
-  rpgm-ai-translator apply ./game ./work/translations.json --mode patch --out ./translated-patch [--include-plugins] [--font ./font.ttf] [--report ./work/report.json]
+  rpgm-ai-translator apply ./game ./work/translations.json --mode patch --out ./translated-patch [--include-plugins] [--include-speaker-names] [--font ./font.ttf] [--report ./work/report.json]
   rpgm-ai-translator apply ./game ./work/translations.json --mode in-place [--backup ./backup]
   rpgm-ai-translator patch-font ./game --out ./translated-patch --font ./font.ttf [--number-font ./font-bold.ttf]
-  rpgm-ai-translator run ./game --provider mock --target ru --out ./translated-patch [--batch-size 20] [--retry-attempts 1] [--timeout-ms 60000] [--glossary ./glossary.json] [--characters ./characters.json] [--review] [--repair] [--repair-attempts 1] [--repair-codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION] [--include-plugins] [--font ./font.ttf]
+  rpgm-ai-translator run ./game --provider mock --target ru --out ./translated-patch [--batch-size 20] [--retry-attempts 1] [--timeout-ms 60000] [--glossary ./glossary.json] [--characters ./characters.json] [--review] [--repair] [--repair-attempts 1] [--repair-codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION] [--include-plugins] [--include-speaker-names] [--font ./font.ttf]
 `;
 }
 

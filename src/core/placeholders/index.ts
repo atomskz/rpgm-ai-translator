@@ -5,8 +5,7 @@ export type PlaceholderProtectionResult = {
   placeholders: Placeholder[];
 };
 
-const CONTROL_CODE_PATTERN =
-  /\\(?:[VNPIC]\[\d+\]|G|\{|\}|\.|\||!|>)/g;
+const CONTROL_CODE_PATTERN = /\\(?:[A-Za-z]+(?:\[[^\]\r\n]*\])?|\{|\}|\.|\||!|>)/g;
 const FORMAT_TOKEN_PATTERN = /%(?:\d+|(?:\.\d+)?[sdif])/g;
 const TEMPLATE_TOKEN_PATTERN = /\{[A-Za-z_][A-Za-z0-9_]*\}/g;
 const TAG_PATTERN = /<[^<>\n]+>/g;

@@ -28,6 +28,7 @@ Supported:
 - selected runtime plugin command text such as `messageText`;
 - selected JSON-encoded plugin text fields such as `label`, `text`, and `messageText`;
 - cautious plugin parameter extraction with `--include-plugins`;
+- speaker names are kept as context by default to avoid breaking portrait plugins;
 - DeepSeek through the OpenAI-compatible Chat Completions API;
 - mock provider for tests and dry runs;
 - JSONL translation memory;
@@ -136,6 +137,10 @@ node dist/cli/index.js extract ./game \
 
 Use `--include-comments` if event comments should be included. Use
 `--include-plugins` cautiously because plugin formats vary heavily between games.
+Speaker names from RPG Maker MZ/MV `Show Text` commands are not translated by
+default because many games and plugins use them as portrait lookup keys. Use
+`--include-speaker-names` only if the game does not depend on speaker names as
+technical identifiers.
 
 ### Translate With DeepSeek
 

@@ -54,6 +54,9 @@ detect -> extract -> translate -> characters -> review -> validate -> repair -> 
 The first engine adapter is `RpgMakerMvMzExtractor`. It handles MV/MZ JSON data,
 map events, common events, selected Control Variables string literals, selected
 plugin command runtime text, and selected JSON-encoded plugin text fields.
+Show Text speaker names are preserved as context by default rather than extracted
+as translation units, because many games and plugins use them as technical portrait
+lookup keys. They can be opted in with `includeSpeakerNames` / `--include-speaker-names`.
 
 VX Ace, VX, and XP are intentionally out of scope for the first version. They should
 be added as separate adapters that implement the shared extractor interface.

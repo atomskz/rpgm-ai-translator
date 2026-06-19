@@ -87,7 +87,10 @@ export class RpgMakerMvMzExtractor implements Extractor {
       throw new Error(`Apply mode '${options.mode}' is not implemented in the MVP`);
     }
 
-    const units = await this.extract(projectPath, { includePlugins: options.includePlugins });
+    const units = await this.extract(projectPath, {
+      includePlugins: options.includePlugins,
+      includeSpeakerNames: options.includeSpeakerNames
+    });
     return writePatch(projectPath, units, translations, options);
   }
 }
@@ -297,6 +300,7 @@ function extractEventCommandList(
     prefix: string;
     context?: TranslationUnit["context"];
     includeComments: boolean;
+    extractOptions: ExtractOptions;
   }
 ): UnitDraft[] {
   if (!Array.isArray(list)) {
@@ -316,20 +320,22 @@ function extractEventCommandList(
     const speakerParameter = command.parameters[4];
     if (code === 101 && isTranslatableString(speakerParameter)) {
       currentSpeaker = speakerParameter;
-      units.push(
-        makeDraft(
-          options,
-          `${options.prefix}.${commandIndex}.parameters.4`,
-          speakerParameter,
-          "name",
-          {
-            ...options.context,
-            speaker: currentSpeaker,
-            ...neighborContext(list, commandIndex)
-          },
-          { maxLines: 1, maxLength: 24 }
-        )
-      );
+      if (options.extractOptions.includeSpeakerNames === true) {
+        units.push(
+          makeDraft(
+            options,
+            `${options.prefix}.${commandIndex}.parameters.4`,
+            speakerParameter,
+            "name",
+            {
+              ...options.context,
+              speaker: currentSpeaker,
+              ...neighborContext(list, commandIndex)
+            },
+            { maxLines: 1, maxLength: 24 }
+          )
+        );
+      }
     }
 
     const textParameter = command.parameters[0];

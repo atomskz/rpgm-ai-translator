@@ -96,6 +96,7 @@ export type ApplyOptions = {
   outDir?: string;
   backupDir?: string;
   includePlugins?: boolean;
+  includeSpeakerNames?: boolean;
 };
 
 export type ApplyResult = {
@@ -180,6 +181,7 @@ export type TranslationProgressEvent =
 export type ExtractOptions = {
   includeEventComments?: boolean;
   includePlugins?: boolean;
+  includeSpeakerNames?: boolean;
 };
 
 export type GlossaryMode = "keep" | "translate" | "transliterate" | "custom";
