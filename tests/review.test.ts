@@ -76,6 +76,44 @@ describe("reviewTranslations", () => {
 
     expect(events).toEqual(["review-batch-start", "review-batch-complete"]);
   });
+
+  it("emits reviewed batch results for checkpoint writers", async () => {
+    const checkpointResults: TranslationResult[][] = [];
+    const provider: LLMProvider = {
+      name: "review-test",
+      translateBatch: async () => [],
+      reviewBatch: async (batch: ReviewUnit[]): Promise<TranslationResult[]> =>
+        batch.map((item) => ({
+          id: item.id,
+          source: item.source,
+          translation: `${item.currentTranslation} ok`,
+          provider: "review-test",
+          model: "review-model",
+          status: "translated"
+        })),
+      inferCharacters: async () => ({})
+    };
+
+    await reviewTranslations(
+      [unit({ id: "Map001.events.1.pages.0.list.0.parameters.0" })],
+      [translation({ id: "Map001.events.1.pages.0.list.0.parameters.0" })],
+      provider,
+      {
+        targetLanguage: "ru",
+        onBatchResults: (results) => checkpointResults.push(results)
+      }
+    );
+
+    expect(checkpointResults).toEqual([
+      [
+        expect.objectContaining({
+          id: "Map001.events.1.pages.0.list.0.parameters.0",
+          translation: "Я готов. ok",
+          metadata: { reviewed: true }
+        })
+      ]
+    ]);
+  });
 });
 
 function unit(overrides: Partial<TranslationUnit> = {}): TranslationUnit {

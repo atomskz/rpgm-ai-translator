@@ -19,6 +19,7 @@ import {
 } from "../core/validators/index.js";
 import { JsonlTranslationMemory, translateWithMemory } from "../core/memory/index.js";
 import { applyFontPatch } from "../core/font-patch/index.js";
+import { writePatch } from "../core/patch-writer/index.js";
 import { reviewTranslations } from "../core/review/index.js";
 import { repairTranslations } from "../core/repair/index.js";
 import {
@@ -76,6 +77,7 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
       const outDir = readOption(args, "--out");
       const backupDir = readOption(args, "--backup");
       const reportPath = readOption(args, "--report");
+      const unitsPath = readOption(args, "--units");
       const fontPath = readOption(args, "--font");
       const numberFontPath = readOption(args, "--number-font");
       const translations = await readTranslationResultsFile(translationsPath);
@@ -86,13 +88,16 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
         io.stdout(`Using report filter: ${translationsToApply.length}/${translations.length} validation-safe translations.\n`);
       }
       io.stdout(`Applying translations in ${mode} mode...\n`);
-      const result = await new RpgMakerMvMzExtractor().applyTranslations(projectPath, translationsToApply, {
+      const applyOptions = {
         mode: mode as "patch" | "in-place",
         outDir,
         backupDir,
         includePlugins: hasFlag(args, "--include-plugins"),
         includeSpeakerNames: hasFlag(args, "--include-speaker-names")
-      });
+      };
+      const result = unitsPath
+        ? await writePatch(projectPath, await readTranslationUnitsFile(unitsPath), translationsToApply, applyOptions)
+        : await new RpgMakerMvMzExtractor().applyTranslations(projectPath, translationsToApply, applyOptions);
       if (mode === "patch" && outDir && fontPath) {
         io.stdout("Applying font patch...\n");
         await applyFontPatch(projectPath, outDir, { fontPath, numberFontPath });
@@ -178,6 +183,7 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
       const providerName = readOption(args, "--provider") ?? "mock";
       assertProviderReady(providerName);
       const out = requireOption(args, "--out");
+      const checkpointOption = readOption(args, "--checkpoint");
       const targetLanguage = readOption(args, "--target") ?? "ru";
       const model = readOption(args, "--model");
       const batchSize = readPositiveIntegerOption(args, "--batch-size");
@@ -188,14 +194,29 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
       const translations = await readTranslationResultsFile(translationsPath);
       const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
       const characterGlossary = charactersPath ? await loadCharacterGlossary(charactersPath) : undefined;
-      const result = await reviewTranslations(units, translations, createProvider(providerName), {
+      const checkpointPath = checkpointOption ?? defaultCheckpointPath(out);
+      const checkpointResults = checkpointOption ? await readTranslationResultsJsonlFile(checkpointOption) : [];
+      const checkpointById = checkpointedTranslationsById(units, checkpointResults);
+      const unitsToReview = units.filter((unit) => !checkpointById.has(unit.id));
+      const translationsWithCheckpoint = mergeCheckpointTranslations(units, translations, checkpointById);
+      if (checkpointOption) {
+        io.stdout(`Loaded review checkpoint: ${checkpointById.size}/${units.length} translated units from ${checkpointPath}\n`);
+      } else {
+        await resetTranslationResultsJsonlFile(checkpointPath);
+      }
+      io.stdout(`Writing review checkpoint: ${checkpointPath}\n`);
+      const result = await reviewTranslations(unitsToReview, translationsWithCheckpoint, createProvider(providerName), {
         targetLanguage,
         model,
         batchSize,
         timeoutMs,
         glossary,
         characterGlossary,
-        onProgress: createProgressLogger(io)
+        onProgress: createProgressLogger(io),
+        onBatchResults: async (batchResults) => {
+          await appendTranslationResultsJsonlFile(checkpointPath, batchResults);
+          io.stdout(`Review checkpoint saved: ${batchResults.length} results.\n`);
+        }
       });
       await writeTranslationResultsFile(out, result.translations);
       io.stdout(`Reviewed: ${result.reviewed}, failed: ${result.failed}, skipped: ${result.skipped}\n`);
@@ -209,6 +230,7 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
       const out = requireOption(args, "--out");
       const providerName = readOption(args, "--provider") ?? "mock";
       assertProviderReady(providerName);
+      const checkpointOption = readOption(args, "--checkpoint");
       const targetLanguage = readOption(args, "--target") ?? "ru";
       const model = readOption(args, "--model");
       const batchSize = readPositiveIntegerOption(args, "--batch-size");
@@ -216,27 +238,68 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
       const glossaryPath = readOption(args, "--glossary");
       const charactersPath = readOption(args, "--characters");
       const issueCodes = readIssueCodesOption(args, "--codes");
+      const attempts = readPositiveIntegerOption(args, "--attempts") ?? 1;
       const units = await readTranslationUnitsFile(unitsPath);
-      const translations = await readTranslationResultsFile(translationsPath);
+      let translations = await readTranslationResultsFile(translationsPath);
       const report = await readReportFile(reportPath);
       const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
       const characterGlossary = charactersPath ? await loadCharacterGlossary(charactersPath) : undefined;
+      const checkpointPath = checkpointOption ?? defaultCheckpointPath(out);
+      const checkpointResults = checkpointOption ? await readTranslationResultsJsonlFile(checkpointOption) : [];
+      const checkpointById = checkpointedTranslationsById(units, checkpointResults);
+      if (checkpointById.size > 0) {
+        translations = mergeCheckpointTranslations(units, translations, checkpointById);
+      }
+      if (checkpointOption) {
+        io.stdout(`Loaded repair checkpoint: ${checkpointById.size}/${units.length} translated units from ${checkpointPath}\n`);
+      } else {
+        await resetTranslationResultsJsonlFile(checkpointPath);
+      }
+      io.stdout(`Writing repair checkpoint: ${checkpointPath}\n`);
       io.stdout(
         `Repairing translations for ${issueCodes ? issueCodes.join(",") : "all"} validation issue codes...\n`
       );
-      const result = await repairTranslations(units, translations, report.validationIssues, createProvider(providerName), {
-        targetLanguage,
-        model,
-        batchSize,
-        timeoutMs,
-        glossary,
-        characterGlossary,
-        issueCodes,
-        onProgress: createProgressLogger(io)
-      });
-      await writeTranslationResultsFile(out, result.translations);
+      let validationIssues = filterValidationIssues(report.validationIssues, issueCodes, checkpointById);
+      let repaired = 0;
+      let translated = 0;
+      let reviewed = 0;
+      let failed = 0;
+      let skipped = 0;
+      const provider = createProvider(providerName);
+      for (let attempt = 1; attempt <= attempts && validationIssues.length > 0; attempt += 1) {
+        io.stdout(`Repair attempt ${attempt}/${attempts}: ${validationIssues.length} targeted issues...\n`);
+        const result = await repairTranslations(units, translations, validationIssues, provider, {
+          targetLanguage,
+          model,
+          batchSize,
+          timeoutMs,
+          glossary,
+          characterGlossary,
+          issueCodes,
+          onProgress: createProgressLogger(io),
+          onBatchResults: async (batchResults) => {
+            await appendTranslationResultsJsonlFile(checkpointPath, batchResults);
+            io.stdout(`Repair checkpoint saved: ${batchResults.length} results.\n`);
+          }
+        });
+        translations = result.translations;
+        repaired += result.repaired;
+        translated += result.translated;
+        reviewed += result.reviewed;
+        failed += result.failed;
+        skipped += result.skipped;
+        io.stdout(
+          `Repair attempt ${attempt}/${attempts}: repaired ${result.repaired}, translated ${result.translated}, reviewed ${result.reviewed}, failed ${result.failed}, skipped ${result.skipped}\n`
+        );
+        if (result.repaired === 0) {
+          break;
+        }
+        const currentIssues = validateTranslationResults(units, translations, new DefaultValidator(glossary));
+        validationIssues = filterValidationIssues(currentIssues, issueCodes, new Map());
+      }
+      await writeTranslationResultsFile(out, translations);
       io.stdout(
-        `Repaired: ${result.repaired}, translated: ${result.translated}, reviewed: ${result.reviewed}, failed: ${result.failed}, skipped: ${result.skipped}\n`
+        `Repaired: ${repaired}, translated: ${translated}, reviewed: ${reviewed}, failed: ${failed}, skipped: ${skipped}, remaining targeted issues: ${validationIssues.length}\n`
       );
       return 0;
     }
@@ -495,11 +558,12 @@ Translation options:
       JSONL translation memory. Reuses matching source hashes.
 
   --checkpoint <file>
-      JSONL translation checkpoint. Existing translated entries are reused;
-      new batch results are appended after each completed batch.
+      JSONL checkpoint for translate, review, and repair. Existing translated
+      entries are reused; new batch results are appended after each completed
+      batch.
 
-  If --out is set and --checkpoint is omitted, translate writes a fresh
-  checkpoint next to --out. Example: translations.raw.json -> translations.raw.jsonl.
+  If --out is set and --checkpoint is omitted, translate/review/repair write a
+  fresh checkpoint next to --out. Example: translations.raw.json -> translations.raw.jsonl.
 
 Validation and repair options:
   --report <file>
@@ -508,6 +572,9 @@ Validation and repair options:
   --codes <list>
       Comma-separated validation issue codes for repair.
       Example: MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION
+
+  --attempts <n>
+      Number of repair passes for the repair command. Default: 1.
 
   --repair
       Enable validation-targeted repair in the run command.
@@ -521,6 +588,10 @@ Validation and repair options:
 Apply and font options:
   --mode <patch|in-place>
       Apply mode. Default: patch.
+
+  --units <file>
+      Use saved translation units when applying translations. This avoids
+      re-extracting units with different extraction flags.
 
   --backup <dir>
       Backup directory for in-place mode.
@@ -553,10 +624,13 @@ Examples:
       --report ./work/report.json \\
       --provider deepseek \\
       --codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION \\
+      --attempts 2 \\
+      --checkpoint ./work/translations.repaired.checkpoint.jsonl \\
       --out ./work/translations.repaired.json
 
   rpgm-ai-translator apply ./game ./work/translations.repaired.json \\
       --mode patch \\
+      --units ./work/units.json \\
       --report ./work/report.json \\
       --out ./translated-patch
 
@@ -727,6 +801,33 @@ function checkpointedTranslationsById(
   }
 
   return resultsById;
+}
+
+function mergeCheckpointTranslations(
+  units: TranslationUnit[],
+  translations: TranslationResult[],
+  checkpointById: Map<string, TranslationResult>
+): TranslationResult[] {
+  const translationsById = new Map(translations.map((translation) => [translation.id, translation]));
+  const unitIds = new Set(units.map((unit) => unit.id));
+  const merged = units
+    .map((unit) => checkpointById.get(unit.id) ?? translationsById.get(unit.id))
+    .filter((translation): translation is TranslationResult => translation != null);
+  return merged.concat(translations.filter((translation) => !unitIds.has(translation.id)));
+}
+
+function filterValidationIssues(
+  validationIssues: ValidationIssue[],
+  issueCodes: ValidationIssue["code"][] | undefined,
+  skippedTranslationsById: Map<string, TranslationResult>
+): ValidationIssue[] {
+  const codeFilter = issueCodes ? new Set(issueCodes) : undefined;
+  return validationIssues.filter((issue) => {
+    if (issue.id && skippedTranslationsById.has(issue.id)) {
+      return false;
+    }
+    return !codeFilter || codeFilter.has(issue.code);
+  });
 }
 
 function missingCheckpointResult(

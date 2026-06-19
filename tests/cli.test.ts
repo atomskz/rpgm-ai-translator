@@ -21,6 +21,8 @@ describe("CLI", () => {
     expect(output.join("")).toContain("translate <units.json>");
     expect(output.join("")).toContain("Translation options:");
     expect(output.join("")).toContain("--checkpoint <file>");
+    expect(output.join("")).toContain("--attempts <n>");
+    expect(output.join("")).toContain("--units <file>");
     expect(output.join("")).toContain("Environment:");
   });
 
@@ -317,6 +319,8 @@ describe("CLI", () => {
         "mock",
         "--target",
         "ru",
+        "--attempts",
+        "2",
         "--out",
         outPath
       ],
@@ -327,8 +331,11 @@ describe("CLI", () => {
     );
 
     const repaired = JSON.parse(await readFile(outPath, "utf8"));
+    const checkpointLines = (await readFile(path.join(root, "translations.repaired.jsonl"), "utf8")).trim().split(/\r?\n/);
     expect(exitCode).toBe(0);
     expect(output.join("")).toContain("Repaired: 1");
+    expect(output.join("")).toContain("remaining targeted issues:");
+    expect(checkpointLines).toHaveLength(1);
     expect(repaired).toEqual([
       expect.objectContaining({
         id: "Actors.1.name",
@@ -451,6 +458,67 @@ describe("CLI", () => {
     expect(patchedSystem.advanced.numberFontFilename).toBe("RusFont.ttf");
   });
 
+  it("applies translations using an explicit units file", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-cli-apply-units-"));
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "patch");
+    const unitsPath = path.join(root, "units.json");
+    const translationsPath = path.join(root, "translations.json");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await writeFile(path.join(gamePath, "data", "Actors.json"), `${JSON.stringify([null, { name: "Aria" }])}\n`, "utf8");
+    await writeFile(
+      unitsPath,
+      `${JSON.stringify(
+        [
+          {
+            id: "Actors.1.name",
+            source: "Aria",
+            filePath: "data/Actors.json",
+            jsonPath: "1.name",
+            engine: "rpgmaker-mv",
+            category: "name",
+            hash: "hash-aria"
+          }
+        ],
+        null,
+        2
+      )}\n`,
+      "utf8"
+    );
+    await writeFile(
+      translationsPath,
+      `${JSON.stringify(
+        [
+          {
+            id: "Actors.1.name",
+            source: "Aria",
+            translation: "Ария",
+            provider: "manual",
+            model: "manual",
+            status: "translated"
+          }
+        ],
+        null,
+        2
+      )}\n`,
+      "utf8"
+    );
+
+    const exitCode = await runCli(
+      ["apply", gamePath, translationsPath, "--mode", "patch", "--units", unitsPath, "--out", outDir],
+      {
+        stdout: () => undefined,
+        stderr: () => undefined
+      }
+    );
+
+    const patchedActors = JSON.parse(await readFile(path.join(outDir, "data", "Actors.json"), "utf8"));
+    const sourceActors = JSON.parse(await readFile(path.join(gamePath, "data", "Actors.json"), "utf8"));
+    expect(exitCode).toBe(0);
+    expect(patchedActors[1].name).toBe("Ария");
+    expect(sourceActors[1].name).toBe("Aria");
+  });
+
   it("reviews a translations file with the mock provider", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-cli-review-"));
     const unitsPath = path.join(root, "units.json");
@@ -505,15 +573,77 @@ describe("CLI", () => {
     );
 
     const reviewed = JSON.parse(await readFile(outPath, "utf8"));
+    const checkpointLines = (await readFile(path.join(root, "translations.reviewed.jsonl"), "utf8")).trim().split(/\r?\n/);
     expect(exitCode).toBe(0);
     expect(output.join("")).toContain("Reviewing batch 1/1");
     expect(output.join("")).toContain("Completed review batch 1/1");
+    expect(output.join("")).toContain("Review checkpoint saved: 1 results.");
+    expect(checkpointLines).toHaveLength(1);
     expect(output.join("")).toContain("Reviewed: 1");
     expect(reviewed[0]).toMatchObject({
       id: "Map001.events.1.pages.0.list.0.parameters.0",
       translation: "Я готов.",
       metadata: { reviewed: true }
     });
+  });
+
+  it("reuses explicit review checkpoints even when the translations file is incomplete", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-cli-review-checkpoint-"));
+    const unitsPath = path.join(root, "units.json");
+    const translationsPath = path.join(root, "translations.json");
+    const checkpointPath = path.join(root, "review.checkpoint.jsonl");
+    const outPath = path.join(root, "translations.reviewed.json");
+    await writeFile(
+      unitsPath,
+      `${JSON.stringify(
+        [
+          {
+            id: "Map001.events.1.pages.0.list.0.parameters.0",
+            source: "I am ready.",
+            normalizedSource: "I am ready.",
+            filePath: "data/Map001.json",
+            jsonPath: "events.1.pages.0.list.0.parameters.0",
+            engine: "rpgmaker-mz",
+            category: "dialogue",
+            hash: "hash"
+          }
+        ],
+        null,
+        2
+      )}\n`,
+      "utf8"
+    );
+    await writeFile(translationsPath, "[]\n", "utf8");
+    await writeFile(
+      checkpointPath,
+      `${JSON.stringify({
+        id: "Map001.events.1.pages.0.list.0.parameters.0",
+        source: "I am ready.",
+        translation: "Я готов из checkpoint.",
+        provider: "deepseek",
+        model: "deepseek-chat",
+        status: "translated"
+      })}\n`,
+      "utf8"
+    );
+
+    const exitCode = await runCli(
+      ["review", unitsPath, translationsPath, "--provider", "mock", "--checkpoint", checkpointPath, "--out", outPath],
+      {
+        stdout: () => undefined,
+        stderr: () => undefined
+      }
+    );
+
+    const reviewed = JSON.parse(await readFile(outPath, "utf8"));
+    expect(exitCode).toBe(0);
+    expect(reviewed).toEqual([
+      expect.objectContaining({
+        id: "Map001.events.1.pages.0.list.0.parameters.0",
+        translation: "Я готов из checkpoint.",
+        metadata: { fromCheckpoint: true }
+      })
+    ]);
   });
 
   it("generates a character glossary from units", async () => {

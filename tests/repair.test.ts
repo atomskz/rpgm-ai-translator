@@ -116,6 +116,70 @@ describe("repairTranslations", () => {
       expect.objectContaining({ id: "Actors.2.name", translation: "Исправлено." })
     ]);
   });
+
+  it("emits repaired batch results for checkpoint writers", async () => {
+    const checkpointResults: TranslationResult[][] = [];
+    const provider: LLMProvider = {
+      name: "repair-test",
+      translateBatch: async (batch, options) =>
+        batch.map((item) => ({
+          id: item.id,
+          source: item.source,
+          translation: `[${options.targetLanguage}] ${item.source}`,
+          provider: "repair-test",
+          model: "repair-model",
+          status: "translated"
+        })),
+      reviewBatch: async (batch: ReviewUnit[]): Promise<TranslationResult[]> =>
+        batch.map((item) => ({
+          id: item.id,
+          source: item.source,
+          translation: "Коротко.",
+          provider: "repair-test",
+          model: "repair-model",
+          status: "translated"
+        })),
+      inferCharacters: async () => ({})
+    };
+
+    await repairTranslations(
+      [
+        unit("Actors.1.name", "Aria"),
+        unit("Map001.events.1.pages.0.list.0.parameters.0", "A very long line.")
+      ],
+      [translation("Map001.events.1.pages.0.list.0.parameters.0", "Слишком длинно.")],
+      [
+        { id: "Actors.1.name", severity: "error", code: "MISSING_TRANSLATION", message: "Missing" },
+        {
+          id: "Map001.events.1.pages.0.list.0.parameters.0",
+          severity: "warning",
+          code: "MAX_LENGTH_EXCEEDED",
+          message: "Too long"
+        }
+      ],
+      provider,
+      {
+        targetLanguage: "ru",
+        batchSize: 1,
+        onBatchResults: (results) => checkpointResults.push(results)
+      }
+    );
+
+    expect(checkpointResults).toEqual([
+      [
+        expect.objectContaining({
+          id: "Actors.1.name",
+          metadata: { repaired: true, repairMode: "translate" }
+        })
+      ],
+      [
+        expect.objectContaining({
+          id: "Map001.events.1.pages.0.list.0.parameters.0",
+          metadata: { repaired: true, repairMode: "review" }
+        })
+      ]
+    ]);
+  });
 });
 
 function unit(id: string, source: string): TranslationUnit {

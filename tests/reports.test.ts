@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
@@ -32,6 +32,9 @@ describe("reports", () => {
       unitsTranslated: 1,
       fromMemory: 1,
       failed: 1,
+      issuesByCode: { MISSING_TRANSLATION: 1 },
+      issuesByFile: { "data/Actors.json": 1 },
+      issuesByCategory: { name: 1 },
       validationIssues: issues
     });
   });
@@ -54,6 +57,7 @@ describe("reports", () => {
 
     expect(summary).toContain("Engine: rpgmaker-mv");
     expect(summary).toContain("Validation issues: 1 (0 errors, 1 warnings)");
+    expect(summary).toContain("Top issue codes: UNCHANGED_TRANSLATION=1");
   });
 
   it("writes report JSON files", async () => {
@@ -65,6 +69,25 @@ describe("reports", () => {
 
     expect(JSON.parse(await readFile(reportPath, "utf8"))).toEqual(report);
     await expect(readReportFile(reportPath)).resolves.toEqual(report);
+  });
+
+  it("reads old report files without issue summaries", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-report-old-"));
+    const reportPath = path.join(root, "report.json");
+    await writeReportFile(reportPath, createReport({ units: [unit("Actors.1.name")] }));
+    const parsed = JSON.parse(await readFile(reportPath, "utf8"));
+    delete parsed.issuesByCode;
+    delete parsed.issuesByFile;
+    delete parsed.issuesByCategory;
+    await writeFile(reportPath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+
+    await expect(readReportFile(reportPath)).resolves.toEqual(
+      expect.objectContaining({
+        issuesByCode: {},
+        issuesByFile: {},
+        issuesByCategory: {}
+      })
+    );
   });
 });
 

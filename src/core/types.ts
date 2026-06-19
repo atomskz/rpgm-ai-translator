@@ -246,6 +246,9 @@ export type TranslationReport = {
   unitsTranslated: number;
   fromMemory: number;
   failed: number;
+  issuesByCode: Record<string, number>;
+  issuesByFile: Record<string, number>;
+  issuesByCategory: Record<string, number>;
   validationIssues: ValidationIssue[];
 };
 

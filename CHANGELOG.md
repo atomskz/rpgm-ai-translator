@@ -2,6 +2,19 @@
 
 All notable changes to `rpgm-ai-translator` are documented in this file.
 
+## Unreleased
+
+### Added
+
+- Preserve imported translation `issues` and `metadata` when reading JSON and
+  JSONL translation files.
+- Add issue summaries by code, file, and category to generated reports.
+- Add `apply --units` to apply translations with the exact extracted units from
+  a manual pipeline.
+- Add JSONL checkpoint writing and reuse for `review` and `repair`.
+- Add `repair --attempts` with revalidation between attempts for stubborn issues
+  such as `MAX_LENGTH_EXCEEDED`.
+
 ## 0.1.1 - 2026-06-19
 
 ### Added

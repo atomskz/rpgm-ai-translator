@@ -34,7 +34,7 @@ Supported:
 - JSONL translation memory;
 - character glossary generation and review pass;
 - glossary validation;
-- targeted repair for validation issues;
+- targeted repair for validation issues with repeated attempts and checkpointing;
 - safe patch output;
 - optional RPG Maker MZ font patching.
 
@@ -191,10 +191,14 @@ node dist/cli/index.js review ./work/units.json ./work/translations.raw.json \
   --model deepseek-chat \
   --target ru \
   --characters ./work/characters.json \
+  --checkpoint ./work/translations.reviewed.checkpoint.jsonl \
   --out ./work/translations.reviewed.json
 ```
 
 The review pass focuses on dialogue and choices grouped by map/event context.
+It writes a JSONL checkpoint after each completed review batch. When
+`--checkpoint` points to an existing JSONL file, already reviewed entries are
+reused.
 
 ### Validate And Repair
 
@@ -208,15 +212,18 @@ node dist/cli/index.js repair ./work/units.json ./work/translations.reviewed.jso
   --model deepseek-chat \
   --target ru \
   --codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION \
+  --attempts 2 \
   --characters ./work/characters.json \
+  --checkpoint ./work/translations.repaired.checkpoint.jsonl \
   --out ./work/translations.repaired.json
 
 node dist/cli/index.js validate ./work/units.json ./work/translations.repaired.json \
   --out ./work/report.repaired.json
 ```
 
-Repair is provider-assisted, not magic. Always inspect the final report before
-shipping a patch.
+Repair is provider-assisted, not magic. `--attempts` revalidates after each pass
+and retries remaining targeted issues such as `MAX_LENGTH_EXCEEDED`. Always
+inspect the final report before shipping a patch.
 
 ### Apply Patch
 
@@ -224,12 +231,15 @@ shipping a patch.
 node dist/cli/index.js apply ./game ./work/translations.repaired.json \
   --mode patch \
   --include-plugins \
+  --units ./work/units.json \
   --report ./work/report.repaired.json \
   --out ./work/patch
 ```
 
 When `--report` is provided, translations with validation errors are skipped.
-Warnings are reported but still applied.
+Warnings are reported but still applied. `--units` makes apply use the exact
+extracted units from the manual pipeline instead of re-extracting with possibly
+different extraction flags.
 
 ### One-Command Pipeline
 

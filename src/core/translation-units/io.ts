@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { TranslationResult, TranslationUnit } from "../types.js";
+import type { TranslationResult, TranslationUnit, ValidationIssue } from "../types.js";
 
 export type ImportedTranslation = {
   id: string;
@@ -9,6 +9,8 @@ export type ImportedTranslation = {
   provider?: string;
   model?: string;
   status?: TranslationResult["status"];
+  issues?: ValidationIssue[];
+  metadata?: Record<string, unknown>;
 };
 
 export async function writeTranslationUnitsFile(filePath: string, units: TranslationUnit[]): Promise<void> {
@@ -116,7 +118,7 @@ export function normalizeTranslationResults(value: unknown): TranslationResult[]
       throw new Error(`Invalid translation entry at index ${index}: expected id, source and translation strings`);
     }
 
-    return {
+    const result: TranslationResult = {
       id: item.id,
       source: item.source,
       translation: item.translation,
@@ -124,6 +126,15 @@ export function normalizeTranslationResults(value: unknown): TranslationResult[]
       model: item.model ?? "manual",
       status: item.status ?? "translated"
     };
+
+    if (item.issues != null) {
+      result.issues = item.issues;
+    }
+    if (item.metadata != null) {
+      result.metadata = item.metadata;
+    }
+
+    return result;
   });
 }
 
@@ -139,8 +150,28 @@ function isImportedTranslation(value: unknown): value is ImportedTranslation {
     typeof candidate.translation === "string" &&
     (candidate.provider == null || typeof candidate.provider === "string") &&
     (candidate.model == null || typeof candidate.model === "string") &&
-    (candidate.status == null || candidate.status === "translated" || candidate.status === "failed" || candidate.status === "skipped")
+    (candidate.status == null || candidate.status === "translated" || candidate.status === "failed" || candidate.status === "skipped") &&
+    (candidate.issues == null || (Array.isArray(candidate.issues) && candidate.issues.every(isValidationIssue))) &&
+    (candidate.metadata == null || isPlainObject(candidate.metadata))
   );
+}
+
+function isValidationIssue(value: unknown): value is ValidationIssue {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return false;
+  }
+
+  const candidate = value as Partial<Record<keyof ValidationIssue, unknown>>;
+  return (
+    (candidate.id == null || typeof candidate.id === "string") &&
+    (candidate.severity === "info" || candidate.severity === "warning" || candidate.severity === "error") &&
+    typeof candidate.code === "string" &&
+    typeof candidate.message === "string"
+  );
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value != null && !Array.isArray(value);
 }
 
 function isTranslationUnit(value: unknown): value is TranslationUnit {

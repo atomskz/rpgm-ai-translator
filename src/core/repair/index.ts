@@ -72,16 +72,21 @@ export async function repairTranslations(
 
   for (const batch of splitBatch(toTranslate, normalizeBatchSize(options.batchSize))) {
     const results = await provider.translateBatch(batch, options);
+    const checkpointResults: TranslationResult[] = [];
     for (const result of results) {
       if (result.status === "translated") {
-        repairedById.set(result.id, {
+        const repaired = {
           ...result,
           metadata: { ...result.metadata, repaired: true, repairMode: "translate" }
-        });
+        };
+        repairedById.set(result.id, repaired);
+        checkpointResults.push(repaired);
       } else {
         failed += 1;
+        checkpointResults.push(result);
       }
     }
+    await options.onBatchResults?.(checkpointResults);
   }
 
   let completed = 0;
@@ -98,16 +103,21 @@ export async function repairTranslations(
     });
 
     const results = await provider.reviewBatch(batch, options);
+    const checkpointResults: TranslationResult[] = [];
     for (const result of results) {
       if (result.status === "translated") {
-        repairedById.set(result.id, {
+        const repaired = {
           ...result,
           metadata: { ...result.metadata, repaired: true, repairMode: "review" }
-        });
+        };
+        repairedById.set(result.id, repaired);
+        checkpointResults.push(repaired);
       } else {
         failed += 1;
+        checkpointResults.push(result);
       }
     }
+    await options.onBatchResults?.(checkpointResults);
     completed += batch.length;
 
     options.onProgress?.({

@@ -46,13 +46,28 @@ export async function reviewTranslations(
     });
 
     const reviewed = await provider.reviewBatch(batch, options);
+    const checkpointResults: TranslationResult[] = [];
     for (const result of reviewed) {
       if (result.status === "translated") {
-        reviewedById.set(result.id, result);
+        const current = translationById.get(result.id);
+        const merged = {
+          ...current,
+          ...result,
+          translation: result.translation,
+          provider: result.provider,
+          model: result.model,
+          status: result.status,
+          issues: result.issues,
+          metadata: { ...current?.metadata, ...result.metadata, reviewed: true }
+        };
+        reviewedById.set(result.id, merged);
+        checkpointResults.push(merged);
       } else {
         failed += 1;
+        checkpointResults.push(result);
       }
     }
+    await options.onBatchResults?.(checkpointResults);
     completed += batch.length;
 
     options.onProgress?.({
@@ -69,18 +84,7 @@ export async function reviewTranslations(
 
   return {
     translations: translations.map((translation) => {
-      const reviewed = reviewedById.get(translation.id);
-      return reviewed
-        ? {
-            ...translation,
-            translation: reviewed.translation,
-            provider: reviewed.provider,
-            model: reviewed.model,
-            status: reviewed.status,
-            issues: reviewed.issues,
-            metadata: { ...translation.metadata, ...reviewed.metadata, reviewed: true }
-          }
-        : translation;
+      return reviewedById.get(translation.id) ?? translation;
     }),
     reviewed: reviewedById.size,
     failed,

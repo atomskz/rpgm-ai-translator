@@ -54,6 +54,48 @@ describe("translation unit import/export", () => {
     ]);
   });
 
+  it("preserves imported translation issues and metadata", () => {
+    const results = normalizeTranslationResults([
+      {
+        id: "Actors.1.name",
+        source: "Aria",
+        translation: "Ария",
+        provider: "deepseek",
+        model: "deepseek-chat",
+        status: "translated",
+        issues: [
+          {
+            id: "Actors.1.name",
+            severity: "warning",
+            code: "UNCHANGED_TRANSLATION",
+            message: "Needs review"
+          }
+        ],
+        metadata: { fromCheckpoint: true, tokens: 42 }
+      }
+    ]);
+
+    expect(results).toEqual([
+      {
+        id: "Actors.1.name",
+        source: "Aria",
+        translation: "Ария",
+        provider: "deepseek",
+        model: "deepseek-chat",
+        status: "translated",
+        issues: [
+          {
+            id: "Actors.1.name",
+            severity: "warning",
+            code: "UNCHANGED_TRANSLATION",
+            message: "Needs review"
+          }
+        ],
+        metadata: { fromCheckpoint: true, tokens: 42 }
+      }
+    ]);
+  });
+
   it("reports invalid translation JSON clearly", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-tu-import-"));
     const filePath = path.join(root, "translations.json");
