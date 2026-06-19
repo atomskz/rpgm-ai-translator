@@ -157,11 +157,17 @@ node dist/cli/index.js translate ./work/units.json \
   --retry-attempts 2 \
   --timeout-ms 30000 \
   --memory ./work/translation-memory.jsonl \
+  --checkpoint ./work/translations.raw.checkpoint.jsonl \
   --out ./work/translations.raw.json
 ```
 
 `--batch-size` is the number of translation units sent to the provider in one
 request. Smaller batches are slower but safer for large or context-heavy strings.
+When `--out` is provided, `translate` also writes a JSONL checkpoint after each
+completed batch. Without `--checkpoint`, the checkpoint path is derived from
+`--out`, for example `translations.raw.json` becomes `translations.raw.jsonl`.
+When `--checkpoint` is provided, existing translated entries in that JSONL file
+are reused and only missing units are sent to the provider.
 
 ### Generate Character Glossary
 

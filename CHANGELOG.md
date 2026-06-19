@@ -11,6 +11,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 - Protect custom plugin escape codes such as `\MPD[Surprise]` as control-code
   placeholders.
 
+### Added
+
+- Write translation JSONL checkpoints after each completed batch and resume from
+  an explicit `--checkpoint` file.
+
 ## 0.1.0 - 2026-06-19
 
 ### Added

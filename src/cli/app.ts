@@ -3,8 +3,11 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { MvMzEngineDetector } from "../core/engine-detector/index.js";
 import { RpgMakerMvMzExtractor } from "../core/extractors/index.js";
 import {
+  appendTranslationResultsJsonlFile,
+  readTranslationResultsJsonlFile,
   readTranslationResultsFile,
   readTranslationUnitsFile,
+  resetTranslationResultsJsonlFile,
   writeTranslationResultsFile,
   writeTranslationUnitsFile
 } from "../core/translation-units/index.js";
@@ -25,7 +28,7 @@ import {
 } from "../core/characters/index.js";
 import { createProvider } from "../providers/index.js";
 import { loadCharacterGlossary, loadGlossary } from "../config/index.js";
-import type { TranslateOptions, ValidationIssue } from "../core/types.js";
+import type { TranslateOptions, TranslationResult, TranslationUnit, ValidationIssue } from "../core/types.js";
 
 export type CliIO = {
   stdout: (text: string) => void;
@@ -113,6 +116,7 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
       const providerName = readOption(args, "--provider") ?? "mock";
       assertProviderReady(providerName);
       const out = readOption(args, "--out");
+      const checkpointOption = readOption(args, "--checkpoint");
       const reportPath = readOption(args, "--report");
       const memoryPath = readOption(args, "--memory");
       const glossaryPath = readOption(args, "--glossary");
@@ -123,9 +127,21 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
       const timeoutMs = readPositiveIntegerOption(args, "--timeout-ms");
       const units = await readTranslationUnitsFile(unitsPath);
       const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
+      const checkpointPath = checkpointOption ?? (out ? defaultCheckpointPath(out) : undefined);
+      const checkpointResults = checkpointOption ? await readTranslationResultsJsonlFile(checkpointOption) : [];
+      const checkpointById = checkpointedTranslationsById(units, checkpointResults);
+      const unitsToTranslate = units.filter((unit) => !checkpointById.has(unit.id));
+      if (checkpointPath) {
+        if (checkpointOption) {
+          io.stdout(`Loaded checkpoint: ${checkpointById.size}/${units.length} translated units from ${checkpointPath}\n`);
+        } else {
+          await resetTranslationResultsJsonlFile(checkpointPath);
+        }
+        io.stdout(`Writing checkpoint: ${checkpointPath}\n`);
+      }
       const provider = createProvider(providerName);
-      const results = await translateWithMemory(
-        units,
+      const translatedResults = await translateWithMemory(
+        unitsToTranslate,
         provider,
         {
           targetLanguage,
@@ -134,10 +150,18 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
           batchSize,
           retryAttempts,
           timeoutMs,
-          onProgress: createProgressLogger(io)
+          onProgress: createProgressLogger(io),
+          onBatchResults: checkpointPath
+            ? async (batchResults) => {
+                await appendTranslationResultsJsonlFile(checkpointPath, batchResults);
+                io.stdout(`Checkpoint saved: ${batchResults.length} results.\n`);
+              }
+            : undefined
         },
         memoryPath ? new JsonlTranslationMemory(memoryPath) : undefined
       );
+      const translatedById = new Map(translatedResults.map((result) => [result.id, result]));
+      const results = units.map((unit) => translatedById.get(unit.id) ?? checkpointById.get(unit.id) ?? missingCheckpointResult(unit, providerName, model));
       const payload = `${JSON.stringify(results, null, 2)}\n`;
       if (out) {
         await writeTranslationResultsFile(out, results);
@@ -393,7 +417,7 @@ export function helpText(): string {
   rpgm-ai-translator --help
   rpgm-ai-translator detect ./game
   rpgm-ai-translator extract ./game --out ./work/units.json [--include-comments] [--include-plugins] [--include-speaker-names] [--report ./work/report.json]
-  rpgm-ai-translator translate ./work/units.json --provider mock --out ./work/translations.json [--batch-size 20] [--retry-attempts 1] [--timeout-ms 60000] [--memory ./work/memory.jsonl] [--glossary ./glossary.json] [--report ./work/report.json]
+  rpgm-ai-translator translate ./work/units.json --provider mock --out ./work/translations.json [--checkpoint ./work/translations.jsonl] [--batch-size 20] [--retry-attempts 1] [--timeout-ms 60000] [--memory ./work/memory.jsonl] [--glossary ./glossary.json] [--report ./work/report.json]
   rpgm-ai-translator characters ./work/units.json --out ./work/characters.json [--translations ./work/translations.json] [--provider mock|deepseek|none] [--include-mentions]
   rpgm-ai-translator review ./work/units.json ./work/translations.json --provider deepseek --target ru --out ./work/translations.reviewed.json [--characters ./characters.json] [--glossary ./glossary.json]
   rpgm-ai-translator repair ./work/units.json ./work/translations.json --report ./work/report.json --provider deepseek --target ru --out ./work/translations.repaired.json [--codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION]
@@ -540,6 +564,51 @@ function requireOption(args: string[], name: string): string {
     throw new Error(`Missing required option ${name}`);
   }
   return value;
+}
+
+function defaultCheckpointPath(outPath: string): string {
+  return outPath.endsWith(".json") ? `${outPath.slice(0, -".json".length)}.jsonl` : `${outPath}.jsonl`;
+}
+
+function checkpointedTranslationsById(
+  units: TranslationUnit[],
+  checkpointResults: TranslationResult[]
+): Map<string, TranslationResult> {
+  const unitsById = new Map(units.map((unit) => [unit.id, unit]));
+  const resultsById = new Map<string, TranslationResult>();
+
+  for (const result of checkpointResults) {
+    const unit = unitsById.get(result.id);
+    if (!unit || result.status !== "translated" || result.source !== unit.source) {
+      continue;
+    }
+    resultsById.set(result.id, { ...result, metadata: { ...result.metadata, fromCheckpoint: true } });
+  }
+
+  return resultsById;
+}
+
+function missingCheckpointResult(
+  unit: TranslationUnit,
+  providerName: string,
+  model: string | undefined
+): TranslationResult {
+  return {
+    id: unit.id,
+    source: unit.source,
+    translation: "",
+    provider: providerName,
+    model: model ?? "unknown",
+    status: "failed",
+    issues: [
+      {
+        id: unit.id,
+        severity: "error",
+        code: "MISSING_TRANSLATION",
+        message: "Translation was not produced"
+      }
+    ]
+  };
 }
 
 function isValidationIssueCode(value: string): value is ValidationIssue["code"] {

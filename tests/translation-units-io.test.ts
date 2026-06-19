@@ -3,8 +3,11 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import {
+  appendTranslationResultsJsonlFile,
   normalizeTranslationResults,
+  readTranslationResultsJsonlFile,
   readTranslationResultsFile,
+  resetTranslationResultsJsonlFile,
   writeTranslationUnitsFile
 } from "../src/core/translation-units/index.js";
 import type { TranslationUnit } from "../src/core/types.js";
@@ -63,5 +66,38 @@ describe("translation unit import/export", () => {
     expect(() => normalizeTranslationResults([{ id: "OnlyId" }])).toThrow(
       "Invalid translation entry at index 0"
     );
+  });
+
+  it("appends and reads translation result JSONL checkpoints", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-tu-jsonl-"));
+    const filePath = path.join(root, "translations.jsonl");
+
+    await resetTranslationResultsJsonlFile(filePath);
+    await appendTranslationResultsJsonlFile(filePath, [
+      {
+        id: "Actors.1.name",
+        source: "Aria",
+        translation: "Ария",
+        provider: "mock",
+        model: "mock",
+        status: "translated"
+      }
+    ]);
+    await appendTranslationResultsJsonlFile(filePath, [
+      {
+        id: "Actors.2.name",
+        source: "Belffie",
+        translation: "Белффи",
+        provider: "mock",
+        model: "mock",
+        status: "translated"
+      }
+    ]);
+
+    expect((await readFile(filePath, "utf8")).trim().split(/\r?\n/)).toHaveLength(2);
+    expect(await readTranslationResultsJsonlFile(filePath)).toEqual([
+      expect.objectContaining({ id: "Actors.1.name", translation: "Ария" }),
+      expect.objectContaining({ id: "Actors.2.name", translation: "Белффи" })
+    ]);
   });
 });

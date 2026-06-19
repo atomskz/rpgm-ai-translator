@@ -118,6 +118,7 @@ export type TranslateOptions = {
   retryAttempts?: number;
   retryDelayMs?: number;
   onProgress?: (event: TranslationProgressEvent) => void;
+  onBatchResults?: (results: TranslationResult[]) => void | Promise<void>;
 };
 
 export type ReviewOptions = TranslateOptions & {

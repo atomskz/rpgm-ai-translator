@@ -1,4 +1,5 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import type { TranslationResult, TranslationUnit } from "../types.js";
 
 export type ImportedTranslation = {
@@ -16,6 +17,55 @@ export async function writeTranslationUnitsFile(filePath: string, units: Transla
 
 export async function writeTranslationResultsFile(filePath: string, results: TranslationResult[]): Promise<void> {
   await writeFile(filePath, `${JSON.stringify(results, null, 2)}\n`, "utf8");
+}
+
+export async function resetTranslationResultsJsonlFile(filePath: string): Promise<void> {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, "", "utf8");
+}
+
+export async function appendTranslationResultsJsonlFile(
+  filePath: string,
+  results: TranslationResult[]
+): Promise<void> {
+  if (results.length === 0) {
+    return;
+  }
+
+  await mkdir(path.dirname(filePath), { recursive: true });
+  const payload = results.map((result) => JSON.stringify(result)).join("\n");
+  await writeFile(filePath, `${payload}\n`, { encoding: "utf8", flag: "a" });
+}
+
+export async function readTranslationResultsJsonlFile(filePath: string): Promise<TranslationResult[]> {
+  let raw: string;
+  try {
+    raw = await readFile(filePath, "utf8");
+  } catch (error: unknown) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
+
+  return raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line, index) => {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(line);
+      } catch (error: unknown) {
+        throw new Error(
+          `Invalid translations JSONL in '${filePath}' at line ${index + 1}: ${error instanceof Error ? error.message : String(error)}`,
+          { cause: error }
+        );
+      }
+
+      const [result] = normalizeTranslationResults([parsed]);
+      return result;
+    });
 }
 
 export async function readTranslationUnitsFile(filePath: string): Promise<TranslationUnit[]> {

@@ -59,6 +59,149 @@ describe("CLI", () => {
     });
   });
 
+  it("writes a default JSONL checkpoint while translating", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-cli-translate-checkpoint-"));
+    const unitsPath = path.join(root, "units.json");
+    const outPath = path.join(root, "translations.raw.json");
+    const checkpointPath = path.join(root, "translations.raw.jsonl");
+    await writeFile(
+      unitsPath,
+      `${JSON.stringify(
+        [
+          {
+            id: "Actors.1.name",
+            source: "Aria",
+            normalizedSource: "Aria",
+            filePath: "data/Actors.json",
+            jsonPath: "1.name",
+            engine: "rpgmaker-mv",
+            category: "name",
+            hash: "hash-aria"
+          },
+          {
+            id: "Actors.2.name",
+            source: "Belffie",
+            normalizedSource: "Belffie",
+            filePath: "data/Actors.json",
+            jsonPath: "2.name",
+            engine: "rpgmaker-mv",
+            category: "name",
+            hash: "hash-belffie"
+          }
+        ],
+        null,
+        2
+      )}\n`,
+      "utf8"
+    );
+
+    const output: string[] = [];
+    const exitCode = await runCli(
+      ["translate", unitsPath, "--provider", "mock", "--target", "ru", "--batch-size", "1", "--out", outPath],
+      {
+        stdout: (text) => output.push(text),
+        stderr: () => undefined
+      }
+    );
+
+    const checkpointLines = (await readFile(checkpointPath, "utf8")).trim().split(/\r?\n/);
+    const results = JSON.parse(await readFile(outPath, "utf8"));
+    expect(exitCode).toBe(0);
+    expect(output.join("")).toContain(`Writing checkpoint: ${checkpointPath}`);
+    expect(output.join("")).toContain("Checkpoint saved: 1 results.");
+    expect(checkpointLines).toHaveLength(2);
+    expect(JSON.parse(checkpointLines[0])).toMatchObject({ id: "Actors.1.name", translation: "[ru] Aria" });
+    expect(results).toHaveLength(2);
+  });
+
+  it("resumes from an explicit JSONL checkpoint", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-cli-translate-resume-"));
+    const unitsPath = path.join(root, "units.json");
+    const outPath = path.join(root, "translations.raw.json");
+    const checkpointPath = path.join(root, "checkpoint.jsonl");
+    await writeFile(
+      unitsPath,
+      `${JSON.stringify(
+        [
+          {
+            id: "Actors.1.name",
+            source: "Aria",
+            normalizedSource: "Aria",
+            filePath: "data/Actors.json",
+            jsonPath: "1.name",
+            engine: "rpgmaker-mv",
+            category: "name",
+            hash: "hash-aria"
+          },
+          {
+            id: "Actors.2.name",
+            source: "Belffie",
+            normalizedSource: "Belffie",
+            filePath: "data/Actors.json",
+            jsonPath: "2.name",
+            engine: "rpgmaker-mv",
+            category: "name",
+            hash: "hash-belffie"
+          }
+        ],
+        null,
+        2
+      )}\n`,
+      "utf8"
+    );
+    await writeFile(
+      checkpointPath,
+      `${JSON.stringify({
+        id: "Actors.1.name",
+        source: "Aria",
+        translation: "Ария из checkpoint",
+        provider: "deepseek",
+        model: "deepseek-chat",
+        status: "translated"
+      })}\n`,
+      "utf8"
+    );
+
+    const output: string[] = [];
+    const exitCode = await runCli(
+      [
+        "translate",
+        unitsPath,
+        "--provider",
+        "mock",
+        "--target",
+        "ru",
+        "--batch-size",
+        "1",
+        "--checkpoint",
+        checkpointPath,
+        "--out",
+        outPath
+      ],
+      {
+        stdout: (text) => output.push(text),
+        stderr: () => undefined
+      }
+    );
+
+    const results = JSON.parse(await readFile(outPath, "utf8"));
+    const checkpointLines = (await readFile(checkpointPath, "utf8")).trim().split(/\r?\n/);
+    expect(exitCode).toBe(0);
+    expect(output.join("")).toContain(`Loaded checkpoint: 1/2 translated units from ${checkpointPath}`);
+    expect(results).toEqual([
+      expect.objectContaining({
+        id: "Actors.1.name",
+        translation: "Ария из checkpoint",
+        metadata: { fromCheckpoint: true }
+      }),
+      expect.objectContaining({
+        id: "Actors.2.name",
+        translation: "[ru] Belffie"
+      })
+    ]);
+    expect(checkpointLines).toHaveLength(2);
+  });
+
   it("validates translations and writes a report", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-cli-validate-"));
     const unitsPath = path.join(root, "units.json");

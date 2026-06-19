@@ -111,6 +111,7 @@ export async function translateWithMemory(
 
   const resultsByUnitId = new Map<string, TranslationResult>();
   const missesByHash = new Map<string, TranslationUnit>();
+  const missedUnitsByHash = new Map<string, TranslationUnit[]>();
   let memoryCompleted = 0;
 
   for (const unit of units) {
@@ -138,10 +139,34 @@ export async function translateWithMemory(
     if (!missesByHash.has(unit.hash)) {
       missesByHash.set(unit.hash, unit);
     }
+    const missedUnits = missedUnitsByHash.get(unit.hash) ?? [];
+    missedUnits.push(unit);
+    missedUnitsByHash.set(unit.hash, missedUnits);
   }
 
+  const originalOnBatchResults = options.onBatchResults;
+  const optionsWithExpandedBatchResults: TranslateOptions = originalOnBatchResults
+    ? {
+        ...options,
+        onBatchResults: async (batchResults) => {
+          const expandedResults = batchResults.flatMap((result) => {
+            const unit = missesByHash.get(hashForResult(result, missesByHash));
+            if (!unit) {
+              return [result];
+            }
+            return (missedUnitsByHash.get(unit.hash) ?? [unit]).map((missedUnit) => ({
+              ...result,
+              id: missedUnit.id,
+              source: missedUnit.source
+            }));
+          });
+          await originalOnBatchResults(expandedResults);
+        }
+      }
+    : options;
+
   const translatedMisses =
-    missesByHash.size > 0 ? await translateUniqueBatches(Array.from(missesByHash.values()), provider, options) : [];
+    missesByHash.size > 0 ? await translateUniqueBatches(Array.from(missesByHash.values()), provider, optionsWithExpandedBatchResults) : [];
   const translatedByHash = new Map<string, TranslationResult>();
   const memoryEntriesToUpsert: MemoryEntry[] = [];
 
@@ -225,6 +250,7 @@ async function translateUniqueBatches(
     });
     const batchResults = await translateBatchWithRetry(batch, provider, options, batchIndex, batchCount);
     results.push(...batchResults);
+    await options.onBatchResults?.(batchResults);
     completed += batch.length;
     options.onProgress?.({
       type: "batch-complete",
