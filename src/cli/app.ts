@@ -279,6 +279,9 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
       const charactersPath = readOption(args, "--characters");
       const fontPath = readOption(args, "--font");
       const numberFontPath = readOption(args, "--number-font");
+      const repairEnabled = hasFlag(args, "--repair");
+      const repairAttempts = readPositiveIntegerOption(args, "--repair-attempts") ?? 1;
+      const repairCodes = readIssueCodesOption(args, "--repair-codes");
       const memoryPath = readOption(args, "--memory") ?? path.join(outDir, "translation-memory.jsonl");
       const detector = new MvMzEngineDetector();
       const detected = await detector.detect(projectPath);
@@ -326,7 +329,33 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
         io.stdout(`Reviewed: ${reviewResult.reviewed}, failed: ${reviewResult.failed}, skipped: ${reviewResult.skipped}\n`);
       }
       io.stdout("Validating translations...\n");
-      const validationIssues = validateTranslationResults(units, translations, new DefaultValidator(glossary));
+      let validationIssues = validateTranslationResults(units, translations, new DefaultValidator(glossary));
+      if (repairEnabled) {
+        for (let attempt = 1; attempt <= repairAttempts && validationIssues.length > 0; attempt += 1) {
+          io.stdout(
+            `Repairing validation issues, attempt ${attempt}/${repairAttempts} (${validationIssues.length} issues)...\n`
+          );
+          const repairResult = await repairTranslations(units, translations, validationIssues, provider, {
+            targetLanguage,
+            model,
+            glossary,
+            characterGlossary,
+            batchSize,
+            timeoutMs,
+            issueCodes: repairCodes,
+            onProgress: createProgressLogger(io)
+          });
+          translations = repairResult.translations;
+          io.stdout(
+            `Repair attempt ${attempt}/${repairAttempts}: repaired ${repairResult.repaired}, translated ${repairResult.translated}, reviewed ${repairResult.reviewed}, failed ${repairResult.failed}, skipped ${repairResult.skipped}\n`
+          );
+          io.stdout("Revalidating translations...\n");
+          validationIssues = validateTranslationResults(units, translations, new DefaultValidator(glossary));
+          if (repairResult.repaired === 0) {
+            break;
+          }
+        }
+      }
       const safeTranslations = filterTranslationsWithoutValidationErrors(translations, validationIssues);
       io.stdout(`Applying patch with ${safeTranslations.length}/${translations.length} validation-safe translations...\n`);
       await new RpgMakerMvMzExtractor(detector).applyTranslations(projectPath, safeTranslations, {
@@ -368,7 +397,7 @@ export function helpText(): string {
   rpgm-ai-translator apply ./game ./work/translations.json --mode patch --out ./translated-patch [--include-plugins] [--font ./font.ttf] [--report ./work/report.json]
   rpgm-ai-translator apply ./game ./work/translations.json --mode in-place [--backup ./backup]
   rpgm-ai-translator patch-font ./game --out ./translated-patch --font ./font.ttf [--number-font ./font-bold.ttf]
-  rpgm-ai-translator run ./game --provider mock --target ru --out ./translated-patch [--batch-size 20] [--retry-attempts 1] [--timeout-ms 60000] [--glossary ./glossary.json] [--characters ./characters.json] [--review] [--include-plugins] [--font ./font.ttf]
+  rpgm-ai-translator run ./game --provider mock --target ru --out ./translated-patch [--batch-size 20] [--retry-attempts 1] [--timeout-ms 60000] [--glossary ./glossary.json] [--characters ./characters.json] [--review] [--repair] [--repair-attempts 1] [--repair-codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION] [--include-plugins] [--font ./font.ttf]
 `;
 }
 

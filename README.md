@@ -123,8 +123,14 @@ node dist/cli/index.js run ./game \
   --target ru \
   --characters ./out/characters.json \
   --review \
+  --repair \
+  --repair-attempts 1 \
   --out ./out/deepseek-reviewed-patch
 ```
+
+`--repair` runs a validation-targeted repair pass before applying the patch. Use
+`--repair-codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION` to limit which validation
+issues are sent back to the provider.
 
 ## Manual Pipeline
 

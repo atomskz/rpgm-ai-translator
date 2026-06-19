@@ -28,7 +28,10 @@ export class MockProvider implements LLMProvider {
     return batch.map((unit) => ({
       id: unit.id,
       source: unit.source,
-      translation: unit.currentTranslation,
+      translation:
+        unit.issues && unit.issues.length > 0
+          ? `[${options.targetLanguage}] ${unit.normalizedSource ?? unit.source}`
+          : unit.currentTranslation,
       provider: this.name,
       model: options.model ?? "mock-review",
       status: "translated",

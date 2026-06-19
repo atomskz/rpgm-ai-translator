@@ -34,6 +34,8 @@ write units.json
 translate with memory
 optional review pass
 validate
+optional repair pass
+revalidate
 filter validation-error translations
 apply patch
 optional font patch
@@ -81,8 +83,8 @@ backup first, but patch mode remains the recommended default.
 
 ## Current Limitations
 
-- Text fitting is not automatic in `run`; too-long translations are reported and can
-  be targeted with the `repair` command.
+- Text fitting is best-effort: too-long translations are reported, can be targeted
+  with `repair`, and can be included in the one-shot pipeline with `run --repair`.
 - JSONL memory uses cached reads and batched writes, but SQLite would scale better
   for concurrent or very large translation projects.
 - Plugin support is intentionally conservative and will miss some plugin-specific

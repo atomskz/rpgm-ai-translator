@@ -104,6 +104,56 @@ describe("run command", () => {
       expect.objectContaining({ id: "Actors.1.profile", severity: "error" })
     );
   });
+
+  it("can repair validation issues before applying translations", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-repair-"));
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "out");
+    const memoryPath = path.join(root, "memory.jsonl");
+    const sourceWithControlCode = String.raw`Hello \N[1].`;
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await mkdir(path.join(gamePath, "js"), { recursive: true });
+    await writeFile(path.join(gamePath, "js", "rpg_core.js"), "", "utf8");
+    await writeJson(path.join(gamePath, "data", "Actors.json"), [
+      null,
+      {
+        id: 1,
+        name: "Aria",
+        profile: sourceWithControlCode
+      }
+    ]);
+    await writeFile(
+      memoryPath,
+      `${JSON.stringify({
+        source: sourceWithControlCode,
+        sourceHash: hashSource(sourceWithControlCode),
+        translation: "[ru] Hello without placeholder.",
+        category: "description",
+        provider: "manual",
+        model: "manual",
+        status: "translated",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      })}\n`,
+      "utf8"
+    );
+
+    const output: string[] = [];
+    const exitCode = await runCli(
+      ["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--memory", memoryPath, "--repair"],
+      {
+        stdout: (text) => output.push(text),
+        stderr: () => undefined
+      }
+    );
+
+    const patchedActors = JSON.parse(await readFile(path.join(outDir, "data", "Actors.json"), "utf8"));
+    const report = JSON.parse(await readFile(path.join(outDir, "report.json"), "utf8"));
+    expect(exitCode).toBe(0);
+    expect(output.join("")).toContain("Repair attempt 1/1: repaired 1");
+    expect(patchedActors[1].profile).toBe(String.raw`[ru] Hello \N[1].`);
+    expect(report.validationIssues).toEqual([]);
+  });
 });
 
 async function writeJson(filePath: string, value: unknown): Promise<void> {

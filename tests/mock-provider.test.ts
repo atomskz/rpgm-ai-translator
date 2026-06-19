@@ -57,6 +57,34 @@ describe("MockProvider", () => {
     ]);
   });
 
+  it("returns deterministic repaired text when review units include validation issues", async () => {
+    const results = await new MockProvider().reviewBatch(
+      [
+        {
+          id: "Items.1.description",
+          source: String.raw`Restores \V[1] HP.`,
+          normalizedSource: "Restores <PH_1> HP.",
+          currentTranslation: "Восстанавливает ОЗ.",
+          category: "description",
+          issues: [
+            {
+              id: "Items.1.description",
+              severity: "error",
+              code: "MISSING_PLACEHOLDER",
+              message: "Missing placeholder <PH_1>"
+            }
+          ]
+        }
+      ],
+      { targetLanguage: "ru" }
+    );
+
+    expect(results[0]).toMatchObject({
+      translation: "[ru] Restores <PH_1> HP.",
+      metadata: { reviewed: true }
+    });
+  });
+
   it("infers draft character entries", async () => {
     const result = await new MockProvider().inferCharacters(
       [
