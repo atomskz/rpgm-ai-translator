@@ -16,7 +16,12 @@ describe("CLI", () => {
 
     expect(exitCode).toBe(0);
     expect(errors).toEqual([]);
-    expect(output.join("")).toContain("rpgm-ai-translator detect ./game");
+    expect(output.join("")).toContain("Usage:");
+    expect(output.join("")).toContain("Commands:");
+    expect(output.join("")).toContain("translate <units.json>");
+    expect(output.join("")).toContain("Translation options:");
+    expect(output.join("")).toContain("--checkpoint <file>");
+    expect(output.join("")).toContain("Environment:");
   });
 
   it("translates a units file with the mock provider", async () => {

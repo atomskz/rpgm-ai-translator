@@ -413,19 +413,160 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
 }
 
 export function helpText(): string {
-  return `Usage:
+  return `rpgm-ai-translator 0.1.0
+AI-assisted translation pipeline for RPG Maker MV/MZ games.
+
+Usage:
+  rpgm-ai-translator <command> [arguments] [options]
   rpgm-ai-translator --help
+
+Commands:
+  detect <game>
+      Detect RPG Maker engine and project paths.
+
+  extract <game>
+      Extract translation units from RPG Maker JSON data.
+
+  translate <units.json>
+      Translate extracted units through a provider.
+
+  characters <units.json>
+      Generate a character glossary draft or provider-inferred glossary.
+
+  review <units.json> <translations.json>
+      Review translated dialogue and choices using map/event context.
+
+  validate <units.json> <translations.json>
+      Validate translations and write a JSON report.
+
+  repair <units.json> <translations.json>
+      Repair translations referenced by a validation report.
+
+  apply <game> <translations.json>
+      Apply translations to a patch folder or in-place with backup.
+
+  patch-font <game>
+      Patch RPG Maker MZ font settings in an output folder.
+
+  run <game>
+      Run the full pipeline: detect, extract, translate, validate, apply.
+
+Common options:
+  --out <path>
+      Output file or output directory, depending on the command.
+
+  --provider <name>
+      Translation provider: mock, deepseek, or none where supported.
+
+  --model <name>
+      Provider model name, for example deepseek-chat.
+
+  --target <lang>
+      Target language code or name. Default: ru.
+
+  --glossary <file>
+      Load glossary JSON for prompts and validation.
+
+  --characters <file>
+      Load character glossary JSON for review or repair.
+
+  --batch-size <n>
+      Number of translation units per provider request. Default: 20.
+
+  --timeout-ms <n>
+      Provider request timeout in milliseconds. Default: 60000.
+
+  --retry-attempts <n>
+      Number of CLI-level retries for failed translate batches. Default: 1.
+
+Extraction options:
+  --include-comments
+      Extract event comments. Disabled by default.
+
+  --include-plugins
+      Extract cautious plugin parameters and selected plugin command text.
+
+  --include-speaker-names
+      Translate Show Text speaker name fields. Disabled by default because
+      many portrait plugins use speaker names as technical lookup keys.
+
+Translation options:
+  --memory <file>
+      JSONL translation memory. Reuses matching source hashes.
+
+  --checkpoint <file>
+      JSONL translation checkpoint. Existing translated entries are reused;
+      new batch results are appended after each completed batch.
+
+  If --out is set and --checkpoint is omitted, translate writes a fresh
+  checkpoint next to --out. Example: translations.raw.json -> translations.raw.jsonl.
+
+Validation and repair options:
+  --report <file>
+      Write or read a validation report, depending on the command.
+
+  --codes <list>
+      Comma-separated validation issue codes for repair.
+      Example: MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION
+
+  --repair
+      Enable validation-targeted repair in the run command.
+
+  --repair-attempts <n>
+      Number of repair passes for run --repair. Default: 1.
+
+  --repair-codes <list>
+      Comma-separated validation issue codes for run --repair.
+
+Apply and font options:
+  --mode <patch|in-place>
+      Apply mode. Default: patch.
+
+  --backup <dir>
+      Backup directory for in-place mode.
+
+  --font <file>
+      Main RPG Maker MZ font file to copy into the patch.
+
+  --number-font <file>
+      RPG Maker MZ number font. Defaults to --font when omitted.
+
+Examples:
   rpgm-ai-translator detect ./game
-  rpgm-ai-translator extract ./game --out ./work/units.json [--include-comments] [--include-plugins] [--include-speaker-names] [--report ./work/report.json]
-  rpgm-ai-translator translate ./work/units.json --provider mock --out ./work/translations.json [--checkpoint ./work/translations.jsonl] [--batch-size 20] [--retry-attempts 1] [--timeout-ms 60000] [--memory ./work/memory.jsonl] [--glossary ./glossary.json] [--report ./work/report.json]
-  rpgm-ai-translator characters ./work/units.json --out ./work/characters.json [--translations ./work/translations.json] [--provider mock|deepseek|none] [--include-mentions]
-  rpgm-ai-translator review ./work/units.json ./work/translations.json --provider deepseek --target ru --out ./work/translations.reviewed.json [--characters ./characters.json] [--glossary ./glossary.json]
-  rpgm-ai-translator repair ./work/units.json ./work/translations.json --report ./work/report.json --provider deepseek --target ru --out ./work/translations.repaired.json [--codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION]
-  rpgm-ai-translator validate ./work/units.json ./work/translations.json --out ./work/report.json [--glossary ./glossary.json]
-  rpgm-ai-translator apply ./game ./work/translations.json --mode patch --out ./translated-patch [--include-plugins] [--include-speaker-names] [--font ./font.ttf] [--report ./work/report.json]
-  rpgm-ai-translator apply ./game ./work/translations.json --mode in-place [--backup ./backup]
-  rpgm-ai-translator patch-font ./game --out ./translated-patch --font ./font.ttf [--number-font ./font-bold.ttf]
-  rpgm-ai-translator run ./game --provider mock --target ru --out ./translated-patch [--batch-size 20] [--retry-attempts 1] [--timeout-ms 60000] [--glossary ./glossary.json] [--characters ./characters.json] [--review] [--repair] [--repair-attempts 1] [--repair-codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION] [--include-plugins] [--include-speaker-names] [--font ./font.ttf]
+
+  rpgm-ai-translator extract ./game \\
+      --include-plugins \\
+      --out ./work/units.json
+
+  rpgm-ai-translator translate ./work/units.json \\
+      --provider deepseek \\
+      --model deepseek-chat \\
+      --target ru \\
+      --batch-size 10 \\
+      --checkpoint ./work/translations.raw.checkpoint.jsonl \\
+      --out ./work/translations.raw.json
+
+  rpgm-ai-translator validate ./work/units.json ./work/translations.raw.json \\
+      --out ./work/report.json
+
+  rpgm-ai-translator repair ./work/units.json ./work/translations.raw.json \\
+      --report ./work/report.json \\
+      --provider deepseek \\
+      --codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION \\
+      --out ./work/translations.repaired.json
+
+  rpgm-ai-translator apply ./game ./work/translations.repaired.json \\
+      --mode patch \\
+      --report ./work/report.json \\
+      --out ./translated-patch
+
+Environment:
+  DEEPSEEK_API_KEY
+      Required when using --provider deepseek.
+
+Notes:
+  Patch mode never modifies the original game directory.
+  Generated checkpoints, reports, and memory files may contain proprietary text.
 `;
 }
 
