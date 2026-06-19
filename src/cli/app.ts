@@ -73,6 +73,7 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
       const fontPath = readOption(args, "--font");
       const numberFontPath = readOption(args, "--number-font");
       const translations = await readTranslationResultsFile(translationsPath);
+      io.stdout(`Applying translations in ${mode} mode...\n`);
       const result = await new RpgMakerMvMzExtractor().applyTranslations(projectPath, translations, {
         mode: mode as "patch" | "in-place",
         outDir,
@@ -80,6 +81,7 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
         includePlugins: hasFlag(args, "--include-plugins")
       });
       if (mode === "patch" && outDir && fontPath) {
+        io.stdout("Applying font patch...\n");
         await applyFontPatch(projectPath, outDir, { fontPath, numberFontPath });
       }
       io.stdout(`${JSON.stringify(result, null, 2)}\n`);
@@ -276,18 +278,23 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
         translations = reviewResult.translations;
         io.stdout(`Reviewed: ${reviewResult.reviewed}, failed: ${reviewResult.failed}, skipped: ${reviewResult.skipped}\n`);
       }
+      io.stdout("Validating translations...\n");
       const validationIssues = validateTranslationResults(units, translations, new DefaultValidator(glossary));
       const safeTranslations = filterTranslationsWithoutValidationErrors(translations, validationIssues);
+      io.stdout(`Applying patch with ${safeTranslations.length}/${translations.length} validation-safe translations...\n`);
       await new RpgMakerMvMzExtractor(detector).applyTranslations(projectPath, safeTranslations, {
         mode: "patch",
         outDir,
         includePlugins: hasFlag(args, "--include-plugins")
       });
       if (fontPath) {
+        io.stdout("Applying font patch...\n");
         await applyFontPatch(projectPath, outDir, { fontPath, numberFontPath });
       }
+      io.stdout("Writing translations...\n");
       await writeTranslationResultsFile(path.join(outDir, "translations.json"), translations);
       const report = createReport({ units, translations, validationIssues, engine: detected.engine });
+      io.stdout("Writing report...\n");
       await writeReportFile(path.join(outDir, "report.json"), report);
       io.stdout(`${summarizeReport(report)}\n`);
       return 0;

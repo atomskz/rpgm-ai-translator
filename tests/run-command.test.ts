@@ -47,7 +47,11 @@ describe("run command", () => {
     expect(units).toHaveLength(2);
     expect(translations).toHaveLength(2);
     expect(memory.trim().split(/\n/)).toHaveLength(2);
-    expect(output.join("")).toContain("Units translated: 2");
+    const stdout = output.join("");
+    expect(stdout).toContain("Validating translations...");
+    expect(stdout).toContain("Applying patch with 2/2 validation-safe translations...");
+    expect(stdout).toContain("Writing report...");
+    expect(stdout).toContain("Units translated: 2");
   });
 
   it("does not apply translations that have validation errors", async () => {
