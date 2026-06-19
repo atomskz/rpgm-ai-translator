@@ -31,6 +31,58 @@ describe("translation memory", () => {
     expect(await readFile(memoryPath, "utf8")).toContain("\"source\":\"Aria\"");
   });
 
+  it("upserts multiple entries while preserving existing creation timestamps", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-memory-batch-"));
+    const memoryPath = path.join(root, "memory.jsonl");
+    const memory = new JsonlTranslationMemory(memoryPath);
+    const sourceHash = hashSource("Aria");
+
+    await memory.upsert({
+      source: "Aria",
+      sourceHash,
+      translation: "Ария",
+      category: "name",
+      provider: "mock",
+      model: "mock",
+      status: "translated",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z"
+    });
+    await memory.upsertMany([
+      {
+        source: "Aria",
+        sourceHash,
+        translation: "Ария!",
+        category: "name",
+        provider: "mock",
+        model: "mock",
+        status: "translated",
+        createdAt: "2026-02-01T00:00:00.000Z",
+        updatedAt: "2026-02-01T00:00:00.000Z"
+      },
+      {
+        source: "Luna",
+        sourceHash: hashSource("Luna"),
+        translation: "Луна",
+        category: "name",
+        provider: "mock",
+        model: "mock",
+        status: "translated",
+        createdAt: "2026-02-01T00:00:00.000Z",
+        updatedAt: "2026-02-01T00:00:00.000Z"
+      }
+    ]);
+
+    const aria = await memory.get(sourceHash);
+    const rawLines = (await readFile(memoryPath, "utf8")).trim().split(/\n/);
+    expect(rawLines).toHaveLength(2);
+    expect(aria).toMatchObject({
+      translation: "Ария!",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-02-01T00:00:00.000Z"
+    });
+  });
+
   it("uses memory hits and sends only unique misses to the provider", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-memory-"));
     const memory = new JsonlTranslationMemory(path.join(root, "memory.jsonl"));

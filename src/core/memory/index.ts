@@ -18,9 +18,12 @@ export type MemoryEntry = {
 export interface TranslationMemory {
   get(sourceHash: string): Promise<MemoryEntry | undefined>;
   upsert(entry: MemoryEntry): Promise<void>;
+  upsertMany?(entries: MemoryEntry[]): Promise<void>;
 }
 
 export class JsonlTranslationMemory implements TranslationMemory {
+  private cachedEntries?: Map<string, MemoryEntry>;
+
   constructor(private readonly filePath: string) {}
 
   async get(sourceHash: string): Promise<MemoryEntry | undefined> {
@@ -38,13 +41,35 @@ export class JsonlTranslationMemory implements TranslationMemory {
     await this.writeAll(entries);
   }
 
+  async upsertMany(entriesToUpsert: MemoryEntry[]): Promise<void> {
+    if (entriesToUpsert.length === 0) {
+      return;
+    }
+
+    const entries = await this.readAll();
+    for (const entry of entriesToUpsert) {
+      const existing = entries.get(entry.sourceHash);
+      entries.set(entry.sourceHash, {
+        ...entry,
+        createdAt: existing?.createdAt ?? entry.createdAt,
+        updatedAt: entry.updatedAt
+      });
+    }
+    await this.writeAll(entries);
+  }
+
   private async readAll(): Promise<Map<string, MemoryEntry>> {
+    if (this.cachedEntries) {
+      return this.cachedEntries;
+    }
+
     let raw: string;
     try {
       raw = await readFile(this.filePath, "utf8");
     } catch (error: unknown) {
       if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-        return new Map();
+        this.cachedEntries = new Map();
+        return this.cachedEntries;
       }
       throw error;
     }
@@ -60,6 +85,7 @@ export class JsonlTranslationMemory implements TranslationMemory {
         }
         entries.set(parsed.sourceHash, parsed);
       });
+    this.cachedEntries = entries;
     return entries;
   }
 
@@ -69,6 +95,7 @@ export class JsonlTranslationMemory implements TranslationMemory {
       .map((entry) => JSON.stringify(entry))
       .join("\n");
     await writeFile(this.filePath, payload.length > 0 ? `${payload}\n` : "", "utf8");
+    this.cachedEntries = entries;
   }
 }
 
@@ -116,6 +143,7 @@ export async function translateWithMemory(
   const translatedMisses =
     missesByHash.size > 0 ? await translateUniqueBatches(Array.from(missesByHash.values()), provider, options) : [];
   const translatedByHash = new Map<string, TranslationResult>();
+  const memoryEntriesToUpsert: MemoryEntry[] = [];
 
   for (const result of translatedMisses) {
     const unit = missesByHash.get(hashForResult(result, missesByHash));
@@ -124,7 +152,14 @@ export async function translateWithMemory(
     }
     translatedByHash.set(unit.hash, result);
     if (result.status === "translated") {
-      await memory.upsert(toMemoryEntry(unit, result));
+      memoryEntriesToUpsert.push(toMemoryEntry(unit, result));
+    }
+  }
+  if (memory.upsertMany) {
+    await memory.upsertMany(memoryEntriesToUpsert);
+  } else {
+    for (const entry of memoryEntriesToUpsert) {
+      await memory.upsert(entry);
     }
   }
 
