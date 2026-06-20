@@ -11,6 +11,9 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
   requests enable thinking.
 - Add DeepSeek `temperature` and `max_tokens` request settings with CLI options
   `--temperature` and `--max-tokens`.
+- Map DeepSeek provider failures to specific report codes for authentication,
+  billing, rate limits, timeouts, network failures, server failures, request
+  errors, response errors, and response schema errors.
 - Type `TranslationResult.metadata` and provider usage metadata while preserving
   compatibility with additional metadata keys in imported translation files.
 - Split the RPG Maker MV/MZ extractor internals into database, event, plugin,

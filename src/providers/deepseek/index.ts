@@ -64,6 +64,16 @@ type ModelCharactersPayload = {
   characters: CharacterGlossary;
 };
 
+class DeepSeekProviderError extends Error {
+  readonly issueCode: ValidationIssue["code"];
+
+  constructor(message: string, issueCode: ValidationIssue["code"], options?: ErrorOptions) {
+    super(message, options);
+    this.name = "DeepSeekProviderError";
+    this.issueCode = issueCode;
+  }
+}
+
 const DEFAULT_BASE_URL = "https://api.deepseek.com";
 const DEFAULT_MODEL = "deepseek-v4-flash";
 const DEFAULT_TEMPERATURE = 0.3;
@@ -93,7 +103,9 @@ export class DeepSeekProvider implements LLMProvider {
     }
 
     if (!this.apiKey) {
-      return batch.map((unit) => this.failedResult(unit, model, "Missing DEEPSEEK_API_KEY"));
+      return batch.map((unit) =>
+        this.failedResult(unit, model, new DeepSeekProviderError("Missing DEEPSEEK_API_KEY", "PROVIDER_AUTH_ERROR"))
+      );
     }
 
     try {
@@ -105,7 +117,14 @@ export class DeepSeekProvider implements LLMProvider {
       return batch.map((unit) => {
         const translation = byId.get(unit.id);
         if (typeof translation !== "string") {
-          return this.failedResult(unit, model, `Missing translation for unit '${unit.id}'`);
+          return this.failedResult(
+            unit,
+            model,
+            new DeepSeekProviderError(
+              `DeepSeek API response is missing translation for unit '${unit.id}'`,
+              "PROVIDER_RESPONSE_SCHEMA_ERROR"
+            )
+          );
         }
 
         return {
@@ -119,8 +138,7 @@ export class DeepSeekProvider implements LLMProvider {
         };
       });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      return batch.map((unit) => this.failedResult(unit, model, message));
+      return batch.map((unit) => this.failedResult(unit, model, error));
     }
   }
 
@@ -131,7 +149,9 @@ export class DeepSeekProvider implements LLMProvider {
     }
 
     if (!this.apiKey) {
-      return batch.map((unit) => this.failedReviewResult(unit, model, "Missing DEEPSEEK_API_KEY"));
+      return batch.map((unit) =>
+        this.failedReviewResult(unit, model, new DeepSeekProviderError("Missing DEEPSEEK_API_KEY", "PROVIDER_AUTH_ERROR"))
+      );
     }
 
     try {
@@ -143,7 +163,14 @@ export class DeepSeekProvider implements LLMProvider {
       return batch.map((unit) => {
         const translation = byId.get(unit.id);
         if (typeof translation !== "string") {
-          return this.failedReviewResult(unit, model, `Missing revised translation for unit '${unit.id}'`);
+          return this.failedReviewResult(
+            unit,
+            model,
+            new DeepSeekProviderError(
+              `DeepSeek API response is missing revised translation for unit '${unit.id}'`,
+              "PROVIDER_RESPONSE_SCHEMA_ERROR"
+            )
+          );
         }
 
         return {
@@ -157,8 +184,7 @@ export class DeepSeekProvider implements LLMProvider {
         };
       });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      return batch.map((unit) => this.failedReviewResult(unit, model, message));
+      return batch.map((unit) => this.failedReviewResult(unit, model, error));
     }
   }
 
@@ -231,7 +257,7 @@ export class DeepSeekProvider implements LLMProvider {
         clearTimeout(timeout);
 
         if (!response.ok) {
-          const error = new Error(`DeepSeek API error ${response.status}: ${response.statusText}`);
+          const error = await createHttpError(response);
           if (attempt < this.maxRetries && isRetryableStatus(response.status)) {
             lastError = error;
             await sleep(this.retryDelayMs * (attempt + 1));
@@ -242,7 +268,10 @@ export class DeepSeekProvider implements LLMProvider {
 
         const json = await response.json();
         if (!isChatCompletionResponse(json)) {
-          throw new Error("DeepSeek API returned an unexpected response shape");
+          throw new DeepSeekProviderError(
+            "DeepSeek API returned an unexpected response shape",
+            "PROVIDER_RESPONSE_SCHEMA_ERROR"
+          );
         }
         return json;
       } catch (error: unknown) {
@@ -259,7 +288,7 @@ export class DeepSeekProvider implements LLMProvider {
     throw lastError instanceof Error ? lastError : new Error(String(lastError));
   }
 
-  private failedResult(unit: TranslationUnit, model: string, message: string): TranslationResult {
+  private failedResult(unit: TranslationUnit, model: string, error: unknown): TranslationResult {
     return {
       id: unit.id,
       source: unit.source,
@@ -267,11 +296,11 @@ export class DeepSeekProvider implements LLMProvider {
       provider: this.name,
       model,
       status: "failed",
-      issues: [providerIssue(unit.id, message)]
+      issues: [providerIssue(unit.id, error)]
     };
   }
 
-  private failedReviewResult(unit: ReviewUnit, model: string, message: string): TranslationResult {
+  private failedReviewResult(unit: ReviewUnit, model: string, error: unknown): TranslationResult {
     return {
       id: unit.id,
       source: unit.source,
@@ -279,7 +308,7 @@ export class DeepSeekProvider implements LLMProvider {
       provider: this.name,
       model,
       status: "failed",
-      issues: [providerIssue(unit.id, message)],
+      issues: [providerIssue(unit.id, error)],
       metadata: { reviewed: false }
     };
   }
@@ -288,20 +317,28 @@ export class DeepSeekProvider implements LLMProvider {
 function parseModelPayload(response: ChatCompletionResponse): ModelTranslationPayload {
   const content = response.choices[0]?.message?.content;
   if (!content) {
-    throw new Error("DeepSeek API response did not include message content");
+    throw new DeepSeekProviderError(
+      "DeepSeek API response did not include message content",
+      "PROVIDER_RESPONSE_SCHEMA_ERROR"
+    );
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(content);
   } catch (error: unknown) {
-    throw new Error(`DeepSeek API returned invalid JSON content: ${error instanceof Error ? error.message : String(error)}`, {
-      cause: error
-    });
+    throw new DeepSeekProviderError(
+      `DeepSeek API returned invalid JSON content: ${error instanceof Error ? error.message : String(error)}`,
+      "PROVIDER_RESPONSE_ERROR",
+      { cause: error }
+    );
   }
 
   if (!isModelTranslationPayload(parsed)) {
-    throw new Error("DeepSeek API JSON content did not match expected translations schema");
+    throw new DeepSeekProviderError(
+      "DeepSeek API JSON content did not match expected translations schema",
+      "PROVIDER_RESPONSE_SCHEMA_ERROR"
+    );
   }
 
   return parsed;
@@ -310,20 +347,28 @@ function parseModelPayload(response: ChatCompletionResponse): ModelTranslationPa
 function parseCharactersPayload(response: ChatCompletionResponse): ModelCharactersPayload {
   const content = response.choices[0]?.message?.content;
   if (!content) {
-    throw new Error("DeepSeek API response did not include message content");
+    throw new DeepSeekProviderError(
+      "DeepSeek API response did not include message content",
+      "PROVIDER_RESPONSE_SCHEMA_ERROR"
+    );
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(content);
   } catch (error: unknown) {
-    throw new Error(`DeepSeek API returned invalid JSON content: ${error instanceof Error ? error.message : String(error)}`, {
-      cause: error
-    });
+    throw new DeepSeekProviderError(
+      `DeepSeek API returned invalid JSON content: ${error instanceof Error ? error.message : String(error)}`,
+      "PROVIDER_RESPONSE_ERROR",
+      { cause: error }
+    );
   }
 
   if (!isModelCharactersPayload(parsed)) {
-    throw new Error("DeepSeek API JSON content did not match expected characters schema");
+    throw new DeepSeekProviderError(
+      "DeepSeek API JSON content did not match expected characters schema",
+      "PROVIDER_RESPONSE_SCHEMA_ERROR"
+    );
   }
 
   return parsed;
@@ -431,13 +476,95 @@ function isRetryableError(error: unknown): boolean {
   return error instanceof Error && (error.name === "AbortError" || error.message.includes("fetch failed"));
 }
 
-function providerIssue(id: string, message: string): ValidationIssue {
+async function createHttpError(response: DeepSeekResponse): Promise<DeepSeekProviderError> {
+  const detail = await readHttpErrorDetail(response);
+  const reason = detail ? `: ${detail}` : response.statusText ? `: ${response.statusText}` : "";
+  return new DeepSeekProviderError(
+    `DeepSeek API error ${response.status}${reason}`,
+    issueCodeForHttpStatus(response.status)
+  );
+}
+
+async function readHttpErrorDetail(response: DeepSeekResponse): Promise<string | undefined> {
+  try {
+    const payload = await response.json();
+    return extractErrorMessage(payload);
+  } catch {
+    return undefined;
+  }
+}
+
+function extractErrorMessage(payload: unknown): string | undefined {
+  if (typeof payload === "string") {
+    return payload;
+  }
+  if (typeof payload !== "object" || payload == null || Array.isArray(payload)) {
+    return undefined;
+  }
+
+  const candidate = payload as { error?: unknown; message?: unknown };
+  if (typeof candidate.message === "string") {
+    return candidate.message;
+  }
+  if (typeof candidate.error === "string") {
+    return candidate.error;
+  }
+  if (typeof candidate.error === "object" && candidate.error != null && !Array.isArray(candidate.error)) {
+    const error = candidate.error as { message?: unknown; type?: unknown; code?: unknown };
+    const parts = [error.message, error.type, error.code].filter((part): part is string => typeof part === "string");
+    if (parts.length > 0) {
+      return parts.join(" ");
+    }
+  }
+  return undefined;
+}
+
+function issueCodeForHttpStatus(status: number): ValidationIssue["code"] {
+  if (status === 401) {
+    return "PROVIDER_AUTH_ERROR";
+  }
+  if (status === 402) {
+    return "PROVIDER_BILLING_ERROR";
+  }
+  if (status === 408) {
+    return "PROVIDER_TIMEOUT";
+  }
+  if (status === 429) {
+    return "PROVIDER_RATE_LIMIT";
+  }
+  if (status === 400 || status === 422) {
+    return "PROVIDER_REQUEST_ERROR";
+  }
+  if (status >= 500) {
+    return "PROVIDER_SERVER_ERROR";
+  }
+  return "PROVIDER_RESPONSE_ERROR";
+}
+
+function providerIssue(id: string, error: unknown): ValidationIssue {
+  const normalized = normalizeProviderError(error);
   return {
     id,
     severity: "error",
-    code: "INVALID_JSON",
-    message
+    code: normalized.code,
+    message: normalized.message
   };
+}
+
+function normalizeProviderError(error: unknown): { code: ValidationIssue["code"]; message: string } {
+  if (error instanceof DeepSeekProviderError) {
+    return { code: error.issueCode, message: error.message };
+  }
+  if (error instanceof Error && error.name === "AbortError") {
+    return { code: "PROVIDER_TIMEOUT", message: "DeepSeek API request timed out" };
+  }
+  if (error instanceof Error && error.message.includes("fetch failed")) {
+    return { code: "PROVIDER_NETWORK_ERROR", message: error.message };
+  }
+  if (error instanceof Error) {
+    return { code: "PROVIDER_RESPONSE_ERROR", message: error.message };
+  }
+  return { code: "PROVIDER_RESPONSE_ERROR", message: String(error) };
 }
 
 async function sleep(ms: number): Promise<void> {

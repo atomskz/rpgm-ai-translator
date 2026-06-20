@@ -77,6 +77,54 @@ describe("DeepSeekProvider", () => {
     expect(results[0].status).toBe("translated");
   });
 
+  it("maps HTTP auth failures to provider issue codes and messages", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "bad-key",
+      fetchFn: async () =>
+        response(
+          401,
+          {
+            error: {
+              message: "Authentication failed",
+              type: "invalid_request_error",
+              code: "invalid_api_key"
+            }
+          },
+          false,
+          "Unauthorized"
+        )
+    });
+
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    expect(results[0].status).toBe("failed");
+    expect(results[0].issues?.[0]).toMatchObject({
+      code: "PROVIDER_AUTH_ERROR",
+      message: "DeepSeek API error 401: Authentication failed invalid_request_error invalid_api_key"
+    });
+  });
+
+  it("maps final rate limit failures to provider issue codes after retries", async () => {
+    let calls = 0;
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      retryDelayMs: 0,
+      maxRetries: 1,
+      fetchFn: async () => {
+        calls += 1;
+        return response(429, { message: "Rate limit reached" }, false, "Too Many Requests");
+      }
+    });
+
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    expect(calls).toBe(2);
+    expect(results[0].issues?.[0]).toMatchObject({
+      code: "PROVIDER_RATE_LIMIT",
+      message: "DeepSeek API error 429: Rate limit reached"
+    });
+  });
+
   it("returns per-unit failures when the API key is missing", async () => {
     const provider = new DeepSeekProvider({ apiKey: "" });
 
@@ -88,6 +136,7 @@ describe("DeepSeekProvider", () => {
       provider: "deepseek",
       status: "failed"
     });
+    expect(results[0].issues?.[0].code).toBe("PROVIDER_AUTH_ERROR");
     expect(results[0].issues?.[0].message).toContain("DEEPSEEK_API_KEY");
   });
 
@@ -103,7 +152,23 @@ describe("DeepSeekProvider", () => {
     const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
 
     expect(results[0].status).toBe("failed");
+    expect(results[0].issues?.[0].code).toBe("PROVIDER_RESPONSE_ERROR");
     expect(results[0].issues?.[0].message).toContain("invalid JSON content");
+  });
+
+  it("maps unexpected API response shapes to schema provider issues", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      fetchFn: async () => response(200, { nope: true })
+    });
+
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    expect(results[0].status).toBe("failed");
+    expect(results[0].issues?.[0]).toMatchObject({
+      code: "PROVIDER_RESPONSE_SCHEMA_ERROR",
+      message: "DeepSeek API returned an unexpected response shape"
+    });
   });
 
   it("sends review prompts and parses revised translations", async () => {
