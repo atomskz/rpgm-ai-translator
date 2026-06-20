@@ -156,6 +156,8 @@ node dist/cli/index.js translate ./work/units.json \
   --batch-size 10 \
   --retry-attempts 2 \
   --timeout-ms 30000 \
+  --temperature 0.3 \
+  --max-tokens 8192 \
   --memory ./work/translation-memory.jsonl \
   --checkpoint ./work/translations.raw.checkpoint.jsonl \
   --out ./work/translations.raw.json
@@ -163,6 +165,8 @@ node dist/cli/index.js translate ./work/units.json \
 
 `--batch-size` is the number of translation units sent to the provider in one
 request. Smaller batches are slower but safer for large or context-heavy strings.
+For DeepSeek, `--temperature` controls sampling randomness and `--max-tokens`
+sets the response token limit. The defaults are `0.3` and `8192`.
 When `--out` is provided, `translate` also writes a JSONL checkpoint after each
 completed batch. Without `--checkpoint`, the checkpoint path is derived from
 `--out`, for example `translations.raw.json` becomes `translations.raw.jsonl`.
@@ -251,6 +255,8 @@ node dist/cli/index.js run ./game \
   --batch-size 10 \
   --retry-attempts 2 \
   --timeout-ms 30000 \
+  --temperature 0.3 \
+  --max-tokens 8192 \
   --memory ./out/deepseek-memory.jsonl \
   --include-plugins \
   --review \

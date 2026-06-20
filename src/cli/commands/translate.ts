@@ -18,6 +18,7 @@ import { maybeWriteReport } from "../file-utils.js";
 import {
   assertProviderReady,
   readNonNegativeIntegerOption,
+  readNumberOption,
   readOption,
   readPositiveIntegerOption,
   requireArg
@@ -39,6 +40,8 @@ export async function translateCommand(args: string[], io: CliIO): Promise<numbe
   const batchSize = readPositiveIntegerOption(args, "--batch-size");
   const retryAttempts = readNonNegativeIntegerOption(args, "--retry-attempts");
   const timeoutMs = readPositiveIntegerOption(args, "--timeout-ms");
+  const temperature = readNumberOption(args, "--temperature", { min: 0, max: 2 });
+  const maxTokens = readPositiveIntegerOption(args, "--max-tokens");
   const units = await readTranslationUnitsFile(unitsPath);
   const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
   const checkpointPath = checkpointOption ?? (out ? defaultCheckpointPath(out) : undefined);
@@ -64,6 +67,8 @@ export async function translateCommand(args: string[], io: CliIO): Promise<numbe
       batchSize,
       retryAttempts,
       timeoutMs,
+      temperature,
+      maxTokens,
       onProgress: createProgressLogger(io),
       onBatchResults: checkpointPath
         ? async (batchResults) => {

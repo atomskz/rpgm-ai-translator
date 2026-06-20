@@ -62,6 +62,12 @@ Common options:
   --timeout-ms <n>
       Provider request timeout in milliseconds. Default: 60000.
 
+  --temperature <n>
+      Provider sampling temperature. DeepSeek default: 0.3. Range: 0..2.
+
+  --max-tokens <n>
+      Provider output token limit. DeepSeek default: 8192.
+
   --retry-attempts <n>
       Number of CLI-level retries for failed translate batches. Default: 1.
 
@@ -137,6 +143,8 @@ Examples:
       --model deepseek-v4-flash \\
       --target ru \\
       --batch-size 10 \\
+      --temperature 0.3 \\
+      --max-tokens 8192 \\
       --checkpoint ./work/translations.raw.checkpoint.jsonl \\
       --out ./work/translations.raw.json
 

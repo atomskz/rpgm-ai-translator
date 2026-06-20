@@ -23,6 +23,7 @@ import {
   hasFlag,
   readIssueCodesOption,
   readNonNegativeIntegerOption,
+  readNumberOption,
   readOption,
   readPositiveIntegerOption,
   requireArg,
@@ -41,6 +42,8 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
   const batchSize = readPositiveIntegerOption(args, "--batch-size");
   const retryAttempts = readNonNegativeIntegerOption(args, "--retry-attempts");
   const timeoutMs = readPositiveIntegerOption(args, "--timeout-ms");
+  const temperature = readNumberOption(args, "--temperature", { min: 0, max: 2 });
+  const maxTokens = readPositiveIntegerOption(args, "--max-tokens");
   const glossaryPath = readOption(args, "--glossary");
   const charactersPath = readOption(args, "--characters");
   const fontPath = readOption(args, "--font");
@@ -78,6 +81,8 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
       batchSize,
       retryAttempts,
       timeoutMs,
+      temperature,
+      maxTokens,
       onProgress: createProgressLogger(io)
     },
     new JsonlTranslationMemory(memoryPath)
@@ -90,6 +95,8 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
       characterGlossary,
       batchSize,
       timeoutMs,
+      temperature,
+      maxTokens,
       onProgress: createProgressLogger(io)
     });
     translations = reviewResult.translations;
@@ -107,6 +114,8 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
         characterGlossary,
         batchSize,
         timeoutMs,
+        temperature,
+        maxTokens,
         issueCodes: repairCodes,
         onProgress: createProgressLogger(io)
       });

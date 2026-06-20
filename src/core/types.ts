@@ -140,6 +140,8 @@ export type TranslateOptions = {
   glossary?: Glossary;
   characterGlossary?: CharacterGlossary;
   timeoutMs?: number;
+  temperature?: number;
+  maxTokens?: number;
   batchSize?: number;
   retryAttempts?: number;
   retryDelayMs?: number;

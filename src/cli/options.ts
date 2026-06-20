@@ -31,6 +31,29 @@ export function readNonNegativeIntegerOption(args: string[], name: string): numb
   return parsed;
 }
 
+export function readNumberOption(
+  args: string[],
+  name: string,
+  options: { min?: number; max?: number } = {}
+): number | undefined {
+  const value = readOption(args, name);
+  if (value == null) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${name} must be a number`);
+  }
+  if (options.min != null && parsed < options.min) {
+    throw new Error(`${name} must be greater than or equal to ${options.min}`);
+  }
+  if (options.max != null && parsed > options.max) {
+    throw new Error(`${name} must be less than or equal to ${options.max}`);
+  }
+  return parsed;
+}
+
 export function readIssueCodesOption(args: string[], name: string): ValidationIssue["code"][] | undefined {
   const value = readOption(args, name);
   if (value == null) {

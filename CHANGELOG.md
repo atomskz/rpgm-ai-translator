@@ -9,6 +9,8 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 - Update DeepSeek examples and default model to `deepseek-v4-flash`; DeepSeek
   translate and character inference requests disable thinking, while review
   requests enable thinking.
+- Add DeepSeek `temperature` and `max_tokens` request settings with CLI options
+  `--temperature` and `--max-tokens`.
 - Type `TranslationResult.metadata` and provider usage metadata while preserving
   compatibility with additional metadata keys in imported translation files.
 - Split the RPG Maker MV/MZ extractor internals into database, event, plugin,

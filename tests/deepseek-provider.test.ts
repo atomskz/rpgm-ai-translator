@@ -37,6 +37,8 @@ describe("DeepSeekProvider", () => {
     expect(JSON.parse(calls[0].init.body)).toMatchObject({
       model: "deepseek-v4-flash",
       thinking: { type: "disabled" },
+      temperature: 0.3,
+      max_tokens: 8192,
       response_format: { type: "json_object" },
       stream: false
     });
@@ -134,13 +136,20 @@ describe("DeepSeekProvider", () => {
           context: { speaker: "Aria" }
         }
       ],
-      { targetLanguage: "ru", characterGlossary: { Aria: { gender: "female" } } }
+      {
+        targetLanguage: "ru",
+        characterGlossary: { Aria: { gender: "female" } },
+        temperature: 0.7,
+        maxTokens: 2048
+      }
     );
 
     const body = JSON.parse(calls[0].init.body);
     expect(body.messages[0].content).toContain("Review and revise");
     expect(body.messages[1].content).toContain("currentTranslation");
     expect(body.thinking).toEqual({ type: "enabled" });
+    expect(body.temperature).toBe(0.7);
+    expect(body.max_tokens).toBe(2048);
     expect(results[0]).toMatchObject({
       translation: "Я готова.",
       metadata: { reviewed: true }

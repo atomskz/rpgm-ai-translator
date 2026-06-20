@@ -66,6 +66,8 @@ type ModelCharactersPayload = {
 
 const DEFAULT_BASE_URL = "https://api.deepseek.com";
 const DEFAULT_MODEL = "deepseek-v4-flash";
+const DEFAULT_TEMPERATURE = 0.3;
+const DEFAULT_MAX_TOKENS = 8192;
 
 export class DeepSeekProvider implements LLMProvider {
   readonly name = "deepseek";
@@ -205,6 +207,8 @@ export class DeepSeekProvider implements LLMProvider {
       model,
       messages,
       thinking: { type: thinkingMode },
+      temperature: options.temperature ?? DEFAULT_TEMPERATURE,
+      max_tokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
       response_format: { type: "json_object" },
       stream: false
     });

@@ -19,6 +19,7 @@ import {
 import {
   assertProviderReady,
   readIssueCodesOption,
+  readNumberOption,
   readOption,
   readPositiveIntegerOption,
   requireArg,
@@ -40,6 +41,8 @@ export async function repairCommand(args: string[], io: CliIO): Promise<number> 
   const model = readOption(args, "--model");
   const batchSize = readPositiveIntegerOption(args, "--batch-size");
   const timeoutMs = readPositiveIntegerOption(args, "--timeout-ms");
+  const temperature = readNumberOption(args, "--temperature", { min: 0, max: 2 });
+  const maxTokens = readPositiveIntegerOption(args, "--max-tokens");
   const glossaryPath = readOption(args, "--glossary");
   const charactersPath = readOption(args, "--characters");
   const issueCodes = readIssueCodesOption(args, "--codes");
@@ -76,6 +79,8 @@ export async function repairCommand(args: string[], io: CliIO): Promise<number> 
       model,
       batchSize,
       timeoutMs,
+      temperature,
+      maxTokens,
       glossary,
       characterGlossary,
       issueCodes,

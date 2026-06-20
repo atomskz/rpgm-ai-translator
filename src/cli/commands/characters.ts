@@ -12,6 +12,7 @@ import { writeJson } from "../file-utils.js";
 import {
   assertProviderReady,
   hasFlag,
+  readNumberOption,
   readOption,
   readPositiveIntegerOption,
   requireArg,
@@ -31,6 +32,8 @@ export async function charactersCommand(args: string[], io: CliIO): Promise<numb
   const model = readOption(args, "--model");
   const batchSize = readPositiveIntegerOption(args, "--batch-size");
   const timeoutMs = readPositiveIntegerOption(args, "--timeout-ms");
+  const temperature = readNumberOption(args, "--temperature", { min: 0, max: 2 });
+  const maxTokens = readPositiveIntegerOption(args, "--max-tokens");
   const units = await readTranslationUnitsFile(unitsPath);
   const translations = translationsPath ? await readTranslationResultsFile(translationsPath) : [];
   const candidates = extractCharacterCandidates(units, translations, {
@@ -43,7 +46,9 @@ export async function charactersCommand(args: string[], io: CliIO): Promise<numb
           targetLanguage,
           model,
           batchSize,
-          timeoutMs
+          timeoutMs,
+          temperature,
+          maxTokens
         });
   await writeJson(out, glossary);
   io.stdout(`Character candidates: ${candidates.length}. Wrote ${Object.keys(glossary).length} character entries.\n`);
