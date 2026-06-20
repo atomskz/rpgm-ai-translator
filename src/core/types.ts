@@ -76,7 +76,33 @@ export type TranslationResult = {
   model: string;
   status: "translated" | "failed" | "skipped";
   issues?: ValidationIssue[];
-  metadata?: Record<string, unknown>;
+  metadata?: TranslationMetadata;
+};
+
+export type ProviderUsage = {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+  prompt_tokens_details?: ProviderUsageDetails;
+  completion_tokens_details?: ProviderUsageDetails;
+  prompt_cache_hit_tokens?: number;
+  prompt_cache_miss_tokens?: number;
+  [key: string]: unknown;
+};
+
+export type ProviderUsageDetails = {
+  cached_tokens?: number;
+  [key: string]: unknown;
+};
+
+export type TranslationMetadata = {
+  usage?: ProviderUsage;
+  reviewed?: boolean;
+  repaired?: boolean;
+  repairMode?: "translate" | "review";
+  fromMemory?: boolean;
+  fromCheckpoint?: boolean;
+  [key: string]: unknown;
 };
 
 export type DetectedEngine = {

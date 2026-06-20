@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { TranslationResult, TranslationUnit, ValidationIssue } from "../types.js";
+import type { ProviderUsage, ProviderUsageDetails, TranslationMetadata, TranslationResult, TranslationUnit, ValidationIssue } from "../types.js";
 
 export type ImportedTranslation = {
   id: string;
@@ -10,7 +10,7 @@ export type ImportedTranslation = {
   model?: string;
   status?: TranslationResult["status"];
   issues?: ValidationIssue[];
-  metadata?: Record<string, unknown>;
+  metadata?: TranslationMetadata;
 };
 
 export async function writeTranslationUnitsFile(filePath: string, units: TranslationUnit[]): Promise<void> {
@@ -152,7 +152,7 @@ function isImportedTranslation(value: unknown): value is ImportedTranslation {
     (candidate.model == null || typeof candidate.model === "string") &&
     (candidate.status == null || candidate.status === "translated" || candidate.status === "failed" || candidate.status === "skipped") &&
     (candidate.issues == null || (Array.isArray(candidate.issues) && candidate.issues.every(isValidationIssue))) &&
-    (candidate.metadata == null || isPlainObject(candidate.metadata))
+    (candidate.metadata == null || isTranslationMetadata(candidate.metadata))
   );
 }
 
@@ -172,6 +172,52 @@ function isValidationIssue(value: unknown): value is ValidationIssue {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value != null && !Array.isArray(value);
+}
+
+function isTranslationMetadata(value: unknown): value is TranslationMetadata {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  const candidate = value as Partial<TranslationMetadata>;
+  return (
+    (candidate.usage == null || isProviderUsage(candidate.usage)) &&
+    (candidate.reviewed == null || typeof candidate.reviewed === "boolean") &&
+    (candidate.repaired == null || typeof candidate.repaired === "boolean") &&
+    (candidate.repairMode == null || candidate.repairMode === "translate" || candidate.repairMode === "review") &&
+    (candidate.fromMemory == null || typeof candidate.fromMemory === "boolean") &&
+    (candidate.fromCheckpoint == null || typeof candidate.fromCheckpoint === "boolean")
+  );
+}
+
+function isProviderUsage(value: unknown): value is ProviderUsage {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  const candidate = value as Partial<ProviderUsage>;
+  return (
+    optionalNumber(candidate.prompt_tokens) &&
+    optionalNumber(candidate.completion_tokens) &&
+    optionalNumber(candidate.total_tokens) &&
+    (candidate.prompt_tokens_details == null || isProviderUsageDetails(candidate.prompt_tokens_details)) &&
+    (candidate.completion_tokens_details == null || isProviderUsageDetails(candidate.completion_tokens_details)) &&
+    optionalNumber(candidate.prompt_cache_hit_tokens) &&
+    optionalNumber(candidate.prompt_cache_miss_tokens)
+  );
+}
+
+function isProviderUsageDetails(value: unknown): value is ProviderUsageDetails {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  const candidate = value as Partial<ProviderUsageDetails>;
+  return optionalNumber(candidate.cached_tokens);
+}
+
+function optionalNumber(value: unknown): boolean {
+  return value == null || typeof value === "number";
 }
 
 function isTranslationUnit(value: unknown): value is TranslationUnit {

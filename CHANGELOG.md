@@ -2,6 +2,13 @@
 
 All notable changes to `rpgm-ai-translator` are documented in this file.
 
+## Unreleased
+
+### Changed
+
+- Type `TranslationResult.metadata` and provider usage metadata while preserving
+  compatibility with additional metadata keys in imported translation files.
+
 ## 0.1.2 - 2026-06-20
 
 ### Added

@@ -96,6 +96,30 @@ describe("translation unit import/export", () => {
     ]);
   });
 
+  it("rejects invalid typed translation metadata", () => {
+    expect(() =>
+      normalizeTranslationResults([
+        {
+          id: "Actors.1.name",
+          source: "Aria",
+          translation: "Ария",
+          metadata: { reviewed: "yes" }
+        }
+      ])
+    ).toThrow("Invalid translation entry at index 0");
+
+    expect(() =>
+      normalizeTranslationResults([
+        {
+          id: "Actors.1.name",
+          source: "Aria",
+          translation: "Ария",
+          metadata: { usage: { total_tokens: "42" } }
+        }
+      ])
+    ).toThrow("Invalid translation entry at index 0");
+  });
+
   it("reports invalid translation JSON clearly", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-tu-import-"));
     const filePath = path.join(root, "translations.json");

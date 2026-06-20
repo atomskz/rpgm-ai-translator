@@ -8,7 +8,8 @@ import type {
   TranslateOptions,
   TranslationResult,
   TranslationUnit,
-  ValidationIssue
+  ValidationIssue,
+  ProviderUsage
 } from "../../core/types.js";
 import {
   type ChatMessage,
@@ -47,7 +48,7 @@ type ChatCompletionResponse = {
       content?: string | null;
     };
   }>;
-  usage?: Record<string, unknown>;
+  usage?: ProviderUsage;
 };
 
 type ModelTranslationPayload = {
@@ -320,7 +321,39 @@ function isChatCompletionResponse(value: unknown): value is ChatCompletionRespon
     return false;
   }
   const candidate = value as Partial<ChatCompletionResponse>;
-  return Array.isArray(candidate.choices);
+  return Array.isArray(candidate.choices) && (candidate.usage == null || isProviderUsage(candidate.usage));
+}
+
+function isProviderUsage(value: unknown): value is ProviderUsage {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return false;
+  }
+
+  const candidate = value as Partial<ProviderUsage>;
+  return (
+    optionalNumber(candidate.prompt_tokens) &&
+    optionalNumber(candidate.completion_tokens) &&
+    optionalNumber(candidate.total_tokens) &&
+    optionalUsageDetails(candidate.prompt_tokens_details) &&
+    optionalUsageDetails(candidate.completion_tokens_details) &&
+    optionalNumber(candidate.prompt_cache_hit_tokens) &&
+    optionalNumber(candidate.prompt_cache_miss_tokens)
+  );
+}
+
+function optionalUsageDetails(value: unknown): boolean {
+  if (value == null) {
+    return true;
+  }
+  if (typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const candidate = value as { cached_tokens?: unknown };
+  return optionalNumber(candidate.cached_tokens);
+}
+
+function optionalNumber(value: unknown): boolean {
+  return value == null || typeof value === "number";
 }
 
 function isModelTranslationPayload(value: unknown): value is ModelTranslationPayload {

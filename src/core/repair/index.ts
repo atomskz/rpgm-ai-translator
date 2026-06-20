@@ -77,7 +77,7 @@ export async function repairTranslations(
       if (result.status === "translated") {
         const repaired = {
           ...result,
-          metadata: { ...result.metadata, repaired: true, repairMode: "translate" }
+          metadata: { ...result.metadata, repaired: true, repairMode: "translate" as const }
         };
         repairedById.set(result.id, repaired);
         checkpointResults.push(repaired);
@@ -108,7 +108,7 @@ export async function repairTranslations(
       if (result.status === "translated") {
         const repaired = {
           ...result,
-          metadata: { ...result.metadata, repaired: true, repairMode: "review" }
+          metadata: { ...result.metadata, repaired: true, repairMode: "review" as const }
         };
         repairedById.set(result.id, repaired);
         checkpointResults.push(repaired);
