@@ -151,7 +151,7 @@ export DEEPSEEK_API_KEY=sk-...
 
 node dist/cli/index.js translate ./work/units.json \
   --provider deepseek \
-  --model deepseek-chat \
+  --model deepseek-v4-flash \
   --target ru \
   --batch-size 10 \
   --retry-attempts 2 \
@@ -175,7 +175,7 @@ are reused and only missing units are sent to the provider.
 node dist/cli/index.js characters ./work/units.json \
   --translations ./work/translations.raw.json \
   --provider deepseek \
-  --model deepseek-chat \
+  --model deepseek-v4-flash \
   --target ru \
   --out ./work/characters.json
 ```
@@ -188,7 +188,7 @@ heuristic and should be corrected before the review pass.
 ```bash
 node dist/cli/index.js review ./work/units.json ./work/translations.raw.json \
   --provider deepseek \
-  --model deepseek-chat \
+  --model deepseek-v4-flash \
   --target ru \
   --characters ./work/characters.json \
   --checkpoint ./work/translations.reviewed.checkpoint.jsonl \
@@ -209,7 +209,7 @@ node dist/cli/index.js validate ./work/units.json ./work/translations.reviewed.j
 node dist/cli/index.js repair ./work/units.json ./work/translations.reviewed.json \
   --report ./work/report.json \
   --provider deepseek \
-  --model deepseek-chat \
+  --model deepseek-v4-flash \
   --target ru \
   --codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION \
   --attempts 2 \
@@ -246,7 +246,7 @@ different extraction flags.
 ```bash
 node dist/cli/index.js run ./game \
   --provider deepseek \
-  --model deepseek-chat \
+  --model deepseek-v4-flash \
   --target ru \
   --batch-size 10 \
   --retry-attempts 2 \

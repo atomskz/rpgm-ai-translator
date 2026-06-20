@@ -137,7 +137,7 @@ function translation(overrides: Partial<TranslationResult> = {}): TranslationRes
     source: "I am ready.",
     translation: "Я готов.",
     provider: "deepseek",
-    model: "deepseek-chat",
+    model: "deepseek-v4-flash",
     status: "translated",
     ...overrides
   };

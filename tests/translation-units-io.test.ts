@@ -61,7 +61,7 @@ describe("translation unit import/export", () => {
         source: "Aria",
         translation: "Ария",
         provider: "deepseek",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         status: "translated",
         issues: [
           {
@@ -81,7 +81,7 @@ describe("translation unit import/export", () => {
         source: "Aria",
         translation: "Ария",
         provider: "deepseek",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         status: "translated",
         issues: [
           {

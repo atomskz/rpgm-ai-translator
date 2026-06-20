@@ -42,6 +42,8 @@ type DeepSeekProviderConfig = {
   retryDelayMs?: number;
 };
 
+type DeepSeekThinkingMode = "enabled" | "disabled";
+
 type ChatCompletionResponse = {
   choices: Array<{
     message?: {
@@ -63,7 +65,7 @@ type ModelCharactersPayload = {
 };
 
 const DEFAULT_BASE_URL = "https://api.deepseek.com";
-const DEFAULT_MODEL = "deepseek-chat";
+const DEFAULT_MODEL = "deepseek-v4-flash";
 
 export class DeepSeekProvider implements LLMProvider {
   readonly name = "deepseek";
@@ -93,7 +95,7 @@ export class DeepSeekProvider implements LLMProvider {
     }
 
     try {
-      const response = await this.requestChatCompletion(buildTranslationMessages(batch, options), options, model);
+      const response = await this.requestChatCompletion(buildTranslationMessages(batch, options), options, model, "disabled");
       const payload = parseModelPayload(response);
       const byId = new Map(payload.translations.map((item) => [item.id, item.translation]));
       const usage = response.usage;
@@ -131,7 +133,7 @@ export class DeepSeekProvider implements LLMProvider {
     }
 
     try {
-      const response = await this.requestChatCompletion(buildReviewMessages(batch, options), options, model);
+      const response = await this.requestChatCompletion(buildReviewMessages(batch, options), options, model, "enabled");
       const payload = parseModelPayload(response);
       const byId = new Map(payload.translations.map((item) => [item.id, item.translation]));
       const usage = response.usage;
@@ -183,19 +185,26 @@ export class DeepSeekProvider implements LLMProvider {
       );
     }
 
-    const response = await this.requestChatCompletion(buildCharacterInferenceMessages(candidates, options), options, model);
+    const response = await this.requestChatCompletion(
+      buildCharacterInferenceMessages(candidates, options),
+      options,
+      model,
+      "disabled"
+    );
     return parseCharactersPayload(response).characters;
   }
 
   private async requestChatCompletion(
     messages: ChatMessage[],
     options: TranslateOptions,
-    model: string
+    model: string,
+    thinkingMode: DeepSeekThinkingMode
   ): Promise<ChatCompletionResponse> {
     const url = `${this.baseUrl}/chat/completions`;
     const body = JSON.stringify({
       model,
       messages,
+      thinking: { type: thinkingMode },
       response_format: { type: "json_object" },
       stream: false
     });

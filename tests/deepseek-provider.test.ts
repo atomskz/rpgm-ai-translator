@@ -29,13 +29,14 @@ describe("DeepSeekProvider", () => {
       }
     });
 
-    const results = await provider.translateBatch([unit()], { targetLanguage: "ru", model: "deepseek-chat" });
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
 
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe("https://api.deepseek.com/chat/completions");
     expect(calls[0].init.headers.Authorization).toBe("Bearer test-key");
     expect(JSON.parse(calls[0].init.body)).toMatchObject({
-      model: "deepseek-chat",
+      model: "deepseek-v4-flash",
+      thinking: { type: "disabled" },
       response_format: { type: "json_object" },
       stream: false
     });
@@ -45,7 +46,7 @@ describe("DeepSeekProvider", () => {
         source: "Aria",
         translation: "Ария",
         provider: "deepseek",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         status: "translated",
         metadata: { usage: { total_tokens: 42 } }
       }
@@ -139,6 +140,7 @@ describe("DeepSeekProvider", () => {
     const body = JSON.parse(calls[0].init.body);
     expect(body.messages[0].content).toContain("Review and revise");
     expect(body.messages[1].content).toContain("currentTranslation");
+    expect(body.thinking).toEqual({ type: "enabled" });
     expect(results[0]).toMatchObject({
       translation: "Я готова.",
       metadata: { reviewed: true }
@@ -189,6 +191,7 @@ describe("DeepSeekProvider", () => {
     const body = JSON.parse(calls[0].init.body);
     expect(body.messages[0].content).toContain("character glossary");
     expect(body.messages[1].content).toContain("candidates");
+    expect(body.thinking).toEqual({ type: "disabled" });
     expect(result).toEqual({
       Aria: {
         translation: "Ария",

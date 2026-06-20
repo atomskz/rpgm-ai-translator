@@ -45,7 +45,7 @@ Common options:
       Translation provider: mock, deepseek, or none where supported.
 
   --model <name>
-      Provider model name, for example deepseek-chat.
+      Provider model name, for example deepseek-v4-flash.
 
   --target <lang>
       Target language code or name. Default: ru.
@@ -134,7 +134,7 @@ Examples:
 
   rpgm-ai-translator translate ./work/units.json \\
       --provider deepseek \\
-      --model deepseek-chat \\
+      --model deepseek-v4-flash \\
       --target ru \\
       --batch-size 10 \\
       --checkpoint ./work/translations.raw.checkpoint.jsonl \\

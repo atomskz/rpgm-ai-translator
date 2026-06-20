@@ -42,7 +42,7 @@ describe("repairTranslations", () => {
           source: "A very long line.",
           translation: "Очень длинная строка, которая не помещается.",
           provider: "deepseek",
-          model: "deepseek-chat",
+          model: "deepseek-v4-flash",
           status: "translated"
         }
       ],
@@ -201,7 +201,7 @@ function translation(id: string, text: string): TranslationResult {
     source: text,
     translation: text,
     provider: "deepseek",
-    model: "deepseek-chat",
+    model: "deepseek-v4-flash",
     status: "translated"
   };
 }

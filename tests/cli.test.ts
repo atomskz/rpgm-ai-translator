@@ -163,7 +163,7 @@ describe("CLI", () => {
         source: "Aria",
         translation: "Ария из checkpoint",
         provider: "deepseek",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         status: "translated"
       })}\n`,
       "utf8"
@@ -553,7 +553,7 @@ describe("CLI", () => {
             source: "I am ready.",
             translation: "Я готов.",
             provider: "deepseek",
-            model: "deepseek-chat",
+            model: "deepseek-v4-flash",
             status: "translated"
           }
         ],
@@ -621,7 +621,7 @@ describe("CLI", () => {
         source: "I am ready.",
         translation: "Я готов из checkpoint.",
         provider: "deepseek",
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         status: "translated"
       })}\n`,
       "utf8"
