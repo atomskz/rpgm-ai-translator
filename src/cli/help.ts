@@ -1,5 +1,5 @@
 export function helpText(): string {
-  return `rpgm-ai-translator 0.1.2
+  return `rpgm-ai-translator 0.1.3
 AI-assisted translation pipeline for RPG Maker MV/MZ games.
 
 Usage:
