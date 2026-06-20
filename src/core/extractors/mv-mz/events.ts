@@ -1,0 +1,239 @@
+import type { ExtractOptions, TranslationUnit } from "../../types.js";
+import { extractPluginCommandText } from "./plugins.js";
+import {
+  type DraftBase,
+  type JsonObject,
+  type UnitDraft,
+  decodeScriptStringLiteral,
+  isObject,
+  isTranslatableString,
+  makeDraft,
+  numberOrUndefined,
+  stringOrUndefined
+} from "./shared.js";
+
+export function extractMap(
+  data: JsonObject,
+  base: DraftBase & {
+    extractOptions: ExtractOptions;
+  }
+): UnitDraft[] {
+  const units: UnitDraft[] = [];
+  const mapName = stringOrUndefined(data.displayName);
+
+  if (isTranslatableString(data.displayName)) {
+    units.push(makeDraft(base, "displayName", data.displayName, "name", { mapName }));
+  }
+
+  const events = data.events;
+  if (!Array.isArray(events)) {
+    return units;
+  }
+
+  events.forEach((event, eventIndex) => {
+    if (!isObject(event)) {
+      return;
+    }
+    const eventContext = {
+      mapName,
+      eventId: numberOrUndefined(event.id),
+      eventName: stringOrUndefined(event.name)
+    };
+    const pages = event.pages;
+    if (!Array.isArray(pages)) {
+      return;
+    }
+    pages.forEach((page, pageIndex) => {
+      if (!isObject(page)) {
+        return;
+      }
+      units.push(
+        ...extractEventCommandList(page.list, {
+          ...base,
+          prefix: `events.${eventIndex}.pages.${pageIndex}.list`,
+          context: eventContext,
+          includeComments: base.extractOptions.includeEventComments ?? false
+        })
+      );
+    });
+  });
+
+  return units;
+}
+
+export function extractEventCommandList(
+  list: unknown,
+  options: DraftBase & {
+    prefix: string;
+    context?: TranslationUnit["context"];
+    includeComments: boolean;
+    extractOptions: ExtractOptions;
+  }
+): UnitDraft[] {
+  if (!Array.isArray(list)) {
+    return [];
+  }
+
+  const units: UnitDraft[] = [];
+
+  let currentSpeaker = options.context?.speaker;
+
+  list.forEach((command, commandIndex) => {
+    if (!isObject(command) || !Array.isArray(command.parameters)) {
+      return;
+    }
+
+    const code = command.code;
+    const speakerParameter = command.parameters[4];
+    if (code === 101 && isTranslatableString(speakerParameter)) {
+      currentSpeaker = speakerParameter;
+      if (options.extractOptions.includeSpeakerNames === true) {
+        units.push(
+          makeDraft(
+            options,
+            `${options.prefix}.${commandIndex}.parameters.4`,
+            speakerParameter,
+            "name",
+            {
+              ...options.context,
+              speaker: currentSpeaker,
+              ...neighborContext(list, commandIndex)
+            },
+            { maxLines: 1, maxLength: 24 }
+          )
+        );
+      }
+    }
+
+    const textParameter = command.parameters[0];
+    if ((code === 401 || code === 405) && isTranslatableString(textParameter)) {
+      units.push(
+        makeDraft(
+          options,
+          `${options.prefix}.${commandIndex}.parameters.0`,
+          textParameter,
+          "dialogue",
+          {
+            ...options.context,
+            speaker: currentSpeaker,
+            ...neighborContext(list, commandIndex)
+          },
+          { maxLines: 1, maxLength: 52 }
+        )
+      );
+    }
+
+    if (code === 102 && Array.isArray(textParameter)) {
+      textParameter.forEach((choice, choiceIndex) => {
+        if (isTranslatableString(choice)) {
+          units.push(
+            makeDraft(
+              options,
+              `${options.prefix}.${commandIndex}.parameters.0.${choiceIndex}`,
+              choice,
+              "choice",
+              {
+                ...options.context,
+                ...neighborContext(list, commandIndex)
+              },
+              { maxLines: 1, maxLength: 28 }
+            )
+          );
+        }
+      });
+    }
+
+    const variableScriptValue = command.parameters[4];
+    if (code === 122 && command.parameters[3] === 4 && typeof variableScriptValue === "string") {
+      const source = decodeScriptStringLiteral(variableScriptValue);
+      if (isTranslatableString(source)) {
+        units.push(
+          makeDraft(
+            options,
+            `${options.prefix}.${commandIndex}.parameters.4`,
+            source,
+            "system",
+            {
+              ...options.context,
+              speaker: currentSpeaker,
+              ...neighborContext(list, commandIndex)
+            },
+            { maxLines: 1, maxLength: 54, sourceEncoding: "json-string-literal" }
+          )
+        );
+      }
+    }
+
+    const pluginCommandArgs = command.parameters[3];
+    if (code === 357 && isObject(pluginCommandArgs)) {
+      units.push(
+        ...extractPluginCommandText(pluginCommandArgs, {
+          ...options,
+          prefix: `${options.prefix}.${commandIndex}.parameters.3`,
+          context: {
+            ...options.context,
+            speaker: currentSpeaker,
+            ...neighborContext(list, commandIndex)
+          }
+        })
+      );
+    }
+
+    if (options.includeComments && (code === 108 || code === 408) && isTranslatableString(textParameter)) {
+      units.push(
+        makeDraft(options, `${options.prefix}.${commandIndex}.parameters.0`, textParameter, "unknown", {
+          ...options.context,
+          ...neighborContext(list, commandIndex)
+        })
+      );
+    }
+  });
+
+  return units;
+}
+
+function neighborContext(list: unknown[], commandIndex: number): Pick<NonNullable<TranslationUnit["context"]>, "previousLines" | "nextLines"> {
+  return {
+    previousLines: collectNeighborLines(list, commandIndex, -1),
+    nextLines: collectNeighborLines(list, commandIndex, 1)
+  };
+}
+
+function collectNeighborLines(list: unknown[], commandIndex: number, direction: -1 | 1, limit = 2): string[] {
+  const lines: string[] = [];
+  for (let index = commandIndex + direction; index >= 0 && index < list.length && lines.length < limit; index += direction) {
+    const text = eventCommandText(list[index]);
+    if (text) {
+      lines.push(text);
+    }
+  }
+  return direction === -1 ? lines.reverse() : lines;
+}
+
+function eventCommandText(command: unknown): string | undefined {
+  if (!isObject(command) || !Array.isArray(command.parameters)) {
+    return undefined;
+  }
+
+  const code = command.code;
+  const firstParameter = command.parameters[0];
+  if ((code === 401 || code === 405 || code === 108 || code === 408) && isTranslatableString(firstParameter)) {
+    return firstParameter;
+  }
+
+  if (code === 102 && Array.isArray(firstParameter)) {
+    return firstParameter.filter(isTranslatableString).join(" / ") || undefined;
+  }
+
+  const variableScriptValue = command.parameters[4];
+  if (code === 122 && command.parameters[3] === 4 && typeof variableScriptValue === "string") {
+    return decodeScriptStringLiteral(variableScriptValue);
+  }
+
+  const pluginCommandArgs = command.parameters[3];
+  if (code === 357 && isObject(pluginCommandArgs) && isTranslatableString(pluginCommandArgs.messageText)) {
+    return pluginCommandArgs.messageText;
+  }
+
+  return undefined;
+}

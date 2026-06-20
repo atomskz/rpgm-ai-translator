@@ -8,6 +8,8 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 - Type `TranslationResult.metadata` and provider usage metadata while preserving
   compatibility with additional metadata keys in imported translation files.
+- Split the RPG Maker MV/MZ extractor internals into database, event, plugin,
+  encoded JSON, and shared helper modules.
 
 ## 0.1.2 - 2026-06-20
 
