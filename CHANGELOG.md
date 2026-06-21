@@ -4,6 +4,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ## Unreleased
 
+### Changed
+
+- Split the DeepSeek provider into focused client, error mapping, schema parsing,
+  result mapping, defaults, and public provider modules.
+
 ## 0.1.3 - 2026-06-20
 
 ### Changed
