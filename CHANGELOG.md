@@ -22,6 +22,8 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
   existing provider export surface.
 - Split validator checks into focused id/status, placeholder, token, constraint,
   and glossary rule modules while keeping `DefaultValidator` as the coordinator.
+- Split the broad CLI test suite into command-focused help, translate,
+  validate/repair, apply/font, and review/characters suites with shared fixtures.
 
 ## 0.1.3 - 2026-06-20
 
