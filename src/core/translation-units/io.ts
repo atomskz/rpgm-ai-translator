@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { ProviderUsage, ProviderUsageDetails, TranslationMetadata, TranslationResult, TranslationUnit, ValidationIssue } from "../types.js";
+import { writeFileAtomic } from "../utils/fs.js";
 
 export type ImportedTranslation = {
   id: string;
@@ -14,11 +15,11 @@ export type ImportedTranslation = {
 };
 
 export async function writeTranslationUnitsFile(filePath: string, units: TranslationUnit[]): Promise<void> {
-  await writeFile(filePath, `${JSON.stringify(units, null, 2)}\n`, "utf8");
+  await writeFileAtomic(filePath, `${JSON.stringify(units, null, 2)}\n`);
 }
 
 export async function writeTranslationResultsFile(filePath: string, results: TranslationResult[]): Promise<void> {
-  await writeFile(filePath, `${JSON.stringify(results, null, 2)}\n`, "utf8");
+  await writeFileAtomic(filePath, `${JSON.stringify(results, null, 2)}\n`);
 }
 
 export async function resetTranslationResultsJsonlFile(filePath: string): Promise<void> {
@@ -50,23 +51,25 @@ export async function readTranslationResultsJsonlFile(filePath: string): Promise
     throw error;
   }
 
+  // Tolerate corrupt lines (e.g. a truncated final line left by a crash mid-append)
+  // so a checkpoint can still resume from its readable entries instead of refusing
+  // to load entirely.
   return raw
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
-    .map((line, index) => {
+    .flatMap((line) => {
       let parsed: unknown;
       try {
         parsed = JSON.parse(line);
-      } catch (error: unknown) {
-        throw new Error(
-          `Invalid translations JSONL in '${filePath}' at line ${index + 1}: ${error instanceof Error ? error.message : String(error)}`,
-          { cause: error }
-        );
+      } catch {
+        return [];
       }
-
-      const [result] = normalizeTranslationResults([parsed]);
-      return result;
+      try {
+        return normalizeTranslationResults([parsed]);
+      } catch {
+        return [];
+      }
     });
 }
 

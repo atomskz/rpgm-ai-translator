@@ -166,4 +166,26 @@ describe("translation unit import/export", () => {
       expect.objectContaining({ id: "Actors.2.name", translation: "Белффи" })
     ]);
   });
+
+  it("recovers readable checkpoint entries when the last line is truncated", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-tu-jsonl-recover-"));
+    const filePath = path.join(root, "translations.jsonl");
+
+    await appendTranslationResultsJsonlFile(filePath, [
+      {
+        id: "Actors.1.name",
+        source: "Aria",
+        translation: "Ария",
+        provider: "mock",
+        model: "mock",
+        status: "translated"
+      }
+    ]);
+    // Simulate a crash mid-append leaving a truncated final line.
+    await writeFile(filePath, '{"id":"Actors.2.name","source":"Bel"', { encoding: "utf8", flag: "a" });
+
+    expect(await readTranslationResultsJsonlFile(filePath)).toEqual([
+      expect.objectContaining({ id: "Actors.1.name", translation: "Ария" })
+    ]);
+  });
 });

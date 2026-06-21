@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
@@ -81,6 +81,49 @@ describe("translation memory", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-02-01T00:00:00.000Z"
     });
+  });
+
+  it("persists memory atomically without leaving temporary files behind", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-memory-atomic-"));
+    const memoryPath = path.join(root, "memory.jsonl");
+    const memory = new JsonlTranslationMemory(memoryPath);
+
+    await memory.upsert({
+      source: "Aria",
+      sourceHash: hashSource("Aria"),
+      translation: "Ария",
+      category: "name",
+      provider: "mock",
+      model: "mock",
+      status: "translated",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z"
+    });
+
+    expect(await readdir(root)).toEqual(["memory.jsonl"]);
+    expect(await memory.get(hashSource("Aria"))).toMatchObject({ translation: "Ария" });
+  });
+
+  it("skips corrupt lines instead of throwing when reading memory", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-memory-corrupt-"));
+    const memoryPath = path.join(root, "memory.jsonl");
+    const valid = JSON.stringify({
+      source: "Aria",
+      sourceHash: hashSource("Aria"),
+      translation: "Ария",
+      category: "name",
+      provider: "mock",
+      model: "mock",
+      status: "translated",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z"
+    });
+    // Second line is a truncated write, as a crash mid-write would leave.
+    await writeFile(memoryPath, `${valid}\n{"source":"broken"`, "utf8");
+
+    const memory = new JsonlTranslationMemory(memoryPath);
+
+    expect(await memory.get(hashSource("Aria"))).toMatchObject({ translation: "Ария" });
   });
 
   it("uses memory hits and sends only unique misses to the provider", async () => {

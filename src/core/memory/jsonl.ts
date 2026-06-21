@@ -1,5 +1,5 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { readFile } from "node:fs/promises";
+import { writeFileAtomic } from "../utils/fs.js";
 import type { MemoryEntry, TranslationMemory } from "./types.js";
 
 export class JsonlTranslationMemory implements TranslationMemory {
@@ -58,26 +58,33 @@ export class JsonlTranslationMemory implements TranslationMemory {
     }
 
     const entries = new Map<string, MemoryEntry>();
-    raw
-      .split(/\r?\n/)
-      .filter((line) => line.trim().length > 0)
-      .forEach((line, index) => {
-        const parsed = JSON.parse(line) as unknown;
-        if (!isMemoryEntry(parsed)) {
-          throw new Error(`Invalid memory entry at line ${index + 1}`);
-        }
-        entries.set(keyOf(parsed), parsed);
-      });
+    for (const line of raw.split(/\r?\n/)) {
+      if (line.trim().length === 0) {
+        continue;
+      }
+      // Tolerate corrupt lines (e.g. a truncated final line from a crash mid-write)
+      // so a partially written memory file can still be reused instead of failing
+      // the whole run.
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      if (!isMemoryEntry(parsed)) {
+        continue;
+      }
+      entries.set(keyOf(parsed), parsed);
+    }
     this.cachedEntries = entries;
     return entries;
   }
 
   private async writeAll(entries: Map<string, MemoryEntry>): Promise<void> {
-    await mkdir(path.dirname(this.filePath), { recursive: true });
     const payload = Array.from(entries.values())
       .map((entry) => JSON.stringify(entry))
       .join("\n");
-    await writeFile(this.filePath, payload.length > 0 ? `${payload}\n` : "", "utf8");
+    await writeFileAtomic(this.filePath, payload.length > 0 ? `${payload}\n` : "");
     this.cachedEntries = entries;
   }
 }

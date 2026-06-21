@@ -25,6 +25,10 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
   translation for a duplicated id instead of silently using the last, and surface
   unexpected or duplicate ids as a `PROVIDER_RESPONSE_SCHEMA_ERROR` warning
   instead of dropping them without trace.
+- Write the translation memory, `units.json` and `translations.json` atomically
+  (temp file + rename) so a crash mid-write can no longer truncate or wipe them,
+  and tolerate a corrupt final line when reading the memory file or a JSONL
+  checkpoint so a partially written file can still be resumed.
 
 ### Changed
 
