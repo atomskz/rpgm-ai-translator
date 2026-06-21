@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { ApplyOptions, ApplyResult, TranslationResult, TranslationUnit } from "../types.js";
 import { restorePlaceholders } from "../placeholders/index.js";
@@ -9,7 +9,7 @@ import {
   setPluginParameter
 } from "../plugins/index.js";
 import { getJsonPath, setJsonPath } from "../utils/json-path.js";
-import { readJsonFile, writeJsonFile } from "../utils/fs.js";
+import { pathExists, readJsonFile, writeJsonFile } from "../utils/fs.js";
 
 type PreparedFile = {
   relativeFilePath: string;
@@ -143,15 +143,22 @@ async function writePatchFiles(
   outDir: string,
   skipped: number
 ): Promise<ApplyResult> {
-  await mkdir(outDir, { recursive: true });
+  const stagingDir = await createSiblingTempDir(outDir, "staging");
+  const rollbackDir = await createSiblingTempDir(outDir, "rollback");
   const filesWritten: string[] = [];
   let unitsApplied = 0;
 
-  for (const file of prepared.files) {
-    const outputPath = path.join(outDir, file.relativeFilePath);
-    await writePreparedFile(outputPath, file);
-    filesWritten.push(outputPath);
-    unitsApplied += file.unitsApplied;
+  try {
+    for (const file of prepared.files) {
+      await writePreparedFile(path.join(stagingDir, file.relativeFilePath), file);
+      filesWritten.push(path.join(outDir, file.relativeFilePath));
+      unitsApplied += file.unitsApplied;
+    }
+
+    await publishPatchFiles(stagingDir, rollbackDir, outDir, prepared.files);
+  } finally {
+    await removeIfExists(stagingDir);
+    await removeIfExists(rollbackDir);
   }
 
   return {
@@ -162,23 +169,90 @@ async function writePatchFiles(
   };
 }
 
+type PatchWriteRecord = {
+  relativeFilePath: string;
+  existed: boolean;
+};
+
+async function publishPatchFiles(
+  stagingDir: string,
+  rollbackDir: string,
+  outDir: string,
+  files: PreparedFile[]
+): Promise<void> {
+  const published: PatchWriteRecord[] = [];
+
+  try {
+    for (const file of files) {
+      const relativeFilePath = file.relativeFilePath;
+      const sourcePath = path.join(stagingDir, relativeFilePath);
+      const targetPath = path.join(outDir, relativeFilePath);
+      const rollbackPath = path.join(rollbackDir, relativeFilePath);
+      const existed = await pathExists(targetPath);
+
+      if (existed) {
+        await mkdir(path.dirname(rollbackPath), { recursive: true });
+        await copyFile(targetPath, rollbackPath);
+      }
+
+      await atomicReplaceFile(sourcePath, targetPath);
+      published.push({ relativeFilePath, existed });
+    }
+  } catch (error: unknown) {
+    await rollbackPatchFiles(rollbackDir, outDir, published);
+    throw error;
+  }
+}
+
+async function rollbackPatchFiles(
+  rollbackDir: string,
+  outDir: string,
+  published: PatchWriteRecord[]
+): Promise<void> {
+  for (const record of published.reverse()) {
+    const targetPath = path.join(outDir, record.relativeFilePath);
+    if (record.existed) {
+      await atomicReplaceFile(path.join(rollbackDir, record.relativeFilePath), targetPath);
+    } else {
+      await rm(targetPath, { force: true });
+    }
+  }
+}
+
 async function writeInPlaceFiles(
   root: string,
   prepared: { files: PreparedFile[]; skipped: number },
   options: ApplyOptions
 ): Promise<ApplyResult> {
   const backupDir = path.resolve(options.backupDir ?? path.join(root, `.rpgm-ai-translator-backup-${timestamp()}`));
+  const stagingDir = await createSiblingTempDir(root, "staging");
+  const backupStagingDir = await createSiblingTempDir(backupDir, "backup");
   const filesWritten: string[] = [];
   let unitsApplied = 0;
 
-  for (const file of prepared.files) {
-    await writeBackupFile(path.join(backupDir, file.relativeFilePath), file);
-  }
+  try {
+    for (const file of prepared.files) {
+      await writePreparedFile(path.join(stagingDir, file.relativeFilePath), file);
+      await writeBackupFile(path.join(backupStagingDir, file.relativeFilePath), file);
+    }
 
-  for (const file of prepared.files) {
-    await writePreparedFile(file.sourcePath, file);
-    filesWritten.push(file.sourcePath);
-    unitsApplied += file.unitsApplied;
+    await publishDirectory(backupStagingDir, backupDir);
+
+    const replaced: PreparedFile[] = [];
+    try {
+      for (const file of prepared.files) {
+        await atomicReplaceFile(path.join(stagingDir, file.relativeFilePath), file.sourcePath);
+        replaced.push(file);
+        filesWritten.push(file.sourcePath);
+        unitsApplied += file.unitsApplied;
+      }
+    } catch (error: unknown) {
+      await restoreInPlaceFiles(backupDir, replaced);
+      throw error;
+    }
+  } finally {
+    await removeIfExists(stagingDir);
+    await removeIfExists(backupStagingDir);
   }
 
   return {
@@ -188,6 +262,64 @@ async function writeInPlaceFiles(
     skipped: prepared.skipped,
     backupDir
   };
+}
+
+async function publishDirectory(stagingDir: string, targetDir: string): Promise<void> {
+  await mkdir(path.dirname(targetDir), { recursive: true });
+  const rollbackDir = await uniqueSiblingPath(targetDir, "rollback");
+
+  if (!(await pathExists(targetDir))) {
+    await rename(stagingDir, targetDir);
+    return;
+  }
+
+  await rename(targetDir, rollbackDir);
+  try {
+    await rename(stagingDir, targetDir);
+    await removeIfExists(rollbackDir);
+  } catch (error: unknown) {
+    if (!(await pathExists(targetDir)) && (await pathExists(rollbackDir))) {
+      await rename(rollbackDir, targetDir);
+    }
+    throw error;
+  }
+}
+
+async function atomicReplaceFile(sourcePath: string, targetPath: string): Promise<void> {
+  await mkdir(path.dirname(targetPath), { recursive: true });
+  const tempTargetPath = await uniqueSiblingPath(targetPath, "replace");
+  await copyFile(sourcePath, tempTargetPath);
+  await rename(tempTargetPath, targetPath);
+}
+
+async function restoreInPlaceFiles(backupDir: string, replaced: PreparedFile[]): Promise<void> {
+  for (const file of replaced.reverse()) {
+    await atomicReplaceFile(path.join(backupDir, file.relativeFilePath), file.sourcePath);
+  }
+}
+
+async function createSiblingTempDir(targetPath: string, label: string): Promise<string> {
+  const parent = path.dirname(targetPath);
+  await mkdir(parent, { recursive: true });
+  return mkdtemp(path.join(parent, `.${path.basename(targetPath)}.${label}-`));
+}
+
+async function uniqueSiblingPath(targetPath: string, label: string): Promise<string> {
+  const parent = path.dirname(targetPath);
+  const baseName = path.basename(targetPath);
+  let attempt = 0;
+
+  while (true) {
+    const candidate = path.join(parent, `.${baseName}.${label}-${timestamp()}-${process.pid}-${attempt}`);
+    if (!(await pathExists(candidate))) {
+      return candidate;
+    }
+    attempt += 1;
+  }
+}
+
+async function removeIfExists(targetPath: string): Promise<void> {
+  await rm(targetPath, { recursive: true, force: true });
 }
 
 async function writePreparedFile(filePath: string, file: PreparedFile): Promise<void> {

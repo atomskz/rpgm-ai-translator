@@ -15,6 +15,8 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
   existing `core/types` public export.
 - Split translation memory into JSONL storage, memory-aware pipeline, and
   translation retry modules, and centralize shared batch sizing helpers.
+- Make patch and in-place writes stage files before publishing, with rollback
+  for existing patch outputs and partially applied in-place writes.
 
 ## 0.1.3 - 2026-06-20
 

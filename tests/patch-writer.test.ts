@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
@@ -39,6 +39,38 @@ describe("patch writer", () => {
     expect(await readFile(path.join(root, "data", "Items.json"), "utf8")).toContain("Restores");
     const patched = JSON.parse(await readFile(path.join(outDir, "data", "Items.json"), "utf8"));
     expect(patched[1].description).toBe(String.raw`Восстанавливает \V[1] ОЗ.`);
+  });
+
+  it("preserves unrelated files already present in the patch directory", async () => {
+    const root = path.join(tmpdir(), `rpgm-patch-preserve-${Date.now()}`);
+    const outDir = path.join(tmpdir(), `rpgm-patch-preserve-out-${Date.now()}`);
+    await mkdir(path.join(root, "data"), { recursive: true });
+    await mkdir(path.join(root, "js"), { recursive: true });
+    await mkdir(outDir, { recursive: true });
+    await writeFile(path.join(root, "js", "rpg_core.js"), "", "utf8");
+    await writeFile(path.join(outDir, "units.json"), "[]\n", "utf8");
+    await writeJson(path.join(root, "data", "Actors.json"), [null, { id: 1, name: "Aria" }]);
+
+    const extractor = new RpgMakerMvMzExtractor();
+    const result = await extractor.applyTranslations(
+      root,
+      [
+        {
+          id: "Actors.1.name",
+          source: "Aria",
+          translation: "Ария",
+          provider: "manual",
+          model: "manual",
+          status: "translated"
+        }
+      ],
+      { mode: "patch", outDir }
+    );
+
+    const patched = JSON.parse(await readFile(path.join(outDir, "data", "Actors.json"), "utf8"));
+    expect(result.unitsApplied).toBe(1);
+    expect(patched[1].name).toBe("Ария");
+    expect(await readFile(path.join(outDir, "units.json"), "utf8")).toBe("[]\n");
   });
 
   it("applies manually imported minimal translation JSON through the CLI", async () => {
@@ -260,6 +292,68 @@ describe("patch writer", () => {
     });
     expect(changed[1].name).toBe("Ария");
     expect(backup[1].name).toBe("Aria");
+  });
+
+  it("rolls back in-place files when a later write fails", async () => {
+    const root = path.join(tmpdir(), `rpgm-in-place-rollback-${Date.now()}`);
+    const backupDir = path.join(tmpdir(), `rpgm-in-place-rollback-backup-${Date.now()}`);
+    const jsDir = path.join(root, "js");
+    await mkdir(path.join(root, "data"), { recursive: true });
+    await mkdir(jsDir, { recursive: true });
+    await writeFile(path.join(jsDir, "rmmz_core.js"), "", "utf8");
+    await writeJson(path.join(root, "data", "Actors.json"), [null, { id: 1, name: "Aria" }]);
+    await writeFile(
+      path.join(jsDir, "plugins.js"),
+      `var $plugins = ${JSON.stringify([
+        {
+          name: "MenuText",
+          status: true,
+          parameters: {
+            Label: "Quest Log"
+          }
+        }
+      ])};\n`,
+      "utf8"
+    );
+
+    const extractor = new RpgMakerMvMzExtractor();
+    const translations: TranslationResult[] = [
+      {
+        id: "Actors.1.name",
+        source: "Aria",
+        translation: "Ария",
+        provider: "manual",
+        model: "manual",
+        status: "translated"
+      },
+      {
+        id: "plugins.0.parameters.Label",
+        source: "Quest Log",
+        translation: "Журнал заданий",
+        provider: "manual",
+        model: "manual",
+        status: "translated"
+      }
+    ];
+
+    await chmod(jsDir, 0o555);
+    try {
+      await expect(
+        extractor.applyTranslations(root, translations, {
+          mode: "in-place",
+          backupDir,
+          includePlugins: true
+        })
+      ).rejects.toThrow();
+    } finally {
+      await chmod(jsDir, 0o755);
+    }
+
+    const actors = JSON.parse(await readFile(path.join(root, "data", "Actors.json"), "utf8"));
+    const backupActors = JSON.parse(await readFile(path.join(backupDir, "data", "Actors.json"), "utf8"));
+    expect(actors[1].name).toBe("Aria");
+    expect(backupActors[1].name).toBe("Aria");
+    expect(await readFile(path.join(jsDir, "plugins.js"), "utf8")).toContain("Quest Log");
   });
 
   it("writes translated plugin parameters to plugins.js when plugin extraction is enabled", async () => {
