@@ -4,6 +4,17 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- Key translation memory and in-run deduplication on a composite cache key that
+  folds in the target/source language, layout constraints, context and glossary
+  instead of the source string alone. This stops a memory file from returning a
+  previous language's translations after switching `--target`, and stops two
+  units that merely share a source string but have different constraints or
+  context from collapsing onto a single translation. Memory entries now also
+  record `cacheKey` and `targetLanguage`; older entries fall back to the source
+  hash and are simply re-translated.
+
 ## 0.1.4 - 2026-06-21
 
 ### Changed

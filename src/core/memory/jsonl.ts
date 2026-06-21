@@ -7,14 +7,15 @@ export class JsonlTranslationMemory implements TranslationMemory {
 
   constructor(private readonly filePath: string) {}
 
-  async get(sourceHash: string): Promise<MemoryEntry | undefined> {
-    return (await this.readAll()).get(sourceHash);
+  async get(cacheKey: string): Promise<MemoryEntry | undefined> {
+    return (await this.readAll()).get(cacheKey);
   }
 
   async upsert(entry: MemoryEntry): Promise<void> {
     const entries = await this.readAll();
-    const existing = entries.get(entry.sourceHash);
-    entries.set(entry.sourceHash, {
+    const key = keyOf(entry);
+    const existing = entries.get(key);
+    entries.set(key, {
       ...entry,
       createdAt: existing?.createdAt ?? entry.createdAt,
       updatedAt: entry.updatedAt
@@ -29,8 +30,9 @@ export class JsonlTranslationMemory implements TranslationMemory {
 
     const entries = await this.readAll();
     for (const entry of entriesToUpsert) {
-      const existing = entries.get(entry.sourceHash);
-      entries.set(entry.sourceHash, {
+      const key = keyOf(entry);
+      const existing = entries.get(key);
+      entries.set(key, {
         ...entry,
         createdAt: existing?.createdAt ?? entry.createdAt,
         updatedAt: entry.updatedAt
@@ -64,7 +66,7 @@ export class JsonlTranslationMemory implements TranslationMemory {
         if (!isMemoryEntry(parsed)) {
           throw new Error(`Invalid memory entry at line ${index + 1}`);
         }
-        entries.set(parsed.sourceHash, parsed);
+        entries.set(keyOf(parsed), parsed);
       });
     this.cachedEntries = entries;
     return entries;
@@ -80,6 +82,10 @@ export class JsonlTranslationMemory implements TranslationMemory {
   }
 }
 
+function keyOf(entry: MemoryEntry): string {
+  return entry.cacheKey ?? entry.sourceHash;
+}
+
 function isMemoryEntry(value: unknown): value is MemoryEntry {
   if (typeof value !== "object" || value == null || Array.isArray(value)) {
     return false;
@@ -89,6 +95,8 @@ function isMemoryEntry(value: unknown): value is MemoryEntry {
   return (
     typeof candidate.source === "string" &&
     typeof candidate.sourceHash === "string" &&
+    (candidate.cacheKey == null || typeof candidate.cacheKey === "string") &&
+    (candidate.targetLanguage == null || typeof candidate.targetLanguage === "string") &&
     typeof candidate.translation === "string" &&
     typeof candidate.category === "string" &&
     typeof candidate.provider === "string" &&

@@ -3,7 +3,37 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli/app.js";
+import { RpgMakerMvMzExtractor } from "../src/core/extractors/index.js";
+import { translationCacheKey } from "../src/core/memory/index.js";
 import { hashSource } from "../src/core/utils/hash.js";
+import type { MemoryEntry } from "../src/core/types.js";
+
+async function seedBrokenProfileMemory(
+  gamePath: string,
+  memoryPath: string,
+  source: string,
+  translation: string
+): Promise<void> {
+  const units = await new RpgMakerMvMzExtractor().extract(gamePath);
+  const profileUnit = units.find((unit) => unit.id === "Actors.1.profile");
+  if (!profileUnit) {
+    throw new Error("Test setup error: Actors.1.profile unit was not extracted");
+  }
+  const entry: MemoryEntry = {
+    source,
+    sourceHash: hashSource(source),
+    cacheKey: translationCacheKey(profileUnit, { targetLanguage: "ru" }),
+    targetLanguage: "ru",
+    translation,
+    category: "description",
+    provider: "manual",
+    model: "manual",
+    status: "translated",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  };
+  await writeFile(memoryPath, `${JSON.stringify(entry)}\n`, "utf8");
+}
 
 describe("run command", () => {
   it("runs the full mock pipeline and writes patch, report and memory files", async () => {
@@ -71,21 +101,7 @@ describe("run command", () => {
         profile: sourceWithControlCode
       }
     ]);
-    await writeFile(
-      memoryPath,
-      `${JSON.stringify({
-        source: sourceWithControlCode,
-        sourceHash: hashSource(sourceWithControlCode),
-        translation: "[ru] Hello without placeholder.",
-        category: "description",
-        provider: "manual",
-        model: "manual",
-        status: "translated",
-        createdAt: "2026-01-01T00:00:00.000Z",
-        updatedAt: "2026-01-01T00:00:00.000Z"
-      })}\n`,
-      "utf8"
-    );
+    await seedBrokenProfileMemory(gamePath, memoryPath, sourceWithControlCode, "[ru] Hello without placeholder.");
 
     const exitCode = await runCli(
       ["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--memory", memoryPath],
@@ -122,21 +138,7 @@ describe("run command", () => {
         profile: sourceWithControlCode
       }
     ]);
-    await writeFile(
-      memoryPath,
-      `${JSON.stringify({
-        source: sourceWithControlCode,
-        sourceHash: hashSource(sourceWithControlCode),
-        translation: "[ru] Hello without placeholder.",
-        category: "description",
-        provider: "manual",
-        model: "manual",
-        status: "translated",
-        createdAt: "2026-01-01T00:00:00.000Z",
-        updatedAt: "2026-01-01T00:00:00.000Z"
-      })}\n`,
-      "utf8"
-    );
+    await seedBrokenProfileMemory(gamePath, memoryPath, sourceWithControlCode, "[ru] Hello without placeholder.");
 
     const output: string[] = [];
     const exitCode = await runCli(

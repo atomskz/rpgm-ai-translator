@@ -1,5 +1,6 @@
 import { normalizeBatchSize } from "../batching/index.js";
 import type { LLMProvider, TranslateOptions, TranslationResult, TranslationUnit } from "../types.js";
+import { hashCacheKey } from "../utils/hash.js";
 import { translateBatchWithRetry } from "./retry.js";
 import type { MemoryEntry, TranslationMemory } from "./types.js";
 
@@ -13,13 +14,18 @@ export async function translateWithMemory(
     return translateUniqueBatches(units, provider, options);
   }
 
+  const cacheKeyByUnitId = new Map(units.map((unit) => [unit.id, translationCacheKey(unit, options)]));
+  const cacheKeyFor = (unit: TranslationUnit): string =>
+    cacheKeyByUnitId.get(unit.id) ?? translationCacheKey(unit, options);
+
   const resultsByUnitId = new Map<string, TranslationResult>();
-  const missesByHash = new Map<string, TranslationUnit>();
-  const missedUnitsByHash = new Map<string, TranslationUnit[]>();
+  const missesByKey = new Map<string, TranslationUnit>();
+  const missedUnitsByKey = new Map<string, TranslationUnit[]>();
   let memoryCompleted = 0;
 
   for (const unit of units) {
-    const cached = await memory.get(unit.hash);
+    const cacheKey = cacheKeyFor(unit);
+    const cached = await memory.get(cacheKey);
     if (cached && cached.status === "translated") {
       resultsByUnitId.set(unit.id, {
         id: unit.id,
@@ -40,34 +46,35 @@ export async function translateWithMemory(
       continue;
     }
 
-    if (!missesByHash.has(unit.hash)) {
-      missesByHash.set(unit.hash, unit);
+    if (!missesByKey.has(cacheKey)) {
+      missesByKey.set(cacheKey, unit);
     }
-    const missedUnits = missedUnitsByHash.get(unit.hash) ?? [];
+    const missedUnits = missedUnitsByKey.get(cacheKey) ?? [];
     missedUnits.push(unit);
-    missedUnitsByHash.set(unit.hash, missedUnits);
+    missedUnitsByKey.set(cacheKey, missedUnits);
   }
 
   const optionsWithExpandedBatchResults = expandBatchResultsForDuplicateMisses(
     options,
-    missesByHash,
-    missedUnitsByHash
+    missesByKey,
+    missedUnitsByKey
   );
   const translatedMisses =
-    missesByHash.size > 0
-      ? await translateUniqueBatches(Array.from(missesByHash.values()), provider, optionsWithExpandedBatchResults)
+    missesByKey.size > 0
+      ? await translateUniqueBatches(Array.from(missesByKey.values()), provider, optionsWithExpandedBatchResults)
       : [];
-  const translatedByHash = new Map<string, TranslationResult>();
+  const translatedByKey = new Map<string, TranslationResult>();
   const memoryEntriesToUpsert: MemoryEntry[] = [];
 
   for (const result of translatedMisses) {
-    const unit = missesByHash.get(hashForResult(result, missesByHash));
+    const cacheKey = keyForResult(result, missesByKey);
+    const unit = cacheKey ? missesByKey.get(cacheKey) : undefined;
     if (!unit) {
       continue;
     }
-    translatedByHash.set(unit.hash, result);
+    translatedByKey.set(cacheKey, result);
     if (result.status === "translated") {
-      memoryEntriesToUpsert.push(toMemoryEntry(unit, result));
+      memoryEntriesToUpsert.push(toMemoryEntry(unit, result, cacheKey, options));
     }
   }
   await upsertMemoryEntries(memory, memoryEntriesToUpsert);
@@ -77,7 +84,7 @@ export async function translateWithMemory(
       continue;
     }
 
-    const translated = translatedByHash.get(unit.hash);
+    const translated = translatedByKey.get(cacheKeyFor(unit));
     if (translated) {
       resultsByUnitId.set(unit.id, {
         ...translated,
@@ -138,8 +145,8 @@ async function translateUniqueBatches(
 
 function expandBatchResultsForDuplicateMisses(
   options: TranslateOptions,
-  missesByHash: Map<string, TranslationUnit>,
-  missedUnitsByHash: Map<string, TranslationUnit[]>
+  missesByKey: Map<string, TranslationUnit>,
+  missedUnitsByKey: Map<string, TranslationUnit[]>
 ): TranslateOptions {
   const originalOnBatchResults = options.onBatchResults;
   if (!originalOnBatchResults) {
@@ -150,11 +157,12 @@ function expandBatchResultsForDuplicateMisses(
     ...options,
     onBatchResults: async (batchResults) => {
       const expandedResults = batchResults.flatMap((result) => {
-        const unit = missesByHash.get(hashForResult(result, missesByHash));
-        if (!unit) {
+        const cacheKey = keyForResult(result, missesByKey);
+        const missedUnits = cacheKey ? missedUnitsByKey.get(cacheKey) : undefined;
+        if (!missedUnits) {
           return [result];
         }
-        return (missedUnitsByHash.get(unit.hash) ?? [unit]).map((missedUnit) => ({
+        return missedUnits.map((missedUnit) => ({
           ...result,
           id: missedUnit.id,
           source: missedUnit.source
@@ -176,20 +184,46 @@ async function upsertMemoryEntries(memory: TranslationMemory, entries: MemoryEnt
   }
 }
 
-function hashForResult(result: TranslationResult, missesByHash: Map<string, TranslationUnit>): string {
-  for (const [hash, unit] of missesByHash.entries()) {
+function keyForResult(result: TranslationResult, missesByKey: Map<string, TranslationUnit>): string {
+  for (const [cacheKey, unit] of missesByKey.entries()) {
     if (unit.id === result.id) {
-      return hash;
+      return cacheKey;
     }
   }
   return "";
 }
 
-function toMemoryEntry(unit: TranslationUnit, result: TranslationResult): MemoryEntry {
+/**
+ * Builds the memory/dedup key for a unit. It deliberately folds the target and
+ * source languages, the unit's layout constraints, the surrounding context and
+ * the active glossary into the digest so that a cached translation is only
+ * reused when every input that shaped it is identical. Keying on the source
+ * text alone reused translations across languages and collapsed units that
+ * happened to share a source string but had different constraints/context.
+ */
+export function translationCacheKey(unit: TranslationUnit, options: TranslateOptions): string {
+  return hashCacheKey({
+    source: unit.source,
+    targetLanguage: options.targetLanguage ?? "",
+    sourceLanguage: options.sourceLanguage ?? "",
+    constraints: unit.constraints ?? {},
+    context: unit.context ?? {},
+    glossary: options.glossary ?? null
+  });
+}
+
+function toMemoryEntry(
+  unit: TranslationUnit,
+  result: TranslationResult,
+  cacheKey: string,
+  options: TranslateOptions
+): MemoryEntry {
   const now = new Date().toISOString();
   return {
     source: unit.source,
     sourceHash: unit.hash,
+    cacheKey,
+    targetLanguage: options.targetLanguage,
     translation: result.translation,
     category: unit.category,
     context: unit.context,

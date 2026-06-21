@@ -97,6 +97,35 @@ describe("translation memory", () => {
     expect(secondRun.every((result) => result.metadata?.fromMemory === true)).toBe(true);
   });
 
+  it("does not reuse memory across target languages", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-memory-lang-"));
+    const memory = new JsonlTranslationMemory(path.join(root, "memory.jsonl"));
+    const provider = new CountingProvider();
+    const units = [unit("Actors.1.name", "Aria")];
+
+    const ru = await translateWithMemory(units, provider, { targetLanguage: "ru" }, memory);
+    const fr = await translateWithMemory(units, provider, { targetLanguage: "fr" }, memory);
+
+    expect(provider.calls).toEqual([["Actors.1.name"], ["Actors.1.name"]]);
+    expect(ru[0].translation).toBe("[ru] Aria");
+    expect(fr[0].translation).toBe("[fr] Aria");
+    expect(fr[0].metadata?.fromMemory).not.toBe(true);
+  });
+
+  it("translates equal source strings with different constraints separately", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-memory-constraints-"));
+    const memory = new JsonlTranslationMemory(path.join(root, "memory.jsonl"));
+    const provider = new CountingProvider();
+    const units: TranslationUnit[] = [
+      { ...unit("Items.1.name", "Sword"), constraints: { maxLength: 8 } },
+      { ...unit("Items.2.name", "Sword"), constraints: { maxLength: 24 } }
+    ];
+
+    await translateWithMemory(units, provider, { targetLanguage: "ru" }, memory);
+
+    expect(provider.calls).toEqual([["Items.1.name", "Items.2.name"]]);
+  });
+
   it("splits provider requests by batch size", async () => {
     const provider = new CountingProvider();
     const units = [unit("Actors.1.name", "Aria"), unit("Actors.2.name", "Luna"), unit("Actors.3.name", "Mira")];
