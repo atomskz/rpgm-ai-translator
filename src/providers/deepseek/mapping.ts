@@ -3,10 +3,86 @@ import type {
   CharacterGlossary,
   ReviewUnit,
   TranslationResult,
-  TranslationUnit
+  TranslationUnit,
+  ValidationIssue
 } from "../../core/types.js";
 import { DeepSeekProviderError, providerIssue } from "./errors.js";
 import type { ChatCompletionResponse, ModelTranslationPayload } from "./types.js";
+
+type ModelTranslation = ModelTranslationPayload["translations"][number];
+
+/**
+ * Indexes the model's translations by id, keeping the FIRST occurrence of any
+ * id. The model can return the same id twice; last-write-wins silently dropped
+ * the earlier (and usually intended) value.
+ */
+function indexTranslationsById(items: ModelTranslation[]): Map<string, string> {
+  const byId = new Map<string, string>();
+  for (const item of items) {
+    if (!byId.has(item.id)) {
+      byId.set(item.id, item.translation);
+    }
+  }
+  return byId;
+}
+
+/**
+ * Detects ids the model returned that were not requested, and ids it returned
+ * more than once. Either signals an unreliable response (the matched
+ * translations may be misattributed), so it is surfaced as a warning attached
+ * to the batch's first result rather than being silently ignored.
+ */
+function responseIdAnomalyIssue(
+  ownerId: string,
+  requestedIds: Set<string>,
+  items: ModelTranslation[]
+): ValidationIssue | undefined {
+  const seen = new Set<string>();
+  const unexpected = new Set<string>();
+  const duplicate = new Set<string>();
+  for (const item of items) {
+    if (!requestedIds.has(item.id)) {
+      unexpected.add(item.id);
+    }
+    if (seen.has(item.id)) {
+      duplicate.add(item.id);
+    } else {
+      seen.add(item.id);
+    }
+  }
+  if (unexpected.size === 0 && duplicate.size === 0) {
+    return undefined;
+  }
+  const parts: string[] = [];
+  if (unexpected.size > 0) {
+    parts.push(`unexpected ids [${[...unexpected].join(", ")}]`);
+  }
+  if (duplicate.size > 0) {
+    parts.push(`duplicate ids [${[...duplicate].join(", ")}]`);
+  }
+  return {
+    id: ownerId,
+    severity: "warning",
+    code: "PROVIDER_RESPONSE_SCHEMA_ERROR",
+    message: `DeepSeek response contained ${parts.join(" and ")}`
+  };
+}
+
+function withResponseIdAnomalies(
+  results: TranslationResult[],
+  requestedIds: Set<string>,
+  payload: ModelTranslationPayload
+): TranslationResult[] {
+  if (results.length === 0) {
+    return results;
+  }
+  const anomaly = responseIdAnomalyIssue(results[0].id, requestedIds, payload.translations);
+  if (!anomaly) {
+    return results;
+  }
+  const [first, ...rest] = results;
+  return [{ ...first, issues: [...(first.issues ?? []), anomaly] }, ...rest];
+}
 
 export function missingApiKeyTranslationResults(
   providerName: string,
@@ -49,10 +125,11 @@ export function translationResultsFromPayload(
   payload: ModelTranslationPayload,
   response: ChatCompletionResponse
 ): TranslationResult[] {
-  const byId = new Map(payload.translations.map((item) => [item.id, item.translation]));
+  const byId = indexTranslationsById(payload.translations);
+  const requestedIds = new Set(batch.map((unit) => unit.id));
   const usage = response.usage;
 
-  return batch.map((unit) => {
+  const results = batch.map((unit) => {
     const translation = byId.get(unit.id);
     if (typeof translation !== "string") {
       return failedTranslationResult(
@@ -72,10 +149,12 @@ export function translationResultsFromPayload(
       translation,
       provider: providerName,
       model,
-      status: "translated",
+      status: "translated" as const,
       metadata: usage ? { usage } : undefined
     };
   });
+
+  return withResponseIdAnomalies(results, requestedIds, payload);
 }
 
 export function reviewResultsFromPayload(
@@ -85,10 +164,11 @@ export function reviewResultsFromPayload(
   payload: ModelTranslationPayload,
   response: ChatCompletionResponse
 ): TranslationResult[] {
-  const byId = new Map(payload.translations.map((item) => [item.id, item.translation]));
+  const byId = indexTranslationsById(payload.translations);
+  const requestedIds = new Set(batch.map((unit) => unit.id));
   const usage = response.usage;
 
-  return batch.map((unit) => {
+  const results = batch.map((unit) => {
     const translation = byId.get(unit.id);
     if (typeof translation !== "string") {
       return failedReviewResult(
@@ -108,10 +188,12 @@ export function reviewResultsFromPayload(
       translation,
       provider: providerName,
       model,
-      status: "translated",
+      status: "translated" as const,
       metadata: usage ? { usage, reviewed: true } : { reviewed: true }
     };
   });
+
+  return withResponseIdAnomalies(results, requestedIds, payload);
 }
 
 export function failedTranslationResults(

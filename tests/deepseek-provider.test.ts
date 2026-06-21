@@ -55,6 +55,39 @@ describe("DeepSeekProvider", () => {
     ]);
   });
 
+  it("keeps the first translation for duplicate ids and flags unexpected ids", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      fetchFn: async () =>
+        response(200, {
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  translations: [
+                    { id: "Actors.1.name", translation: "Ария" },
+                    { id: "Actors.1.name", translation: "Арианна" },
+                    { id: "Ghost.9.name", translation: "Призрак" }
+                  ]
+                })
+              }
+            }
+          ]
+        })
+    });
+
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    expect(results).toHaveLength(1);
+    expect(results[0].translation).toBe("Ария");
+    expect(results[0].status).toBe("translated");
+    expect(results[0].issues).toContainEqual(
+      expect.objectContaining({ code: "PROVIDER_RESPONSE_SCHEMA_ERROR", severity: "warning" })
+    );
+    expect(results[0].issues?.[0].message).toContain("Ghost.9.name");
+    expect(results[0].issues?.[0].message).toContain("Actors.1.name");
+  });
+
   it("retries temporary API failures", async () => {
     let calls = 0;
     const provider = new DeepSeekProvider({

@@ -5,7 +5,12 @@ export type PlaceholderProtectionResult = {
   placeholders: Placeholder[];
 };
 
-const CONTROL_CODE_PATTERN = /\\(?:[A-Za-z]+(?:\[[^\]\r\n]*\])?|\{|\}|\.|\||!|>)/g;
+// Backslash control codes. Besides the lettered codes (`\V[n]`, `\C[n]`, ...)
+// and the punctuation codes, this also protects `\\` (escaped backslash), `\$`
+// (gold window), `\<`/`\>` (instant-print toggle) and `\^` (skip wait at end of
+// message). The `\\` alternative is listed first so a literal backslash is
+// consumed before the lettered branch can misread the following text.
+const CONTROL_CODE_PATTERN = /\\(?:\\|[A-Za-z]+(?:\[[^\]\r\n]*\])?|\{|\}|\.|\||!|>|<|\$|\^)/g;
 const FORMAT_TOKEN_PATTERN = /%(?:\d+|(?:\.\d+)?[sdif])/g;
 const TEMPLATE_TOKEN_PATTERN = /\{[A-Za-z_][A-Za-z0-9_]*\}/g;
 const TAG_PATTERN = /<[^<>\n]+>/g;

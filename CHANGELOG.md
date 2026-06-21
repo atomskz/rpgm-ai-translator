@@ -18,6 +18,13 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
   placeholder-token form, so constrained UI text (choices, name input, plugin
   choices) is checked against the characters the engine actually renders instead
   of the `<PH_n>` tokens.
+- Protect the `\$` (gold window), `\<`/`\^` (instant-print / skip-wait) and `\\`
+  (escaped backslash) RPG Maker control codes as placeholders so the model can
+  no longer drop or alter them and validation can detect changes to them.
+- Reconcile DeepSeek response ids against the requested batch: keep the first
+  translation for a duplicated id instead of silently using the last, and surface
+  unexpected or duplicate ids as a `PROVIDER_RESPONSE_SCHEMA_ERROR` warning
+  instead of dropping them without trace.
 
 ### Changed
 

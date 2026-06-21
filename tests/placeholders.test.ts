@@ -47,4 +47,28 @@ describe("placeholder protection", () => {
     ]);
     expect(restorePlaceholders(protectedText.text, protectedText.placeholders)).toBe(source);
   });
+
+  it("protects gold window, instant-print, skip-wait and escaped backslash codes", () => {
+    const source = String.raw`\$ gold \< fast \^ skip \\ slash`;
+
+    const protectedText = protectPlaceholders(source);
+
+    expect(protectedText.placeholders.map((placeholder) => placeholder.value)).toEqual([
+      String.raw`\$`,
+      String.raw`\<`,
+      String.raw`\^`,
+      String.raw`\\`
+    ]);
+    expect(restorePlaceholders(protectedText.text, protectedText.placeholders)).toBe(source);
+  });
+
+  it("treats an escaped backslash before a letter as a single token", () => {
+    const source = String.raw`\\N[1]`;
+
+    const protectedText = protectPlaceholders(source);
+
+    expect(protectedText.placeholders.map((placeholder) => placeholder.value)).toEqual([String.raw`\\`]);
+    expect(protectedText.text).toBe("<PH_1>N[1]");
+    expect(restorePlaceholders(protectedText.text, protectedText.placeholders)).toBe(source);
+  });
 });
