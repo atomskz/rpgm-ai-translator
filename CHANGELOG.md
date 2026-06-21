@@ -10,6 +10,9 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
   result mapping, defaults, and public provider modules.
 - Centralize repeated CLI option parsing into shared provider, extraction, apply,
   and font option helpers.
+- Split the core domain types into focused engine, glossary, translation,
+  validation, options, reports, and interface modules while preserving the
+  existing `core/types` public export.
 
 ## 0.1.3 - 2026-06-20
 

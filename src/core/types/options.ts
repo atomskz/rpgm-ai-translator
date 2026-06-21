@@ -1,0 +1,100 @@
+import type { CharacterGlossary, Glossary } from "./glossary.js";
+import type { TranslationCategory, TranslationResult } from "./translation.js";
+
+export type ApplyMode = "patch" | "in-place" | "export" | "import";
+
+export type ApplyOptions = {
+  mode: ApplyMode;
+  outDir?: string;
+  backupDir?: string;
+  includePlugins?: boolean;
+  includeSpeakerNames?: boolean;
+};
+
+export type ApplyResult = {
+  mode: ApplyMode;
+  filesWritten: string[];
+  unitsApplied: number;
+  skipped: number;
+  backupDir?: string;
+};
+
+export type TranslateOptions = {
+  sourceLanguage?: string;
+  targetLanguage: string;
+  model?: string;
+  glossary?: Glossary;
+  characterGlossary?: CharacterGlossary;
+  timeoutMs?: number;
+  temperature?: number;
+  maxTokens?: number;
+  batchSize?: number;
+  retryAttempts?: number;
+  retryDelayMs?: number;
+  onProgress?: (event: TranslationProgressEvent) => void;
+  onBatchResults?: (results: TranslationResult[]) => void | Promise<void>;
+};
+
+export type ReviewOptions = TranslateOptions & {
+  reviewCategories?: TranslationCategory[];
+};
+
+export type CharacterInferenceOptions = TranslateOptions;
+
+export type TranslationProgressEvent =
+  | {
+      type: "memory-hit";
+      completed: number;
+      total: number;
+      unitId: string;
+    }
+  | {
+      type: "batch-start";
+      batchIndex: number;
+      batchCount: number;
+      batchSize: number;
+      completed: number;
+      total: number;
+    }
+  | {
+      type: "batch-complete";
+      batchIndex: number;
+      batchCount: number;
+      batchSize: number;
+      translated: number;
+      failed: number;
+      completed: number;
+      total: number;
+    }
+  | {
+      type: "batch-retry";
+      batchIndex: number;
+      batchCount: number;
+      attempt: number;
+      maxAttempts: number;
+      message: string;
+    }
+  | {
+      type: "review-batch-start";
+      batchIndex: number;
+      batchCount: number;
+      batchSize: number;
+      completed: number;
+      total: number;
+    }
+  | {
+      type: "review-batch-complete";
+      batchIndex: number;
+      batchCount: number;
+      batchSize: number;
+      reviewed: number;
+      failed: number;
+      completed: number;
+      total: number;
+    };
+
+export type ExtractOptions = {
+  includeEventComments?: boolean;
+  includePlugins?: boolean;
+  includeSpeakerNames?: boolean;
+};
