@@ -7,8 +7,8 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 ### Fixed
 
 - Key translation memory and in-run deduplication on a composite cache key that
-  folds in the target/source language, layout constraints, context and glossary
-  instead of the source string alone. This stops a memory file from returning a
+  folds in the category, target/source language, layout constraints, context and
+  glossary instead of the source string alone. This stops a memory file from returning a
   previous language's translations after switching `--target`, and stops two
   units that merely share a source string but have different constraints or
   context from collapsing onto a single translation. Memory entries now also
@@ -25,10 +25,12 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
   translation for a duplicated id instead of silently using the last, and surface
   unexpected or duplicate ids as a `PROVIDER_RESPONSE_SCHEMA_ERROR` warning
   instead of dropping them without trace.
-- Write the translation memory, `units.json` and `translations.json` atomically
+- Write the translation memory and generated JSON files (`units.json`,
+  `translations.json`, `report.json` and the character glossary) atomically
   (temp file + rename) so a crash mid-write can no longer truncate or wipe them,
-  and tolerate a corrupt final line when reading the memory file or a JSONL
-  checkpoint so a partially written file can still be resumed.
+  and skip corrupt lines when reading the memory file or a JSONL checkpoint (for
+  example a truncated line left by a crash mid-write) so a partially written file
+  can still be resumed.
 
 ### Changed
 

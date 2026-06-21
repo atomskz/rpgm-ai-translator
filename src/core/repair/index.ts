@@ -240,6 +240,7 @@ function failedRepairReviewBatch(
         code: "PROVIDER_RESPONSE_ERROR" as const,
         message: `Repair batch failed: ${message}`
       }
-    ]
+    ],
+    metadata: { reviewed: false }
   }));
 }

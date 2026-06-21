@@ -1,6 +1,6 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { readFile } from "node:fs/promises";
 import type { EngineId, TranslationReport, TranslationResult, TranslationUnit, ValidationIssue } from "../types.js";
+import { writeFileAtomic } from "../utils/fs.js";
 
 export type ReportInput = {
   units: TranslationUnit[];
@@ -37,8 +37,7 @@ export function createEmptyReport(engine: TranslationReport["engine"]): Translat
 }
 
 export async function writeReportFile(filePath: string, report: TranslationReport): Promise<void> {
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+  await writeFileAtomic(filePath, `${JSON.stringify(report, null, 2)}\n`);
 }
 
 export async function readReportFile(filePath: string): Promise<TranslationReport> {

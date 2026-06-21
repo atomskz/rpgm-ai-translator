@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli/app.js";
 import { RpgMakerMvMzExtractor } from "../src/core/extractors/index.js";
 import { translationCacheKey } from "../src/core/memory/index.js";
+import type { MemoryEntry } from "../src/core/memory/index.js";
 import { hashSource } from "../src/core/utils/hash.js";
-import type { MemoryEntry } from "../src/core/types.js";
 
 async function seedBrokenProfileMemory(
   gamePath: string,

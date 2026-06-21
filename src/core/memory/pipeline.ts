@@ -204,6 +204,7 @@ function keyForResult(result: TranslationResult, missesByKey: Map<string, Transl
 export function translationCacheKey(unit: TranslationUnit, options: TranslateOptions): string {
   return hashCacheKey({
     source: unit.source,
+    category: unit.category,
     targetLanguage: options.targetLanguage ?? "",
     sourceLanguage: options.sourceLanguage ?? "",
     constraints: unit.constraints ?? {},
