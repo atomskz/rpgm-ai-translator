@@ -6,6 +6,7 @@ import type {
   TranslationResult,
   TranslationUnit
 } from "../types.js";
+import { normalizeBatchSize } from "../batching/index.js";
 
 export type CharacterExtractionOptions = {
   includeDialogueMentions?: boolean;
@@ -183,11 +184,4 @@ function scoreCandidate(candidate: CharacterCandidate): number {
 function summarizeEvidence(candidate: CharacterCandidate): string {
   const sourceTypes = candidate.sources.join(", ");
   return `Auto-extracted candidate from ${sourceTypes}; occurrences: ${candidate.occurrences}.`;
-}
-
-function normalizeBatchSize(batchSize: number | undefined): number {
-  if (batchSize == null || !Number.isFinite(batchSize) || batchSize < 1) {
-    return 20;
-  }
-  return Math.floor(batchSize);
 }

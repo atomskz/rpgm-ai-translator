@@ -6,6 +6,7 @@ import type {
   TranslationUnit,
   ValidationIssue
 } from "../types.js";
+import { normalizeBatchSize, splitBatch } from "../batching/index.js";
 
 export type RepairOptions = ReviewOptions & {
   issueCodes?: ValidationIssue["code"][];
@@ -180,19 +181,4 @@ function needsRetranslation(
   }
 
   return issues.some((issue) => RETRANSLATE_CODES.has(issue.code));
-}
-
-function splitBatch<T>(items: T[], batchSize: number): T[][] {
-  const batches: T[][] = [];
-  for (let index = 0; index < items.length; index += batchSize) {
-    batches.push(items.slice(index, index + batchSize));
-  }
-  return batches;
-}
-
-function normalizeBatchSize(batchSize: number | undefined): number {
-  if (batchSize == null || !Number.isFinite(batchSize) || batchSize < 1) {
-    return 20;
-  }
-  return Math.floor(batchSize);
 }

@@ -6,6 +6,7 @@ import type {
   TranslationResult,
   TranslationUnit
 } from "../types.js";
+import { normalizeBatchSize, splitBatch } from "../batching/index.js";
 
 export type ReviewPassResult = {
   translations: TranslationResult[];
@@ -127,19 +128,4 @@ function groupReviewUnits(units: ReviewUnit[]): ReviewUnit[][] {
 
 function inferFileKey(id: string): string {
   return id.split(".").slice(0, 1).join(".");
-}
-
-function splitBatch<T>(items: T[], batchSize: number): T[][] {
-  const batches: T[][] = [];
-  for (let index = 0; index < items.length; index += batchSize) {
-    batches.push(items.slice(index, index + batchSize));
-  }
-  return batches;
-}
-
-function normalizeBatchSize(batchSize: number | undefined): number {
-  if (batchSize == null || !Number.isFinite(batchSize) || batchSize < 1) {
-    return 20;
-  }
-  return Math.floor(batchSize);
 }

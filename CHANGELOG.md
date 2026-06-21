@@ -13,6 +13,8 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 - Split the core domain types into focused engine, glossary, translation,
   validation, options, reports, and interface modules while preserving the
   existing `core/types` public export.
+- Split translation memory into JSONL storage, memory-aware pipeline, and
+  translation retry modules, and centralize shared batch sizing helpers.
 
 ## 0.1.3 - 2026-06-20
 
