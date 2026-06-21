@@ -16,9 +16,9 @@ import {
 } from "../checkpoints.js";
 import {
   assertProviderReady,
-  readNumberOption,
   readOption,
-  readPositiveIntegerOption,
+  readProviderCliOptions,
+  readProviderName,
   requireArg,
   requireOption
 } from "../options.js";
@@ -28,16 +28,11 @@ import type { CliIO } from "../types.js";
 export async function reviewCommand(args: string[], io: CliIO): Promise<number> {
   const unitsPath = requireArg(args[0], "units path");
   const translationsPath = requireArg(args[1], "translations path");
-  const providerName = readOption(args, "--provider") ?? "mock";
+  const providerName = readProviderName(args);
   assertProviderReady(providerName);
+  const providerOptions = readProviderCliOptions(args);
   const out = requireOption(args, "--out");
   const checkpointOption = readOption(args, "--checkpoint");
-  const targetLanguage = readOption(args, "--target") ?? "ru";
-  const model = readOption(args, "--model");
-  const batchSize = readPositiveIntegerOption(args, "--batch-size");
-  const timeoutMs = readPositiveIntegerOption(args, "--timeout-ms");
-  const temperature = readNumberOption(args, "--temperature", { min: 0, max: 2 });
-  const maxTokens = readPositiveIntegerOption(args, "--max-tokens");
   const glossaryPath = readOption(args, "--glossary");
   const charactersPath = readOption(args, "--characters");
   const units = await readTranslationUnitsFile(unitsPath);
@@ -56,12 +51,7 @@ export async function reviewCommand(args: string[], io: CliIO): Promise<number> 
   }
   io.stdout(`Writing review checkpoint: ${checkpointPath}\n`);
   const result = await reviewTranslations(unitsToReview, translationsWithCheckpoint, createProvider(providerName), {
-    targetLanguage,
-    model,
-    batchSize,
-    timeoutMs,
-    temperature,
-    maxTokens,
+    ...providerOptions,
     glossary,
     characterGlossary,
     onProgress: createProgressLogger(io),

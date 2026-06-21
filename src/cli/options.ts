@@ -1,4 +1,16 @@
-import type { ValidationIssue } from "../core/types.js";
+import type { ApplyOptions, ExtractOptions, TranslateOptions, ValidationIssue } from "../core/types.js";
+
+export type ProviderCliOptions = Pick<
+  TranslateOptions,
+  "targetLanguage" | "model" | "batchSize" | "timeoutMs" | "temperature" | "maxTokens"
+>;
+
+export type TranslateCliOptions = ProviderCliOptions & Pick<TranslateOptions, "retryAttempts">;
+
+export type FontCliOptions = {
+  fontPath?: string;
+  numberFontPath?: string;
+};
 
 export function readOption(args: string[], name: string): string | undefined {
   const index = args.indexOf(name);
@@ -95,6 +107,53 @@ export function assertProviderReady(providerName: string): void {
   if (providerName === "deepseek" && !process.env.DEEPSEEK_API_KEY?.trim()) {
     throw new Error("DEEPSEEK_API_KEY is required when using --provider deepseek");
   }
+}
+
+export function readProviderName(args: string[], defaultProvider = "mock"): string {
+  return readOption(args, "--provider") ?? defaultProvider;
+}
+
+export function readProviderCliOptions(args: string[]): ProviderCliOptions {
+  return {
+    targetLanguage: readOption(args, "--target") ?? "ru",
+    model: readOption(args, "--model"),
+    batchSize: readPositiveIntegerOption(args, "--batch-size"),
+    timeoutMs: readPositiveIntegerOption(args, "--timeout-ms"),
+    temperature: readNumberOption(args, "--temperature", { min: 0, max: 2 }),
+    maxTokens: readPositiveIntegerOption(args, "--max-tokens")
+  };
+}
+
+export function readTranslateCliOptions(args: string[]): TranslateCliOptions {
+  return {
+    ...readProviderCliOptions(args),
+    retryAttempts: readNonNegativeIntegerOption(args, "--retry-attempts")
+  };
+}
+
+export function readExtractOptions(args: string[]): ExtractOptions {
+  return {
+    includeEventComments: hasFlag(args, "--include-comments"),
+    includePlugins: hasFlag(args, "--include-plugins"),
+    includeSpeakerNames: hasFlag(args, "--include-speaker-names")
+  };
+}
+
+export function readApplyOptions(args: string[]): ApplyOptions {
+  return {
+    mode: (readOption(args, "--mode") ?? "patch") as ApplyOptions["mode"],
+    outDir: readOption(args, "--out"),
+    backupDir: readOption(args, "--backup"),
+    includePlugins: hasFlag(args, "--include-plugins"),
+    includeSpeakerNames: hasFlag(args, "--include-speaker-names")
+  };
+}
+
+export function readFontOptions(args: string[]): FontCliOptions {
+  return {
+    fontPath: readOption(args, "--font"),
+    numberFontPath: readOption(args, "--number-font")
+  };
 }
 
 function isValidationIssueCode(value: string): value is ValidationIssue["code"] {

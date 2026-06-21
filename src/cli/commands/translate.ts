@@ -17,10 +17,9 @@ import {
 import { maybeWriteReport } from "../file-utils.js";
 import {
   assertProviderReady,
-  readNonNegativeIntegerOption,
-  readNumberOption,
   readOption,
-  readPositiveIntegerOption,
+  readProviderName,
+  readTranslateCliOptions,
   requireArg
 } from "../options.js";
 import { createProgressLogger } from "../progress.js";
@@ -28,20 +27,14 @@ import type { CliIO } from "../types.js";
 
 export async function translateCommand(args: string[], io: CliIO): Promise<number> {
   const unitsPath = requireArg(args[0], "units path");
-  const providerName = readOption(args, "--provider") ?? "mock";
+  const providerName = readProviderName(args);
   assertProviderReady(providerName);
+  const providerOptions = readTranslateCliOptions(args);
   const out = readOption(args, "--out");
   const checkpointOption = readOption(args, "--checkpoint");
   const reportPath = readOption(args, "--report");
   const memoryPath = readOption(args, "--memory");
   const glossaryPath = readOption(args, "--glossary");
-  const targetLanguage = readOption(args, "--target") ?? "ru";
-  const model = readOption(args, "--model");
-  const batchSize = readPositiveIntegerOption(args, "--batch-size");
-  const retryAttempts = readNonNegativeIntegerOption(args, "--retry-attempts");
-  const timeoutMs = readPositiveIntegerOption(args, "--timeout-ms");
-  const temperature = readNumberOption(args, "--temperature", { min: 0, max: 2 });
-  const maxTokens = readPositiveIntegerOption(args, "--max-tokens");
   const units = await readTranslationUnitsFile(unitsPath);
   const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
   const checkpointPath = checkpointOption ?? (out ? defaultCheckpointPath(out) : undefined);
@@ -61,14 +54,8 @@ export async function translateCommand(args: string[], io: CliIO): Promise<numbe
     unitsToTranslate,
     provider,
     {
-      targetLanguage,
-      model,
+      ...providerOptions,
       glossary,
-      batchSize,
-      retryAttempts,
-      timeoutMs,
-      temperature,
-      maxTokens,
       onProgress: createProgressLogger(io),
       onBatchResults: checkpointPath
         ? async (batchResults) => {
@@ -80,7 +67,12 @@ export async function translateCommand(args: string[], io: CliIO): Promise<numbe
     memoryPath ? new JsonlTranslationMemory(memoryPath) : undefined
   );
   const translatedById = new Map(translatedResults.map((result) => [result.id, result]));
-  const results = units.map((unit) => translatedById.get(unit.id) ?? checkpointById.get(unit.id) ?? missingCheckpointResult(unit, providerName, model));
+  const results = units.map(
+    (unit) =>
+      translatedById.get(unit.id) ??
+      checkpointById.get(unit.id) ??
+      missingCheckpointResult(unit, providerName, providerOptions.model)
+  );
   const payload = `${JSON.stringify(results, null, 2)}\n`;
   if (out) {
     await writeTranslationResultsFile(out, results);

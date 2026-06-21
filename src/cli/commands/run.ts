@@ -21,11 +21,14 @@ import { createProvider } from "../../providers/index.js";
 import {
   assertProviderReady,
   hasFlag,
+  readApplyOptions,
+  readExtractOptions,
+  readFontOptions,
   readIssueCodesOption,
-  readNonNegativeIntegerOption,
-  readNumberOption,
   readOption,
+  readProviderName,
   readPositiveIntegerOption,
+  readTranslateCliOptions,
   requireArg,
   requireOption
 } from "../options.js";
@@ -35,19 +38,13 @@ import type { CliIO } from "../types.js";
 export async function runCommand(args: string[], io: CliIO): Promise<number> {
   const projectPath = requireArg(args[0], "project path");
   const outDir = requireOption(args, "--out");
-  const providerName = readOption(args, "--provider") ?? "mock";
+  const providerName = readProviderName(args);
   assertProviderReady(providerName);
-  const targetLanguage = readOption(args, "--target") ?? "ru";
-  const model = readOption(args, "--model");
-  const batchSize = readPositiveIntegerOption(args, "--batch-size");
-  const retryAttempts = readNonNegativeIntegerOption(args, "--retry-attempts");
-  const timeoutMs = readPositiveIntegerOption(args, "--timeout-ms");
-  const temperature = readNumberOption(args, "--temperature", { min: 0, max: 2 });
-  const maxTokens = readPositiveIntegerOption(args, "--max-tokens");
+  const providerOptions = readTranslateCliOptions(args);
+  const extractOptions = readExtractOptions(args);
+  const { fontPath, numberFontPath } = readFontOptions(args);
   const glossaryPath = readOption(args, "--glossary");
   const charactersPath = readOption(args, "--characters");
-  const fontPath = readOption(args, "--font");
-  const numberFontPath = readOption(args, "--number-font");
   const repairEnabled = hasFlag(args, "--repair");
   const repairAttempts = readPositiveIntegerOption(args, "--repair-attempts") ?? 1;
   const repairCodes = readIssueCodesOption(args, "--repair-codes");
@@ -58,11 +55,7 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
     throw new Error(`Unsupported or unknown RPG Maker engine for '${projectPath}'`);
   }
 
-  const units = await new RpgMakerMvMzExtractor(detector).extract(projectPath, {
-    includeEventComments: hasFlag(args, "--include-comments"),
-    includePlugins: hasFlag(args, "--include-plugins"),
-    includeSpeakerNames: hasFlag(args, "--include-speaker-names")
-  });
+  const units = await new RpgMakerMvMzExtractor(detector).extract(projectPath, extractOptions);
   await mkdir(outDir, { recursive: true });
   await writeTranslationUnitsFile(path.join(outDir, "units.json"), units);
   io.stdout(
@@ -75,28 +68,17 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
     units,
     provider,
     {
-      targetLanguage,
-      model,
+      ...providerOptions,
       glossary,
-      batchSize,
-      retryAttempts,
-      timeoutMs,
-      temperature,
-      maxTokens,
       onProgress: createProgressLogger(io)
     },
     new JsonlTranslationMemory(memoryPath)
   );
   if (hasFlag(args, "--review")) {
     const reviewResult = await reviewTranslations(units, translations, provider, {
-      targetLanguage,
-      model,
+      ...providerOptions,
       glossary,
       characterGlossary,
-      batchSize,
-      timeoutMs,
-      temperature,
-      maxTokens,
       onProgress: createProgressLogger(io)
     });
     translations = reviewResult.translations;
@@ -108,14 +90,9 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
     for (let attempt = 1; attempt <= repairAttempts && validationIssues.length > 0; attempt += 1) {
       io.stdout(`Repairing validation issues, attempt ${attempt}/${repairAttempts} (${validationIssues.length} issues)...\n`);
       const repairResult = await repairTranslations(units, translations, validationIssues, provider, {
-        targetLanguage,
-        model,
+        ...providerOptions,
         glossary,
         characterGlossary,
-        batchSize,
-        timeoutMs,
-        temperature,
-        maxTokens,
         issueCodes: repairCodes,
         onProgress: createProgressLogger(io)
       });
@@ -133,10 +110,11 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
   const safeTranslations = filterTranslationsWithoutValidationErrors(translations, validationIssues);
   io.stdout(`Applying patch with ${safeTranslations.length}/${translations.length} validation-safe translations...\n`);
   await new RpgMakerMvMzExtractor(detector).applyTranslations(projectPath, safeTranslations, {
+    ...readApplyOptions(args),
     mode: "patch",
     outDir,
-    includePlugins: hasFlag(args, "--include-plugins"),
-    includeSpeakerNames: hasFlag(args, "--include-speaker-names")
+    includePlugins: extractOptions.includePlugins,
+    includeSpeakerNames: extractOptions.includeSpeakerNames
   });
   if (fontPath) {
     io.stdout("Applying font patch...\n");

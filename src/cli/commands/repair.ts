@@ -19,8 +19,9 @@ import {
 import {
   assertProviderReady,
   readIssueCodesOption,
-  readNumberOption,
   readOption,
+  readProviderCliOptions,
+  readProviderName,
   readPositiveIntegerOption,
   requireArg,
   requireOption
@@ -34,15 +35,10 @@ export async function repairCommand(args: string[], io: CliIO): Promise<number> 
   const translationsPath = requireArg(args[1], "translations path");
   const reportPath = requireOption(args, "--report");
   const out = requireOption(args, "--out");
-  const providerName = readOption(args, "--provider") ?? "mock";
+  const providerName = readProviderName(args);
   assertProviderReady(providerName);
+  const providerOptions = readProviderCliOptions(args);
   const checkpointOption = readOption(args, "--checkpoint");
-  const targetLanguage = readOption(args, "--target") ?? "ru";
-  const model = readOption(args, "--model");
-  const batchSize = readPositiveIntegerOption(args, "--batch-size");
-  const timeoutMs = readPositiveIntegerOption(args, "--timeout-ms");
-  const temperature = readNumberOption(args, "--temperature", { min: 0, max: 2 });
-  const maxTokens = readPositiveIntegerOption(args, "--max-tokens");
   const glossaryPath = readOption(args, "--glossary");
   const charactersPath = readOption(args, "--characters");
   const issueCodes = readIssueCodesOption(args, "--codes");
@@ -75,12 +71,7 @@ export async function repairCommand(args: string[], io: CliIO): Promise<number> 
   for (let attempt = 1; attempt <= attempts && validationIssues.length > 0; attempt += 1) {
     io.stdout(`Repair attempt ${attempt}/${attempts}: ${validationIssues.length} targeted issues...\n`);
     const result = await repairTranslations(units, translations, validationIssues, provider, {
-      targetLanguage,
-      model,
-      batchSize,
-      timeoutMs,
-      temperature,
-      maxTokens,
+      ...providerOptions,
       glossary,
       characterGlossary,
       issueCodes,
