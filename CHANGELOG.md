@@ -20,6 +20,8 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 - Split the prompt builder into focused system prompt, glossary filtering,
   translation, review, and character inference modules while keeping the
   existing provider export surface.
+- Split validator checks into focused id/status, placeholder, token, constraint,
+  and glossary rule modules while keeping `DefaultValidator` as the coordinator.
 
 ## 0.1.3 - 2026-06-20
 
