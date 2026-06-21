@@ -10,7 +10,7 @@ export function validateNumbers(unit: TranslationUnit, result: TranslationResult
     return [];
   }
 
-  return [issue(unit.id, "warning", "NUMBER_CHANGED", "Numbers differ between source and translation")];
+  return [issue(unit.id, "error", "NUMBER_CHANGED", "Numbers differ between source and translation")];
 }
 
 export function validateVariables(unit: TranslationUnit, result: TranslationResult): ValidationIssue[] {

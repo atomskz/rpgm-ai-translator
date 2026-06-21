@@ -14,6 +14,17 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
   context from collapsing onto a single translation. Memory entries now also
   record `cacheKey` and `targetLanguage`; older entries fall back to the source
   hash and are simply re-translated.
+- Measure `maxLength`/`maxLines` against the restored translation rather than the
+  placeholder-token form, so constrained UI text (choices, name input, plugin
+  choices) is checked against the characters the engine actually renders instead
+  of the `<PH_n>` tokens.
+
+### Changed
+
+- Promote `NUMBER_CHANGED` and `MAX_LINES_EXCEEDED` from warnings to errors so
+  the `run`/`apply` validation filter no longer ships translations with altered
+  in-game numbers or text that overflows its line budget. `MAX_LENGTH_EXCEEDED`
+  remains a warning because horizontal text fitting is still best-effort.
 
 ## 0.1.4 - 2026-06-21
 

@@ -207,6 +207,41 @@ describe("DefaultValidator", () => {
     expect(codes(issues)).toContain("MAX_LINES_EXCEEDED");
   });
 
+  it("measures maxLength against restored control codes, not placeholder tokens", () => {
+    const protectedText = protectPlaceholders(String.raw`\C[1]X\C[0]`);
+    const issues = validate(
+      unit({
+        source: String.raw`\C[1]X\C[0]`,
+        normalizedSource: protectedText.text,
+        placeholders: protectedText.placeholders,
+        constraints: { maxLength: 13 }
+      }),
+      // Restored length is 12 (`\C[1]Да\C[0]`); the masked `<PH_1>Да<PH_2>`
+      // form is 14, which the old check wrongly flagged.
+      result({ source: String.raw`\C[1]X\C[0]`, translation: "<PH_1>Да<PH_2>" })
+    );
+
+    expect(codes(issues)).not.toContain("MAX_LENGTH_EXCEEDED");
+  });
+
+  it("treats number drift and extra lines as apply-blocking errors", () => {
+    const numberIssues = validate(
+      unit({ source: "Gain 500G.", normalizedSource: "Gain 500G." }),
+      result({ translation: "Получи 50G." })
+    );
+    const lineIssues = validate(
+      unit({ constraints: { maxLines: 1 } }),
+      result({ translation: "Строка\nещё строка" })
+    );
+
+    expect(numberIssues).toContainEqual(
+      expect.objectContaining({ code: "NUMBER_CHANGED", severity: "error" })
+    );
+    expect(lineIssues).toContainEqual(
+      expect.objectContaining({ code: "MAX_LINES_EXCEEDED", severity: "error" })
+    );
+  });
+
   it("checks glossary keep and custom terms", () => {
     const glossary: Glossary = {
       Aria: { mode: "custom", translation: "Ария" },
