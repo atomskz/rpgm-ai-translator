@@ -7,6 +7,7 @@ import type {
   TranslationUnit
 } from "../types.js";
 import { normalizeBatchSize } from "../batching/index.js";
+import { withProviderRetry } from "../retry/index.js";
 
 export type CharacterExtractionOptions = {
   includeDialogueMentions?: boolean;
@@ -69,7 +70,7 @@ export async function inferCharacterGlossary(
   for (let index = 0; index < candidates.length; index += batchSize) {
     const batch = candidates.slice(index, index + batchSize);
     try {
-      Object.assign(glossary, await provider.inferCharacters(batch, options));
+      Object.assign(glossary, await withProviderRetry(() => provider.inferCharacters(batch, options), options));
     } catch (error: unknown) {
       Object.assign(glossary, markBatchForManualReview(batch, error));
     }

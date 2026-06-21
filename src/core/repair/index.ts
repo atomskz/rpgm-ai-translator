@@ -7,6 +7,7 @@ import type {
   ValidationIssue
 } from "../types.js";
 import { normalizeBatchSize, splitBatch } from "../batching/index.js";
+import { withProviderRetry } from "../retry/index.js";
 
 export type RepairOptions = ReviewOptions & {
   issueCodes?: ValidationIssue["code"][];
@@ -72,7 +73,12 @@ export async function repairTranslations(
   let failed = 0;
 
   for (const batch of splitBatch(toTranslate, normalizeBatchSize(options.batchSize))) {
-    const results = await provider.translateBatch(batch, options);
+    let results: TranslationResult[];
+    try {
+      results = await withProviderRetry(() => provider.translateBatch(batch, options), options);
+    } catch (error: unknown) {
+      results = failedRepairTranslateBatch(batch, provider, options, error);
+    }
     const checkpointResults: TranslationResult[] = [];
     for (const result of results) {
       if (result.status === "translated") {
@@ -103,7 +109,12 @@ export async function repairTranslations(
       total: toReview.length
     });
 
-    const results = await provider.reviewBatch(batch, options);
+    let results: TranslationResult[];
+    try {
+      results = await withProviderRetry(() => provider.reviewBatch(batch, options), options);
+    } catch (error: unknown) {
+      results = failedRepairReviewBatch(batch, provider, options, error);
+    }
     const checkpointResults: TranslationResult[] = [];
     for (const result of results) {
       if (result.status === "translated") {
@@ -181,4 +192,54 @@ function needsRetranslation(
   }
 
   return issues.some((issue) => RETRANSLATE_CODES.has(issue.code));
+}
+
+function failedRepairTranslateBatch(
+  batch: TranslationUnit[],
+  provider: LLMProvider,
+  options: RepairOptions,
+  error: unknown
+): TranslationResult[] {
+  const message = error instanceof Error ? error.message : String(error);
+  return batch.map((unit) => ({
+    id: unit.id,
+    source: unit.source,
+    translation: "",
+    provider: provider.name,
+    model: options.model ?? "unknown",
+    status: "failed" as const,
+    issues: [
+      {
+        id: unit.id,
+        severity: "error" as const,
+        code: "PROVIDER_RESPONSE_ERROR" as const,
+        message: `Repair batch failed: ${message}`
+      }
+    ]
+  }));
+}
+
+function failedRepairReviewBatch(
+  batch: ReviewUnit[],
+  provider: LLMProvider,
+  options: RepairOptions,
+  error: unknown
+): TranslationResult[] {
+  const message = error instanceof Error ? error.message : String(error);
+  return batch.map((unit) => ({
+    id: unit.id,
+    source: unit.source,
+    translation: unit.currentTranslation,
+    provider: provider.name,
+    model: options.model ?? "unknown",
+    status: "failed" as const,
+    issues: [
+      {
+        id: unit.id,
+        severity: "error" as const,
+        code: "PROVIDER_RESPONSE_ERROR" as const,
+        message: `Repair batch failed: ${message}`
+      }
+    ]
+  }));
 }

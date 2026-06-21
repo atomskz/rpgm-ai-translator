@@ -77,6 +77,63 @@ describe("reviewTranslations", () => {
     expect(events).toEqual(["review-batch-start", "review-batch-complete"]);
   });
 
+  it("retries a thrown review batch and recovers", async () => {
+    let calls = 0;
+    const provider: LLMProvider = {
+      name: "review-retry",
+      translateBatch: async () => [],
+      reviewBatch: async (batch: ReviewUnit[]): Promise<TranslationResult[]> => {
+        calls += 1;
+        if (calls === 1) {
+          throw new Error("temporary review failure");
+        }
+        return batch.map((unit) => ({
+          id: unit.id,
+          source: unit.source,
+          translation: `${unit.currentTranslation} ok`,
+          provider: "review-retry",
+          model: "review-model",
+          status: "translated"
+        }));
+      },
+      inferCharacters: async () => ({})
+    };
+
+    const result = await reviewTranslations(
+      [unit({ id: "Map001.events.1.pages.0.list.0.parameters.0" })],
+      [translation({ id: "Map001.events.1.pages.0.list.0.parameters.0" })],
+      provider,
+      { targetLanguage: "ru", retryAttempts: 1, retryDelayMs: 0 }
+    );
+
+    expect(calls).toBe(2);
+    expect(result).toMatchObject({ reviewed: 1, failed: 0 });
+  });
+
+  it("converts an exhausted review batch into failures without throwing", async () => {
+    let calls = 0;
+    const provider: LLMProvider = {
+      name: "review-fail",
+      translateBatch: async () => [],
+      reviewBatch: async () => {
+        calls += 1;
+        throw new Error("permanent review failure");
+      },
+      inferCharacters: async () => ({})
+    };
+
+    const result = await reviewTranslations(
+      [unit({ id: "Map001.events.1.pages.0.list.0.parameters.0" })],
+      [translation({ id: "Map001.events.1.pages.0.list.0.parameters.0", translation: "Я готов." })],
+      provider,
+      { targetLanguage: "ru", retryAttempts: 1, retryDelayMs: 0 }
+    );
+
+    expect(calls).toBe(2);
+    expect(result).toMatchObject({ reviewed: 0, failed: 1 });
+    expect(result.translations[0].translation).toBe("Я готов.");
+  });
+
   it("emits reviewed batch results for checkpoint writers", async () => {
     const checkpointResults: TranslationResult[][] = [];
     const provider: LLMProvider = {

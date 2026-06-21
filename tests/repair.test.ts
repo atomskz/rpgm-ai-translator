@@ -80,6 +80,41 @@ describe("repairTranslations", () => {
     expect(reviewedIssues).toEqual([["MAX_LENGTH_EXCEEDED"]]);
   });
 
+  it("retries a thrown repair translate batch before succeeding", async () => {
+    let calls = 0;
+    const provider: LLMProvider = {
+      name: "repair-retry",
+      translateBatch: async (batch, options) => {
+        calls += 1;
+        if (calls === 1) {
+          throw new Error("temporary failure");
+        }
+        return batch.map((item) => ({
+          id: item.id,
+          source: item.source,
+          translation: `[${options.targetLanguage}] ${item.source}`,
+          provider: "repair-retry",
+          model: "repair-model",
+          status: "translated"
+        }));
+      },
+      reviewBatch: async () => [],
+      inferCharacters: async () => ({})
+    };
+
+    const result = await repairTranslations(
+      [unit("Actors.1.name", "Aria")],
+      [],
+      [{ id: "Actors.1.name", severity: "error", code: "MISSING_TRANSLATION", message: "Missing" }],
+      provider,
+      { targetLanguage: "ru", batchSize: 1, retryAttempts: 1, retryDelayMs: 0 }
+    );
+
+    expect(calls).toBe(2);
+    expect(result).toMatchObject({ repaired: 1, translated: 1, failed: 0 });
+    expect(result.translations[0].translation).toBe("[ru] Aria");
+  });
+
   it("can restrict repairs to selected validation issue codes", async () => {
     const provider: LLMProvider = {
       name: "repair-test",

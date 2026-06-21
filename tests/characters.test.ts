@@ -86,6 +86,32 @@ describe("character candidates", () => {
     expect(Object.keys(result)).toEqual(["A", "B"]);
   });
 
+  it("retries character inference before falling back to manual review", async () => {
+    let calls = 0;
+    const provider: LLMProvider = {
+      name: "test",
+      translateBatch: async () => [],
+      reviewBatch: async () => [],
+      inferCharacters: async (batch) => {
+        calls += 1;
+        if (calls === 1) {
+          throw new Error("temporary failure");
+        }
+        return Object.fromEntries(batch.map((candidate) => [candidate.name, { gender: "unknown", type: "person" }]));
+      }
+    };
+
+    const result = await inferCharacterGlossary(
+      [{ name: "Aria", sources: ["actor"], occurrences: 1, evidence: [] }],
+      provider,
+      { targetLanguage: "ru", retryAttempts: 1, retryDelayMs: 0 }
+    );
+
+    expect(calls).toBe(2);
+    expect(result.Aria).toMatchObject({ type: "person" });
+    expect(result.Aria.description ?? "").not.toContain("Character inference failed");
+  });
+
   it("falls back to manual-review entries when provider inference fails", async () => {
     const provider: LLMProvider = {
       name: "test",

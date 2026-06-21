@@ -7,6 +7,7 @@ import type {
   TranslationUnit
 } from "../types.js";
 import { normalizeBatchSize, splitBatch } from "../batching/index.js";
+import { withProviderRetry } from "../retry/index.js";
 
 export type ReviewPassResult = {
   translations: TranslationResult[];
@@ -46,7 +47,12 @@ export async function reviewTranslations(
       total: candidates.length
     });
 
-    const reviewed = await provider.reviewBatch(batch, options);
+    let reviewed: TranslationResult[];
+    try {
+      reviewed = await withProviderRetry(() => provider.reviewBatch(batch, options), options);
+    } catch (error: unknown) {
+      reviewed = failedReviewBatch(batch, provider, options, error);
+    }
     const checkpointResults: TranslationResult[] = [];
     for (const result of reviewed) {
       if (result.status === "translated") {
@@ -128,4 +134,30 @@ function groupReviewUnits(units: ReviewUnit[]): ReviewUnit[][] {
 
 function inferFileKey(id: string): string {
   return id.split(".").slice(0, 1).join(".");
+}
+
+function failedReviewBatch(
+  batch: ReviewUnit[],
+  provider: LLMProvider,
+  options: ReviewOptions,
+  error: unknown
+): TranslationResult[] {
+  const message = error instanceof Error ? error.message : String(error);
+  return batch.map((unit) => ({
+    id: unit.id,
+    source: unit.source,
+    translation: unit.currentTranslation,
+    provider: provider.name,
+    model: options.model ?? "unknown",
+    status: "failed" as const,
+    issues: [
+      {
+        id: unit.id,
+        severity: "error" as const,
+        code: "PROVIDER_RESPONSE_ERROR" as const,
+        message: `Review batch failed: ${message}`
+      }
+    ],
+    metadata: { reviewed: false }
+  }));
 }

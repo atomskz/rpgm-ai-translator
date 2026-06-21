@@ -36,6 +36,10 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
   the `run`/`apply` validation filter no longer ships translations with altered
   in-game numbers or text that overflows its line budget. `MAX_LENGTH_EXCEEDED`
   remains a warning because horizontal text fitting is still best-effort.
+- Apply the shared batch retry to the review, repair and character-inference
+  passes, not just the bulk translate pass, so transient provider failures are
+  retried consistently. An exhausted review or repair batch now degrades to
+  per-unit failures instead of aborting the whole pipeline.
 
 ## 0.1.4 - 2026-06-21
 
