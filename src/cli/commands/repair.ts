@@ -100,6 +100,11 @@ export async function repairCommand(args: string[], io: CliIO): Promise<number> 
   io.stdout(
     `Repaired: ${repaired}, translated: ${translated}, reviewed: ${reviewed}, failed: ${failed}, skipped: ${skipped}, remaining targeted issues: ${validationIssues.length}\n`
   );
+  if (validationIssues.length > 0) {
+    io.stderr(
+      `Warning: ${validationIssues.length} targeted validation issue(s) remain unresolved. Validate again and review before applying this patch.\n`
+    );
+  }
   return 0;
 }
 

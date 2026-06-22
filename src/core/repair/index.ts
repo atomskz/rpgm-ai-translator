@@ -8,6 +8,7 @@ import type {
 } from "../types.js";
 import { normalizeBatchSize, splitBatch } from "../batching/index.js";
 import { withProviderRetry } from "../retry/index.js";
+import { DefaultValidator, introducedErrorCode } from "../validators/index.js";
 
 export type RepairOptions = ReviewOptions & {
   issueCodes?: ValidationIssue["code"][];
@@ -38,6 +39,38 @@ export async function repairTranslations(
   const unitsById = new Map(units.map((unit) => [unit.id, unit]));
   const translationsById = new Map(translations.map((translation) => [translation.id, translation]));
   const selectedIssuesById = selectIssuesById(validationIssues, unitsById, options.issueCodes);
+  const validator = new DefaultValidator(options.glossary);
+
+  // Reject a repaired translation that introduces a validation error which was not
+  // already present, so a repair pass can never ship a freshly broken translation.
+  // Returns a failed result (keeping the previous text) on regression, else undefined.
+  const rejectIfRegressed = (repaired: TranslationResult): TranslationResult | undefined => {
+    const unit = unitsById.get(repaired.id);
+    if (!unit) {
+      return undefined;
+    }
+    const current = translationsById.get(repaired.id);
+    const introduced = introducedErrorCode(unit, current, repaired, validator, selectedIssuesById.get(repaired.id) ?? []);
+    if (!introduced) {
+      return undefined;
+    }
+    return {
+      id: unit.id,
+      source: unit.source,
+      translation: current?.translation ?? "",
+      provider: provider.name,
+      model: options.model ?? "unknown",
+      status: "failed",
+      issues: [
+        {
+          id: unit.id,
+          severity: "error",
+          code: introduced,
+          message: `Repair introduced ${introduced}; kept the previous translation`
+        }
+      ]
+    };
+  };
   const toTranslate: TranslationUnit[] = [];
   const toReview: ReviewUnit[] = [];
 
@@ -86,6 +119,12 @@ export async function repairTranslations(
           ...result,
           metadata: { ...result.metadata, repaired: true, repairMode: "translate" as const }
         };
+        const rejected = rejectIfRegressed(repaired);
+        if (rejected) {
+          failed += 1;
+          checkpointResults.push(rejected);
+          continue;
+        }
         repairedById.set(result.id, repaired);
         checkpointResults.push(repaired);
       } else {
@@ -122,6 +161,12 @@ export async function repairTranslations(
           ...result,
           metadata: { ...result.metadata, repaired: true, repairMode: "review" as const }
         };
+        const rejected = rejectIfRegressed(repaired);
+        if (rejected) {
+          failed += 1;
+          checkpointResults.push(rejected);
+          continue;
+        }
         repairedById.set(result.id, repaired);
         checkpointResults.push(repaired);
       } else {

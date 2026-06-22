@@ -4,10 +4,12 @@ import type {
   ReviewUnit,
   TranslationCategory,
   TranslationResult,
-  TranslationUnit
+  TranslationUnit,
+  ValidationIssue
 } from "../types.js";
 import { normalizeBatchSize, splitBatch } from "../batching/index.js";
 import { withProviderRetry } from "../retry/index.js";
+import { DefaultValidator, introducedErrorCode } from "../validators/index.js";
 
 export type ReviewPassResult = {
   translations: TranslationResult[];
@@ -25,6 +27,8 @@ export async function reviewTranslations(
   options: ReviewOptions
 ): Promise<ReviewPassResult> {
   const translationById = new Map(translations.map((translation) => [translation.id, translation]));
+  const unitsById = new Map(units.map((unit) => [unit.id, unit]));
+  const validator = new DefaultValidator(options.glossary);
   const reviewCategories = new Set(options.reviewCategories ?? DEFAULT_REVIEW_CATEGORIES);
   const candidates = units
     .filter((unit) => reviewCategories.has(unit.category))
@@ -67,6 +71,14 @@ export async function reviewTranslations(
           issues: result.issues,
           metadata: { ...current?.metadata, ...result.metadata, reviewed: true }
         };
+        const unit = unitsById.get(result.id);
+        const introduced = unit ? introducedErrorCode(unit, current, merged, validator) : undefined;
+        if (introduced) {
+          // The review made the translation worse; keep the pre-review text.
+          failed += 1;
+          checkpointResults.push(regressedReviewResult(result, current, introduced));
+          continue;
+        }
         reviewedById.set(result.id, merged);
         checkpointResults.push(merged);
       } else {
@@ -96,6 +108,30 @@ export async function reviewTranslations(
     reviewed: reviewedById.size,
     failed,
     skipped: translations.length - reviewedById.size - failed
+  };
+}
+
+function regressedReviewResult(
+  result: TranslationResult,
+  current: TranslationResult | undefined,
+  introduced: ValidationIssue["code"]
+): TranslationResult {
+  return {
+    id: result.id,
+    source: result.source,
+    translation: current?.translation ?? result.translation,
+    provider: current?.provider ?? result.provider,
+    model: current?.model ?? result.model,
+    status: "failed",
+    issues: [
+      {
+        id: result.id,
+        severity: "error",
+        code: introduced,
+        message: `Review introduced ${introduced}; kept the previous translation`
+      }
+    ],
+    metadata: { reviewed: false }
   };
 }
 

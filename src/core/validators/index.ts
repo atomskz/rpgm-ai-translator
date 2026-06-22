@@ -70,6 +70,36 @@ export function validateTranslationResults(
   return issues;
 }
 
+// Returns the code of the first error a candidate translation introduces that was
+// not already present in the previous translation (or in the supplied prior issues).
+// Used by the review and repair passes to reject a change that fixes one problem
+// while creating a new one, instead of shipping a freshly broken translation.
+export function introducedErrorCode(
+  unit: TranslationUnit,
+  previous: TranslationResult | undefined,
+  candidate: TranslationResult,
+  validator: Validator,
+  priorIssues: ValidationIssue[] = []
+): ValidationIssue["code"] | undefined {
+  const priorErrorCodes = new Set<ValidationIssue["code"]>();
+  for (const priorIssue of priorIssues) {
+    if (priorIssue.severity === "error") {
+      priorErrorCodes.add(priorIssue.code);
+    }
+  }
+  if (previous) {
+    for (const previousIssue of validator.validate(unit, previous)) {
+      if (previousIssue.severity === "error") {
+        priorErrorCodes.add(previousIssue.code);
+      }
+    }
+  }
+  const introduced = validator
+    .validate(unit, candidate)
+    .find((candidateIssue) => candidateIssue.severity === "error" && !priorErrorCodes.has(candidateIssue.code));
+  return introduced?.code;
+}
+
 export function filterTranslationsWithoutValidationErrors(
   translations: TranslationResult[],
   validationIssues: ValidationIssue[]

@@ -134,6 +134,40 @@ describe("reviewTranslations", () => {
     expect(result.translations[0].translation).toBe("Я готов.");
   });
 
+  it("rolls back a review that drops a required placeholder", async () => {
+    const provider: LLMProvider = {
+      name: "review-test",
+      translateBatch: async () => [],
+      reviewBatch: async (batch: ReviewUnit[]): Promise<TranslationResult[]> =>
+        batch.map((item) => ({
+          id: item.id,
+          source: item.source,
+          translation: "Я готов!",
+          provider: "review-test",
+          model: "review-model",
+          status: "translated",
+          metadata: { reviewed: true }
+        })),
+      inferCharacters: async () => ({})
+    };
+
+    const placeholderUnit = unit({
+      source: String.raw`I am ready \N[1].`,
+      normalizedSource: "I am ready <PH_1>.",
+      placeholders: [{ token: "<PH_1>", value: String.raw`\N[1]`, required: true, kind: "control-code" }]
+    });
+
+    const result = await reviewTranslations(
+      [placeholderUnit],
+      [translation({ translation: "Я готов <PH_1>." })],
+      provider,
+      { targetLanguage: "ru" }
+    );
+
+    expect(result).toMatchObject({ reviewed: 0, failed: 1 });
+    expect(result.translations[0].translation).toBe("Я готов <PH_1>.");
+  });
+
   it("emits reviewed batch results for checkpoint writers", async () => {
     const checkpointResults: TranslationResult[][] = [];
     const provider: LLMProvider = {

@@ -152,6 +152,58 @@ describe("repairTranslations", () => {
     ]);
   });
 
+  it("rejects a repair that introduces a new validation error and keeps the previous translation", async () => {
+    const provider: LLMProvider = {
+      name: "repair-test",
+      translateBatch: async () => [],
+      // The review "repair" drops the required placeholder, introducing MISSING_PLACEHOLDER.
+      reviewBatch: async (batch: ReviewUnit[]): Promise<TranslationResult[]> =>
+        batch.map((item) => ({
+          id: item.id,
+          source: item.source,
+          translation: "Слишком коротко.",
+          provider: "repair-test",
+          model: "repair-model",
+          status: "translated"
+        })),
+      inferCharacters: async () => ({})
+    };
+
+    const placeholderUnit: TranslationUnit = {
+      id: "Map001.events.1.pages.0.list.0.parameters.0",
+      source: String.raw`Hello \N[1].`,
+      normalizedSource: "Hello <PH_1>.",
+      filePath: "data/Map001.json",
+      jsonPath: "events.1.pages.0.list.0.parameters.0",
+      engine: "rpgmaker-mz",
+      category: "dialogue",
+      placeholders: [{ token: "<PH_1>", value: String.raw`\N[1]`, required: true, kind: "control-code" }],
+      hash: "hash-ph"
+    };
+
+    const result = await repairTranslations(
+      [placeholderUnit],
+      [
+        {
+          id: placeholderUnit.id,
+          source: placeholderUnit.source,
+          translation: "Привет <PH_1>.",
+          provider: "deepseek",
+          model: "deepseek-v4-flash",
+          status: "translated"
+        }
+      ],
+      [{ id: placeholderUnit.id, severity: "warning", code: "MAX_LENGTH_EXCEEDED", message: "Too long" }],
+      provider,
+      { targetLanguage: "ru", batchSize: 1 }
+    );
+
+    expect(result).toMatchObject({ repaired: 0, failed: 1 });
+    expect(result.translations).toEqual([
+      expect.objectContaining({ id: placeholderUnit.id, translation: "Привет <PH_1>." })
+    ]);
+  });
+
   it("emits repaired batch results for checkpoint writers", async () => {
     const checkpointResults: TranslationResult[][] = [];
     const provider: LLMProvider = {
