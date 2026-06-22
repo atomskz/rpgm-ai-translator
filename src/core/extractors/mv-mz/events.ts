@@ -6,6 +6,7 @@ import {
   type UnitDraft,
   decodeScriptStringLiteral,
   isObject,
+  isSafeRuntimeText,
   isTranslatableString,
   makeDraft,
   numberOrUndefined,
@@ -162,6 +163,53 @@ export function extractEventCommandList(
           )
         );
       }
+    }
+
+    // Change Name (320), Change Nickname (324) and Change Profile (325) set actor
+    // display text to a literal string at parameters[1].
+    const actorTextParameter = command.parameters[1];
+    if ((code === 320 || code === 324 || code === 325) && isTranslatableString(actorTextParameter)) {
+      units.push(
+        makeDraft(
+          options,
+          `${options.prefix}.${commandIndex}.parameters.1`,
+          actorTextParameter,
+          code === 325 ? "description" : "name",
+          {
+            ...options.context,
+            speaker: currentSpeaker,
+            ...neighborContext(list, commandIndex)
+          }
+        )
+      );
+    }
+
+    // MV-style Plugin Command (356) carries a single free-text command line at
+    // parameters[0]. It is often code rather than display text, so it is only
+    // extracted with --include-plugins and the runtime-text safety filter, and
+    // should be reviewed before applying. (402 "When [choice]" / 403 "When
+    // Cancel" are intentionally not extracted because their labels duplicate the
+    // Show Choices (102) list.)
+    const mvPluginCommand = command.parameters[0];
+    if (
+      code === 356 &&
+      options.extractOptions.includePlugins === true &&
+      isTranslatableString(mvPluginCommand) &&
+      isSafeRuntimeText(mvPluginCommand)
+    ) {
+      units.push(
+        makeDraft(
+          options,
+          `${options.prefix}.${commandIndex}.parameters.0`,
+          mvPluginCommand,
+          "plugin-parameter",
+          {
+            ...options.context,
+            speaker: currentSpeaker,
+            ...neighborContext(list, commandIndex)
+          }
+        )
+      );
     }
 
     const pluginCommandArgs = command.parameters[3];

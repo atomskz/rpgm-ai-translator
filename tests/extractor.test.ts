@@ -336,6 +336,81 @@ describe("RpgMakerMvMzExtractor", () => {
     expect(units.some((unit) => unit.source === "Audio.ogg")).toBe(false);
     expect(units.some((unit) => unit.source === "true")).toBe(false);
   });
+
+  it("extracts actor name/nickname/profile changes and gates MV plugin commands behind --include-plugins", async () => {
+    const root = await makeProject("mv");
+    await writeJson(path.join(root, "data", "Map001.json"), {
+      events: [
+        null,
+        {
+          id: 1,
+          name: "Event",
+          pages: [
+            {
+              list: [
+                { code: 320, parameters: [1, "Aria"] },
+                { code: 324, parameters: [1, "The Brave"] },
+                { code: 325, parameters: [1, "A wandering knight."] },
+                { code: 356, parameters: ["GabText Hello there"] }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    const withoutPlugins = await new RpgMakerMvMzExtractor().extract(root);
+    const withPlugins = await new RpgMakerMvMzExtractor().extract(root, { includePlugins: true });
+    const byId = new Map(withoutPlugins.map((unit) => [unit.id, unit]));
+
+    expect(byId.get("Map001.events.1.pages.0.list.0.parameters.1")).toMatchObject({ source: "Aria", category: "name" });
+    expect(byId.get("Map001.events.1.pages.0.list.1.parameters.1")).toMatchObject({ source: "The Brave", category: "name" });
+    expect(byId.get("Map001.events.1.pages.0.list.2.parameters.1")).toMatchObject({
+      source: "A wandering knight.",
+      category: "description"
+    });
+    expect(withoutPlugins.some((unit) => unit.source === "GabText Hello there")).toBe(false);
+    expect(withPlugins).toContainEqual(
+      expect.objectContaining({
+        id: "Map001.events.1.pages.0.list.3.parameters.0",
+        source: "GabText Hello there",
+        category: "plugin-parameter"
+      })
+    );
+  });
+
+  it("applies actor profile changes and MV plugin command text back to the map", async () => {
+    const root = await makeProject("mv");
+    const outDir = `${root}-patch`;
+    await writeJson(path.join(root, "data", "Map001.json"), {
+      events: [
+        null,
+        { id: 1, name: "Event", pages: [{ list: [
+          { code: 320, parameters: [1, "Aria"] },
+          { code: 356, parameters: ["GabText Hello there"] }
+        ] }] }
+      ]
+    });
+
+    const extractor = new RpgMakerMvMzExtractor();
+    const units = await extractor.extract(root, { includePlugins: true });
+    const nameUnit = units.find((unit) => unit.source === "Aria");
+    const pluginUnit = units.find((unit) => unit.source === "GabText Hello there");
+
+    const result = await extractor.applyTranslations(
+      root,
+      [
+        { id: nameUnit?.id ?? "", source: "Aria", translation: "Ария", provider: "manual", model: "manual", status: "translated" },
+        { id: pluginUnit?.id ?? "", source: "GabText Hello there", translation: "GabText Привет", provider: "manual", model: "manual", status: "translated" }
+      ],
+      { mode: "patch", outDir, includePlugins: true }
+    );
+
+    const patched = JSON.parse(await readFile(path.join(outDir, "data", "Map001.json"), "utf8"));
+    expect(result.unitsApplied).toBe(2);
+    expect(patched.events[1].pages[0].list[0].parameters[1]).toBe("Ария");
+    expect(patched.events[1].pages[0].list[1].parameters[0]).toBe("GabText Привет");
+  });
 });
 
 async function makeProject(engine: "mv" | "mz"): Promise<string> {
