@@ -1,3 +1,106 @@
+import { COMMAND_OPTION_SPECS } from "./options.js";
+
+type CommandHelpMeta = {
+  usage: string;
+  summary: string;
+  notes?: string[];
+};
+
+const COMMAND_HELP: Record<string, CommandHelpMeta> = {
+  detect: { usage: "detect <game>", summary: "Detect the RPG Maker engine and project paths." },
+  extract: { usage: "extract <game> [options]", summary: "Extract translation units from RPG Maker JSON data." },
+  translate: { usage: "translate <units.json> [options]", summary: "Translate extracted units through a provider." },
+  characters: {
+    usage: "characters <units.json> [options]",
+    summary: "Generate a character glossary draft or provider-inferred glossary.",
+    notes: ["Pass translations with --translations (not a positional argument)."]
+  },
+  review: {
+    usage: "review <units.json> <translations.json> [options]",
+    summary: "Review translated dialogue and choices using map/event context."
+  },
+  validate: {
+    usage: "validate <units.json> <translations.json> [options]",
+    summary: "Validate translations and write a JSON report."
+  },
+  repair: {
+    usage: "repair <units.json> <translations.json> --report <file> --out <file> [options]",
+    summary: "Repair translations referenced by a validation report."
+  },
+  apply: {
+    usage: "apply <game> <translations.json> --out <dir> [options]",
+    summary: "Apply translations to a patch folder or in-place with a backup.",
+    notes: ["--font and --number-font apply only in --mode patch together with --out."]
+  },
+  "patch-font": {
+    usage: "patch-font <game> --out <dir> --font <file> [options]",
+    summary: "Patch RPG Maker MZ font settings into an output folder."
+  },
+  run: {
+    usage: "run <game> --out <dir> [options]",
+    summary: "Full pipeline: detect, extract, translate, optional review, validate, optional repair, apply, optional font patch.",
+    notes: ["run always writes a patch; --mode and --backup are ignored."]
+  }
+};
+
+const FLAG_DESCRIPTIONS: Record<string, string> = {
+  "--out": "Output file or directory, depending on the command.",
+  "--report": "Write or read a validation report, depending on the command.",
+  "--units": "Use saved translation units instead of re-extracting them.",
+  "--translations": "Translations JSON used as context for the character glossary.",
+  "--checkpoint": "JSONL checkpoint to resume from and append batch results to.",
+  "--memory": "JSONL translation memory reused across runs.",
+  "--glossary": "Glossary JSON for prompts and validation.",
+  "--characters": "Character glossary JSON for review or repair.",
+  "--provider": "Translation provider: mock, deepseek, or none where supported.",
+  "--target": "Target language code. Default: ru.",
+  "--model": "Provider model name.",
+  "--batch-size": "Translation units per provider request.",
+  "--timeout-ms": "Provider request timeout in milliseconds.",
+  "--temperature": "Provider sampling temperature (0..2).",
+  "--max-tokens": "Provider output token limit.",
+  "--retry-attempts": "CLI-level retries for failed translate batches.",
+  "--codes": "Comma-separated validation issue codes to repair.",
+  "--attempts": "Number of repair passes.",
+  "--repair-codes": "Comma-separated validation issue codes for run --repair.",
+  "--repair-attempts": "Number of repair passes for run --repair.",
+  "--mode": "Apply mode: patch or in-place. Default: patch.",
+  "--backup": "Backup directory for in-place mode.",
+  "--font": "Main RPG Maker MZ font file to copy into the patch.",
+  "--number-font": "RPG Maker MZ number font. Defaults to --font when omitted.",
+  "--include-comments": "Extract event comments.",
+  "--include-plugins": "Extract cautious plugin parameters and selected plugin command text.",
+  "--include-speaker-names": "Translate Show Text speaker name fields.",
+  "--draft-only": "Build a heuristic character glossary without calling a provider.",
+  "--include-mentions": "Include dialogue name mentions as character candidates.",
+  "--review": "Run a second-pass review of dialogue and choices.",
+  "--repair": "Enable validation-targeted repair.",
+  "--dry-run": "Report what would be written without creating or modifying files."
+};
+
+export function commandHelp(command: string): string {
+  const meta = COMMAND_HELP[command];
+  const spec = COMMAND_OPTION_SPECS[command];
+  if (!meta || !spec) {
+    return helpText();
+  }
+  const valueOptions = new Set<string>(spec.valueOptions);
+  const flags = [...spec.valueOptions, ...spec.booleanFlags].sort();
+  const lines = [`Usage: rpgm-ai-translator ${meta.usage}`, "", meta.summary];
+  if (flags.length > 0) {
+    lines.push("", "Options:");
+    for (const flag of flags) {
+      const label = valueOptions.has(flag) ? `${flag} <value>` : flag;
+      const description = FLAG_DESCRIPTIONS[flag];
+      lines.push(`  ${label}${description ? `  ${description}` : ""}`);
+    }
+  }
+  if (meta.notes && meta.notes.length > 0) {
+    lines.push("", ...meta.notes);
+  }
+  return `${lines.join("\n")}\n`;
+}
+
 export function helpText(): string {
   return `rpgm-ai-translator 0.1.4
 AI-assisted translation pipeline for RPG Maker MV/MZ games.

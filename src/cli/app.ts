@@ -8,7 +8,7 @@ import { reviewCommand } from "./commands/review.js";
 import { runCommand } from "./commands/run.js";
 import { translateCommand } from "./commands/translate.js";
 import { validateCommand } from "./commands/validate.js";
-import { helpText } from "./help.js";
+import { commandHelp, helpText } from "./help.js";
 import { validateCommandArgs } from "./options.js";
 import type { CliIO, CommandHandler } from "./types.js";
 
@@ -41,6 +41,11 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
     if (!handler) {
       io.stderr(`Unknown command: ${command}\n\n${helpText()}`);
       return 1;
+    }
+
+    if (args.includes("--help") || args.includes("-h")) {
+      io.stdout(commandHelp(command));
+      return 0;
     }
 
     validateCommandArgs(command, args);

@@ -157,15 +157,16 @@ export function readFontOptions(args: string[]): FontCliOptions {
   };
 }
 
-type CommandOptionSpec = {
+export type CommandOptionSpec = {
   valueOptions: readonly string[];
   booleanFlags: readonly string[];
 };
 
 // Allowed options per command, mirroring exactly what each command handler reads.
 // Used to reject unknown flags, missing values, and duplicate value options before
-// a command runs, so a typo silently falls back to a default no longer.
-const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
+// a command runs, so a typo silently falls back to a default no longer. Also the
+// single source of truth for which flags per-command help lists.
+export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   detect: { valueOptions: [], booleanFlags: [] },
   extract: {
     valueOptions: ["--out", "--report"],
