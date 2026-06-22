@@ -5,17 +5,18 @@ import { restorePlaceholders } from "../placeholders/index.js";
 import {
   getPluginParameter,
   parsePluginsJs,
-  serializePluginsJs,
+  replacePluginsArray,
   setPluginParameter
 } from "../plugins/index.js";
 import { getJsonPath, getJsonPathSegments, parseJsonPath, setJsonPath, setJsonPathSegments } from "../utils/json-path.js";
-import { pathExists, readJsonFile, writeJsonFile } from "../utils/fs.js";
+import { detectJsonStyle, pathExists, serializeJson, writeFileAtomic, type JsonStyle } from "../utils/fs.js";
 
 type PreparedFile = {
   relativeFilePath: string;
   sourcePath: string;
   content: unknown;
   format: "json" | "text";
+  style?: JsonStyle;
   unitsApplied: number;
   skipped: number;
 };
@@ -112,7 +113,9 @@ async function prepareJsonFile(
   sourcePath: string,
   entries: Array<{ unit: TranslationUnit; result: TranslationResult }>
 ): Promise<PreparedFile> {
-  const data = await readJsonFile(sourcePath);
+  const raw = await readFile(sourcePath, "utf8");
+  const style = detectJsonStyle(raw);
+  const data = JSON.parse(style.bom ? raw.slice(1) : raw);
   let unitsApplied = 0;
   let skipped = 0;
 
@@ -131,6 +134,7 @@ async function prepareJsonFile(
     sourcePath,
     content: data,
     format: "json",
+    style,
     unitsApplied,
     skipped
   };
@@ -141,7 +145,8 @@ async function preparePluginsFile(
   sourcePath: string,
   entries: Array<{ unit: TranslationUnit; result: TranslationResult }>
 ): Promise<PreparedFile> {
-  const plugins = parsePluginsJs(await readFile(sourcePath, "utf8"));
+  const raw = await readFile(sourcePath, "utf8");
+  const plugins = parsePluginsJs(raw);
   let unitsApplied = 0;
   let skipped = 0;
 
@@ -158,7 +163,7 @@ async function preparePluginsFile(
   return {
     relativeFilePath,
     sourcePath,
-    content: serializePluginsJs(plugins),
+    content: replacePluginsArray(raw, plugins),
     format: "text",
     unitsApplied,
     skipped
@@ -351,7 +356,7 @@ async function removeIfExists(targetPath: string): Promise<void> {
 
 async function writePreparedFile(filePath: string, file: PreparedFile): Promise<void> {
   if (file.format === "json") {
-    await writeJsonFile(filePath, file.content);
+    await writeFileAtomic(filePath, serializeJson(file.content, file.style ?? DEFAULT_JSON_STYLE));
     return;
   }
 
@@ -361,13 +366,11 @@ async function writePreparedFile(filePath: string, file: PreparedFile): Promise<
 
 async function writeBackupFile(filePath: string, file: PreparedFile): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true });
-  if (file.format === "json") {
-    await writeJsonFile(filePath, await readJsonFile(file.sourcePath));
-    return;
-  }
-
+  // Back up the exact original bytes rather than re-serializing them.
   await writeFile(filePath, await readFile(file.sourcePath, "utf8"), "utf8");
 }
+
+const DEFAULT_JSON_STYLE: JsonStyle = { indent: "  ", bom: false, trailingNewline: true };
 
 function timestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, "-");

@@ -47,6 +47,33 @@ export async function writeJsonFile(filePath: string, value: unknown): Promise<v
   await writeFileAtomic(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+export type JsonStyle = {
+  // Indent string for pretty printing, or null for minified (single-line) JSON.
+  indent: string | null;
+  bom: boolean;
+  trailingNewline: boolean;
+};
+
+// Best-effort detection of how a JSON file was serialized, so a patch can be
+// written back in the same shape (minified stays minified, the original indent
+// and trailing newline are kept) instead of being reformatted wholesale.
+export function detectJsonStyle(raw: string): JsonStyle {
+  const bom = raw.charCodeAt(0) === 0xfeff;
+  const body = bom ? raw.slice(1) : raw;
+  const trailingNewline = /\n\s*$/.test(body);
+  const hasStructuralNewline = body.trim().includes("\n");
+  const indentMatch = body.match(/\n([ \t]+)\S/);
+  const indent = hasStructuralNewline ? indentMatch?.[1] ?? "  " : null;
+  return { indent, bom, trailingNewline };
+}
+
+const BOM = String.fromCharCode(0xfeff);
+
+export function serializeJson(value: unknown, style: JsonStyle): string {
+  const core = style.indent == null ? JSON.stringify(value) : JSON.stringify(value, null, style.indent);
+  return `${style.bom ? BOM : ""}${core}${style.trailingNewline ? "\n" : ""}`;
+}
+
 export function toPosixPath(filePath: string): string {
   return filePath.split(path.sep).join(path.posix.sep);
 }
