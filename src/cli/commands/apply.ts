@@ -24,13 +24,18 @@ export async function applyCommand(args: string[], io: CliIO): Promise<number> {
   if (reportPath) {
     io.stdout(`Using report filter: ${translationsToApply.length}/${translations.length} validation-safe translations.\n`);
   }
-  io.stdout(`Applying translations in ${applyOptions.mode} mode...\n`);
+  io.stdout(`${applyOptions.dryRun ? "[dry run] Previewing" : "Applying"} translations in ${applyOptions.mode} mode...\n`);
   const result = unitsPath
     ? await writePatch(projectPath, await readTranslationUnitsFile(unitsPath), translationsToApply, applyOptions)
     : await new RpgMakerMvMzExtractor().applyTranslations(projectPath, translationsToApply, applyOptions);
-  if (applyOptions.mode === "patch" && applyOptions.outDir && fontPath) {
+  if (applyOptions.mode === "patch" && applyOptions.outDir && fontPath && !applyOptions.dryRun) {
     io.stdout("Applying font patch...\n");
     await applyFontPatch(projectPath, applyOptions.outDir, { fontPath, numberFontPath });
+  }
+  if (applyOptions.dryRun) {
+    io.stdout(
+      `[dry run] Would write ${result.filesWritten.length} file(s), apply ${result.unitsApplied} unit(s), skip ${result.skipped}. No files were written.\n`
+    );
   }
   io.stdout(`${JSON.stringify(result, null, 2)}\n`);
   return 0;

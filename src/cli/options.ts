@@ -145,7 +145,8 @@ export function readApplyOptions(args: string[]): ApplyOptions {
     outDir: readOption(args, "--out"),
     backupDir: readOption(args, "--backup"),
     includePlugins: hasFlag(args, "--include-plugins"),
-    includeSpeakerNames: hasFlag(args, "--include-speaker-names")
+    includeSpeakerNames: hasFlag(args, "--include-speaker-names"),
+    dryRun: hasFlag(args, "--dry-run")
   };
 }
 
@@ -204,7 +205,7 @@ const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   },
   apply: {
     valueOptions: ["--mode", "--out", "--backup", "--font", "--number-font", "--report", "--units"],
-    booleanFlags: ["--include-plugins", "--include-speaker-names"]
+    booleanFlags: ["--include-plugins", "--include-speaker-names", "--dry-run"]
   },
   run: {
     valueOptions: [
@@ -212,7 +213,7 @@ const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
       "--max-tokens", "--retry-attempts", "--memory", "--glossary", "--characters", "--repair-attempts",
       "--repair-codes", "--font", "--number-font", "--mode", "--backup"
     ],
-    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--review", "--repair"]
+    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--review", "--repair", "--dry-run"]
   },
   "patch-font": {
     valueOptions: ["--out", "--font", "--number-font"],

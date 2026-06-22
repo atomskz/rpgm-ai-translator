@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli/app.js";
@@ -51,5 +51,30 @@ describe("CLI apply and patch-font", () => {
     expect(exitCode).toBe(0);
     expect(patchedActors[1].name).toBe("Ария");
     expect(sourceActors[1].name).toBe("Aria");
+  });
+
+  it("previews an apply with --dry-run without writing any files", async () => {
+    const root = await createCliTempDir("rpgm-cli-apply-dry-");
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "patch");
+    const unitsPath = path.join(root, "units.json");
+    const translationsPath = path.join(root, "translations.json");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await writeJsonFixture(path.join(gamePath, "data", "Actors.json"), [null, { name: "Aria" }]);
+    await writeJsonFixture(unitsPath, [actorNameUnit({ normalizedSource: undefined, hash: "hash-aria" })]);
+    await writeJsonFixture(translationsPath, [translatedResult()]);
+
+    const output: string[] = [];
+    const exitCode = await runCli(
+      ["apply", gamePath, translationsPath, "--mode", "patch", "--units", unitsPath, "--out", outDir, "--dry-run"],
+      {
+        stdout: (text) => output.push(text),
+        stderr: () => undefined
+      }
+    );
+
+    expect(exitCode).toBe(0);
+    expect(output.join("")).toContain("[dry run] Would write 1 file(s), apply 1 unit(s), skip 0");
+    await expect(access(outDir)).rejects.toThrow();
   });
 });

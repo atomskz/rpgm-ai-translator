@@ -47,8 +47,11 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
   const projectPath = requireArg(args[0], "project path");
   const outDir = requireOption(args, "--out");
   assertPatchOutputOutsideGame(projectPath, outDir);
+  const dryRun = hasFlag(args, "--dry-run");
   const providerName = readProviderName(args);
-  assertProviderReady(providerName);
+  if (!dryRun) {
+    assertProviderReady(providerName);
+  }
   const providerOptions = readTranslateCliOptions(args);
   const extractOptions = readExtractOptions(args);
   const { fontPath, numberFontPath } = readFontOptions(args);
@@ -72,6 +75,12 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
       io.stderr(`Warning: ${warning}\n`);
     }
   });
+  if (dryRun) {
+    io.stdout(
+      `[dry run] Detected ${detected.engine}. Would extract ${units.length} units from ${new Set(units.map((unit) => unit.filePath)).size} files and translate, validate and patch into '${outDir}'. No files were written.\n`
+    );
+    return 0;
+  }
   await mkdir(outDir, { recursive: true });
   await writeTranslationUnitsFile(path.join(outDir, "units.json"), units);
   io.stdout(

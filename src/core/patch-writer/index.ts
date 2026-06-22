@@ -58,11 +58,34 @@ export async function writePatch(
   const root = path.resolve(projectPath);
   const prepared = await prepareFiles(root, units, translations);
 
+  if (options.dryRun) {
+    return previewResult(root, options, prepared);
+  }
+
   if (options.mode === "patch") {
     return writePatchFiles(prepared, path.resolve(options.outDir ?? ""), prepared.skipped);
   }
 
   return writeInPlaceFiles(root, prepared, options);
+}
+
+// Report what a patch/in-place run would do without writing anything.
+function previewResult(
+  root: string,
+  options: ApplyOptions,
+  prepared: { files: PreparedFile[]; skipped: number }
+): ApplyResult {
+  const baseDir = options.mode === "patch" ? path.resolve(options.outDir ?? "") : root;
+  const result: ApplyResult = {
+    mode: options.mode,
+    filesWritten: prepared.files.map((file) => path.join(baseDir, file.relativeFilePath)),
+    unitsApplied: prepared.files.reduce((total, file) => total + file.unitsApplied, 0),
+    skipped: prepared.skipped
+  };
+  if (options.mode === "in-place" && options.backupDir) {
+    result.backupDir = options.backupDir;
+  }
+  return result;
 }
 
 async function prepareFiles(

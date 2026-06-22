@@ -9,6 +9,9 @@ export type ApplyOptions = {
   backupDir?: string;
   includePlugins?: boolean;
   includeSpeakerNames?: boolean;
+  // Compute what would be written (filesWritten/unitsApplied/skipped) without
+  // creating or modifying any files.
+  dryRun?: boolean;
 };
 
 export type ApplyResult = {

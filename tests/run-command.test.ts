@@ -104,6 +104,27 @@ describe("run command", () => {
     await expect(readFile(path.join(gamePath, "units.json"), "utf8")).rejects.toThrow();
   });
 
+  it("previews with --dry-run and writes nothing to the output directory", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-dry-"));
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "out");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await mkdir(path.join(gamePath, "js"), { recursive: true });
+    await writeFile(path.join(gamePath, "js", "rpg_core.js"), "", "utf8");
+    await writeJson(path.join(gamePath, "data", "Actors.json"), [null, { id: 1, name: "Aria" }]);
+
+    const output: string[] = [];
+    const exitCode = await runCli(["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--dry-run"], {
+      stdout: (text) => output.push(text),
+      stderr: () => undefined
+    });
+
+    expect(exitCode).toBe(0);
+    expect(output.join("")).toContain("[dry run]");
+    expect(output.join("")).toContain("Would extract 1 units");
+    await expect(readFile(path.join(outDir, "units.json"), "utf8")).rejects.toThrow();
+  });
+
   it("does not apply translations that have validation errors", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-invalid-"));
     const gamePath = path.join(root, "game");
