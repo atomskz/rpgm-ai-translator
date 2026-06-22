@@ -169,6 +169,35 @@ describe("DefaultValidator", () => {
     expect(codes(issues)).toContain("NUMBER_CHANGED");
   });
 
+  it("ignores control-code digits when comparing numbers", () => {
+    const protectedText = protectPlaceholders(String.raw`\C[4]Prayer\C[0]`);
+    const issues = validate(
+      unit({
+        source: String.raw`\C[4]Prayer\C[0]`,
+        normalizedSource: protectedText.text,
+        placeholders: protectedText.placeholders
+      }),
+      // Colour codes reordered; no real in-game number changed.
+      result({ source: String.raw`\C[4]Prayer\C[0]`, translation: "<PH_2>Молитва<PH_1>" })
+    );
+
+    expect(codes(issues)).not.toContain("NUMBER_CHANGED");
+  });
+
+  it("still flags a real in-game number change next to control codes", () => {
+    const protectedText = protectPlaceholders(String.raw`\C[4]Gain 500G\C[0]`);
+    const issues = validate(
+      unit({
+        source: String.raw`\C[4]Gain 500G\C[0]`,
+        normalizedSource: protectedText.text,
+        placeholders: protectedText.placeholders
+      }),
+      result({ source: String.raw`\C[4]Gain 500G\C[0]`, translation: "<PH_1>Получи 50G<PH_2>" })
+    );
+
+    expect(codes(issues)).toContain("NUMBER_CHANGED");
+  });
+
   it("reports changed variables", () => {
     const protectedText = protectPlaceholders("Hello {playerName}.");
     const issues = validate(

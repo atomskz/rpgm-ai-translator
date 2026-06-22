@@ -1,10 +1,10 @@
 import type { TranslationResult, TranslationUnit, ValidationIssue } from "../../types.js";
 import { restorePlaceholders } from "../../placeholders/index.js";
-import { extractNumbers, extractTechnicalTokens, extractVariables, issue, sameMultiset } from "./shared.js";
+import { extractProseNumbers, extractTechnicalTokens, extractVariables, issue, sameMultiset } from "./shared.js";
 
 export function validateNumbers(unit: TranslationUnit, result: TranslationResult): ValidationIssue[] {
-  const sourceNumbers = extractNumbers(unit.source);
-  const translatedNumbers = extractNumbers(restorePlaceholders(result.translation, unit.placeholders));
+  const sourceNumbers = extractProseNumbers(unit.source);
+  const translatedNumbers = extractProseNumbers(result.translation);
 
   if (sameMultiset(sourceNumbers, translatedNumbers)) {
     return [];

@@ -1,4 +1,5 @@
 import type { ValidationIssue } from "../../types.js";
+import { protectPlaceholders } from "../../placeholders/index.js";
 
 export function issue(
   id: string,
@@ -11,6 +12,16 @@ export function issue(
 
 export function extractNumbers(text: string): string[] {
   return text.match(/\d+(?:[.,]\d+)?%?/g) ?? [];
+}
+
+// In-game numbers are the ones shown to the player as prose. Digits that belong
+// to a control code, variable or placeholder (the 4 in `\C[4]`, the 1 in
+// `\V[1]` or `<PH_1>`) are not in-game numbers, so strip every protected token
+// before counting. Works whether the translation still holds `<PH_n>` tokens or
+// has been restored to real control codes.
+export function extractProseNumbers(text: string): string[] {
+  const prose = protectPlaceholders(text).text.replace(/<PH_\d+>/g, " ");
+  return extractNumbers(prose);
 }
 
 export function extractVariables(text: string): string[] {
