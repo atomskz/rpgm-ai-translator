@@ -101,6 +101,7 @@ export function commandHelp(command: string): string {
   if (meta.notes && meta.notes.length > 0) {
     lines.push("", ...meta.notes);
   }
+  lines.push("", "  --config <value>  Load defaults from a project config file (default: ./rpgm-ai-translator.json).");
   return `${lines.join("\n")}\n`;
 }
 
@@ -270,6 +271,13 @@ Examples:
       --units ./work/units.json \\
       --report ./work/report.json \\
       --out ./translated-patch
+
+Configuration:
+  --config <file>
+      Load defaults from a project config file. When omitted, ./rpgm-ai-translator.json
+      is used if present. Command-line flags always override config values, and
+      config values override built-in defaults. Recognized keys mirror the flag
+      names (e.g. provider, model, target, out, includePlugins, review).
 
 Environment:
   DEEPSEEK_API_KEY

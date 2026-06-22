@@ -12,3 +12,4 @@ export const defaultConfig: AppConfig = {
 
 export * from "./glossary.js";
 export * from "./characters.js";
+export * from "./project.js";

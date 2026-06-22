@@ -8,8 +8,9 @@ import { reviewCommand } from "./commands/review.js";
 import { runCommand } from "./commands/run.js";
 import { translateCommand } from "./commands/translate.js";
 import { validateCommand } from "./commands/validate.js";
+import { loadProjectConfig, mergeConfigIntoArgs } from "../config/project.js";
 import { commandHelp, helpText } from "./help.js";
-import { validateCommandArgs } from "./options.js";
+import { readOption, validateCommandArgs } from "./options.js";
 import type { CliIO, CommandHandler } from "./types.js";
 
 export type { CliIO } from "./types.js";
@@ -48,8 +49,13 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
       return 0;
     }
 
-    validateCommandArgs(command, args);
-    return await handler(args, io);
+    // Project config fills in flags the user did not pass; explicit CLI flags
+    // still take precedence because mergeConfigIntoArgs only adds absent ones.
+    const config = await loadProjectConfig(process.cwd(), readOption(args, "--config"));
+    const effectiveArgs = mergeConfigIntoArgs(command, args, config);
+
+    validateCommandArgs(command, effectiveArgs);
+    return await handler(effectiveArgs, io);
   } catch (error: unknown) {
     io.stderr(`${error instanceof Error ? error.message : String(error)}\n`);
     return 1;

@@ -226,14 +226,18 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   }
 };
 
+// Options accepted by every command. --config selects a project config file and
+// is consumed before dispatch (see runCli), so it must not be flagged as unknown.
+export const GLOBAL_VALUE_OPTIONS: readonly string[] = ["--config"];
+
 export function validateCommandArgs(command: string, args: string[]): void {
   const spec = COMMAND_OPTION_SPECS[command];
   if (!spec) {
     return;
   }
-  const valueOptions = new Set<string>(spec.valueOptions);
+  const valueOptions = new Set<string>([...spec.valueOptions, ...GLOBAL_VALUE_OPTIONS]);
   const booleanFlags = new Set<string>(spec.booleanFlags);
-  const knownOptions = [...spec.valueOptions, ...spec.booleanFlags];
+  const knownOptions = [...spec.valueOptions, ...GLOBAL_VALUE_OPTIONS, ...spec.booleanFlags];
   const seenValueOptions = new Set<string>();
 
   for (let index = 0; index < args.length; index += 1) {
