@@ -226,6 +226,32 @@ describe("DefaultValidator", () => {
     expect(codes(issues)).toContain("TECHNICAL_TOKEN_CHANGED");
   });
 
+  it("flags a kept glossary term that was changed", () => {
+    const issues = validate(
+      unit({ source: "Ether", normalizedSource: "Ether" }),
+      result({ translation: "Эфир" }),
+      { Ether: { mode: "keep" } }
+    );
+
+    expect(codes(issues)).toContain("GLOSSARY_VIOLATION");
+  });
+
+  it("treats translate and transliterate glossary modes as advisory", () => {
+    const transliterate = validate(
+      unit({ source: "Aria", normalizedSource: "Aria" }),
+      result({ translation: "Ария" }),
+      { Aria: { mode: "transliterate" } }
+    );
+    const translate = validate(
+      unit({ source: "Sword", normalizedSource: "Sword" }),
+      result({ translation: "Меч" }),
+      { Sword: { mode: "translate" } }
+    );
+
+    expect(codes(transliterate)).not.toContain("GLOSSARY_VIOLATION");
+    expect(codes(translate)).not.toContain("GLOSSARY_VIOLATION");
+  });
+
   it("reports max length and max lines violations", () => {
     const issues = validate(
       unit({ constraints: { maxLength: 5, maxLines: 1 } }),

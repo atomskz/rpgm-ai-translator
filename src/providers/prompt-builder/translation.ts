@@ -4,22 +4,27 @@ import { buildTranslationSystemPrompt } from "./system-prompts.js";
 import type { ChatMessage } from "./types.js";
 
 export function buildTranslationMessages(batch: TranslationUnit[], options: TranslateOptions): ChatMessage[] {
+  const glossary = filterGlossaryForBatch(options.glossary, batch);
   return [
     {
       role: "system",
-      content: buildTranslationSystemPrompt(options.targetLanguage)
+      content: buildTranslationSystemPrompt(options.targetLanguage, Object.keys(glossary).length > 0)
     },
     {
       role: "user",
-      content: JSON.stringify(buildTranslationUserPayload(batch, options))
+      content: JSON.stringify(buildTranslationUserPayload(batch, options, glossary))
     }
   ];
 }
 
-export function buildTranslationUserPayload(batch: TranslationUnit[], options: TranslateOptions): Record<string, unknown> {
+export function buildTranslationUserPayload(
+  batch: TranslationUnit[],
+  options: TranslateOptions,
+  glossary = filterGlossaryForBatch(options.glossary, batch)
+): Record<string, unknown> {
   return {
     targetLanguage: options.targetLanguage,
-    glossary: filterGlossaryForBatch(options.glossary, batch),
+    glossary,
     units: batch.map((unit) => ({
       id: unit.id,
       source: unit.source,

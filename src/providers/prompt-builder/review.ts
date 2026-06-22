@@ -4,22 +4,27 @@ import { buildReviewSystemPrompt } from "./system-prompts.js";
 import type { ChatMessage } from "./types.js";
 
 export function buildReviewMessages(batch: ReviewUnit[], options: ReviewOptions): ChatMessage[] {
+  const glossary = filterGlossaryForReviewBatch(options.glossary, batch);
   return [
     {
       role: "system",
-      content: buildReviewSystemPrompt(options.targetLanguage)
+      content: buildReviewSystemPrompt(options.targetLanguage, Object.keys(glossary).length > 0)
     },
     {
       role: "user",
-      content: JSON.stringify(buildReviewUserPayload(batch, options))
+      content: JSON.stringify(buildReviewUserPayload(batch, options, glossary))
     }
   ];
 }
 
-export function buildReviewUserPayload(batch: ReviewUnit[], options: ReviewOptions): Record<string, unknown> {
+export function buildReviewUserPayload(
+  batch: ReviewUnit[],
+  options: ReviewOptions,
+  glossary = filterGlossaryForReviewBatch(options.glossary, batch)
+): Record<string, unknown> {
   return {
     targetLanguage: options.targetLanguage,
-    glossary: filterGlossaryForReviewBatch(options.glossary, batch),
+    glossary,
     characters: options.characterGlossary ?? {},
     units: batch.map((unit) => ({
       id: unit.id,

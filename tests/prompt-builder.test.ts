@@ -76,6 +76,26 @@ describe("prompt builder", () => {
     ]);
   });
 
+  it("explains all glossary modes in the system prompt when a glossary applies", () => {
+    const messages = buildTranslationMessages([unit()], {
+      targetLanguage: "ru",
+      glossary: { Aria: { mode: "custom", translation: "Ария" } }
+    });
+    const system = messages[0].content;
+
+    expect(system).toContain("Apply the glossary");
+    expect(system).toContain("keep:");
+    expect(system).toContain("custom:");
+    expect(system).toContain("transliterate:");
+    expect(system).toContain("translate:");
+  });
+
+  it("omits glossary instructions when no glossary term applies", () => {
+    const messages = buildTranslationMessages([unit()], { targetLanguage: "ru" });
+
+    expect(messages[0].content).not.toContain("Apply the glossary");
+  });
+
   it("builds stable chat messages with JSON user content", () => {
     const messages = buildTranslationMessages([unit()], { targetLanguage: "ru" });
 
