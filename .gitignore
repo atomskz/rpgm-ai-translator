@@ -28,3 +28,6 @@ translated-patch/
 
 # Translation memory can contain proprietary text.
 *.jsonl
+
+# Local backlog and task notes.
+backlog/
