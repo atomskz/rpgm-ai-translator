@@ -1,6 +1,6 @@
 import type { TranslationResult, TranslationUnit, ValidationIssue } from "../../types.js";
 import { restorePlaceholders } from "../../placeholders/index.js";
-import { issue } from "./shared.js";
+import { displayWidth, issue } from "./shared.js";
 
 export function validateConstraints(unit: TranslationUnit, result: TranslationResult): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
@@ -11,7 +11,9 @@ export function validateConstraints(unit: TranslationUnit, result: TranslationRe
   // line.
   const translation = restorePlaceholders(result.translation, unit.placeholders);
 
-  if (maxLength != null && translation.length > maxLength) {
+  // `maxLength` is a message-box cell budget, so measure display width: a
+  // full-width CJK glyph occupies two cells while `String.length` counts it as one.
+  if (maxLength != null && displayWidth(translation) > maxLength) {
     issues.push(issue(unit.id, "warning", "MAX_LENGTH_EXCEEDED", `Translation exceeds maxLength ${maxLength}`));
   }
 

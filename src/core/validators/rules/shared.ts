@@ -32,6 +32,39 @@ export function extractTechnicalTokens(text: string): string[] {
   return text.match(/\\(?:[A-Za-z]+(?:\[[^\]\r\n]*\])?|\{|\}|\.|\||!|>)|%(?:\d+|(?:\.\d+)?[sdif])|\{[A-Za-z_][A-Za-z0-9_]*\}|<[^<>\n]+>/g) ?? [];
 }
 
+// Display width in message-box cells. RPG Maker renders full-width (CJK/kana,
+// fullwidth forms, most emoji) glyphs as two cells, so `maxLength` is measured in
+// cells, not UTF-16 code units. Iterating by code point also counts a surrogate
+// pair (e.g. a rare kanji or emoji) as one glyph rather than two.
+export function displayWidth(text: string): number {
+  let width = 0;
+  for (const char of text) {
+    width += isWideCodePoint(char.codePointAt(0) ?? 0) ? 2 : 1;
+  }
+  return width;
+}
+
+function isWideCodePoint(codePoint: number): boolean {
+  return (
+    codePoint >= 0x1100 &&
+    (codePoint <= 0x115f || // Hangul Jamo
+      codePoint === 0x2329 ||
+      codePoint === 0x232a ||
+      (codePoint >= 0x2e80 && codePoint <= 0x303e) || // CJK radicals, Kangxi, CJK symbols
+      (codePoint >= 0x3041 && codePoint <= 0x33ff) || // Hiragana, Katakana, CJK symbols
+      (codePoint >= 0x3400 && codePoint <= 0x4dbf) || // CJK Extension A
+      (codePoint >= 0x4e00 && codePoint <= 0x9fff) || // CJK Unified Ideographs
+      (codePoint >= 0xa000 && codePoint <= 0xa4cf) || // Yi
+      (codePoint >= 0xac00 && codePoint <= 0xd7a3) || // Hangul syllables
+      (codePoint >= 0xf900 && codePoint <= 0xfaff) || // CJK compatibility ideographs
+      (codePoint >= 0xfe30 && codePoint <= 0xfe4f) || // CJK compatibility forms
+      (codePoint >= 0xff00 && codePoint <= 0xff60) || // Fullwidth forms
+      (codePoint >= 0xffe0 && codePoint <= 0xffe6) ||
+      (codePoint >= 0x1f300 && codePoint <= 0x1faff) || // Emoji and symbols
+      (codePoint >= 0x20000 && codePoint <= 0x3fffd)) // CJK Extension B and beyond
+  );
+}
+
 export function sameMultiset(left: string[], right: string[]): boolean {
   if (left.length !== right.length) {
     return false;

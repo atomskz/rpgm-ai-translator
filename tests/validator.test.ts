@@ -236,6 +236,27 @@ describe("DefaultValidator", () => {
     expect(codes(issues)).toContain("MAX_LINES_EXCEEDED");
   });
 
+  it("measures maxLength as full-width display cells for CJK text", () => {
+    // "こんにちは" is 5 code units but renders as 10 message-box cells.
+    const withinChars = validate(
+      unit({ constraints: { maxLength: 8 } }),
+      result({ translation: "こんにちは" })
+    );
+    const latin = validate(unit({ constraints: { maxLength: 8 } }), result({ translation: "Hello" }));
+
+    expect(codes(withinChars)).toContain("MAX_LENGTH_EXCEEDED");
+    expect(codes(latin)).not.toContain("MAX_LENGTH_EXCEEDED");
+  });
+
+  it("counts a surrogate-pair glyph as a single wide glyph", () => {
+    // U+20000 (CJK Extension B) is one glyph of width 2, encoded as a surrogate pair.
+    const issues = validate(unit({ constraints: { maxLength: 2 } }), result({ translation: "\u{20000}" }));
+    const over = validate(unit({ constraints: { maxLength: 1 } }), result({ translation: "\u{20000}" }));
+
+    expect(codes(issues)).not.toContain("MAX_LENGTH_EXCEEDED");
+    expect(codes(over)).toContain("MAX_LENGTH_EXCEEDED");
+  });
+
   it("measures maxLength against restored control codes, not placeholder tokens", () => {
     const protectedText = protectPlaceholders(String.raw`\C[1]X\C[0]`);
     const issues = validate(
