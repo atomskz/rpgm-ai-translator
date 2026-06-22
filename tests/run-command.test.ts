@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
@@ -58,15 +58,19 @@ describe("run command", () => {
       stderr: () => undefined
     });
 
+    const workDir = `${outDir}-work`;
     const patchedActors = JSON.parse(await readFile(path.join(outDir, "data", "Actors.json"), "utf8"));
-    const report = JSON.parse(await readFile(path.join(outDir, "report.json"), "utf8"));
-    const units = JSON.parse(await readFile(path.join(outDir, "units.json"), "utf8"));
-    const translations = JSON.parse(await readFile(path.join(outDir, "translations.json"), "utf8"));
-    const memory = await readFile(path.join(outDir, "translation-memory.jsonl"), "utf8");
+    const report = JSON.parse(await readFile(path.join(workDir, "report.json"), "utf8"));
+    const units = JSON.parse(await readFile(path.join(workDir, "units.json"), "utf8"));
+    const translations = JSON.parse(await readFile(path.join(workDir, "translations.json"), "utf8"));
+    const memory = await readFile(path.join(workDir, "translation-memory.jsonl"), "utf8");
 
     expect(exitCode).toBe(0);
     expect(patchedActors[1].name).toBe("[ru] Aria");
     expect(patchedActors[1].profile).toBe(String.raw`[ru] Hello \N[1].`);
+    // The patch directory holds only game files, not intermediate artifacts.
+    expect((await readdir(outDir)).sort()).toEqual(["data"]);
+    await expect(readFile(path.join(outDir, "report.json"), "utf8")).rejects.toThrow();
     expect(report).toMatchObject({
       engine: "rpgmaker-mv",
       unitsExtracted: 2,
@@ -153,7 +157,7 @@ describe("run command", () => {
     );
 
     const patchedActors = JSON.parse(await readFile(path.join(outDir, "data", "Actors.json"), "utf8"));
-    const report = JSON.parse(await readFile(path.join(outDir, "report.json"), "utf8"));
+    const report = JSON.parse(await readFile(path.join(`${outDir}-work`, "report.json"), "utf8"));
     expect(exitCode).toBe(0);
     expect(patchedActors[1].name).toBe("[ru] Aria");
     expect(patchedActors[1].profile).toBe(sourceWithControlCode);
@@ -191,7 +195,7 @@ describe("run command", () => {
     );
 
     const patchedActors = JSON.parse(await readFile(path.join(outDir, "data", "Actors.json"), "utf8"));
-    const report = JSON.parse(await readFile(path.join(outDir, "report.json"), "utf8"));
+    const report = JSON.parse(await readFile(path.join(`${outDir}-work`, "report.json"), "utf8"));
     expect(exitCode).toBe(0);
     expect(output.join("")).toContain("Repair attempt 1/1: repaired 1");
     expect(patchedActors[1].profile).toBe(String.raw`[ru] Hello \N[1].`);
@@ -202,9 +206,10 @@ describe("run command", () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-resume-"));
     const gamePath = path.join(root, "game");
     const outDir = path.join(root, "out");
+    const workDir = `${outDir}-work`;
     await mkdir(path.join(gamePath, "data"), { recursive: true });
     await mkdir(path.join(gamePath, "js"), { recursive: true });
-    await mkdir(outDir, { recursive: true });
+    await mkdir(workDir, { recursive: true });
     await writeFile(path.join(gamePath, "js", "rpg_core.js"), "", "utf8");
     await writeJson(path.join(gamePath, "data", "Map001.json"), {
       displayName: "Town",
@@ -213,7 +218,7 @@ describe("run command", () => {
 
     const dialogueId = "Map001.events.1.pages.0.list.0.parameters.0";
     await writeFile(
-      path.join(outDir, "translations.raw.jsonl"),
+      path.join(workDir, "translations.raw.jsonl"),
       [
         JSON.stringify({ id: "Map001.displayName", source: "Town", translation: "Город", provider: "manual", model: "manual", status: "translated" }),
         JSON.stringify({ id: dialogueId, source: "Hello.", translation: "[ru] Hello.", provider: "manual", model: "manual", status: "translated" })
@@ -221,7 +226,7 @@ describe("run command", () => {
       "utf8"
     );
     await writeFile(
-      path.join(outDir, "translations.reviewed.jsonl"),
+      path.join(workDir, "translations.reviewed.jsonl"),
       `${JSON.stringify({ id: dialogueId, source: "Hello.", translation: "Привет!", provider: "manual", model: "manual", status: "translated" })}\n`,
       "utf8"
     );

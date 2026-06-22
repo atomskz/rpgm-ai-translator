@@ -60,7 +60,11 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
   const repairEnabled = hasFlag(args, "--repair");
   const repairAttempts = readPositiveIntegerOption(args, "--repair-attempts") ?? 1;
   const repairCodes = readIssueCodesOption(args, "--repair-codes");
-  const memoryPath = readOption(args, "--memory") ?? path.join(outDir, "translation-memory.jsonl");
+  // Intermediate artifacts (units, raw/reviewed/repaired translations, memory,
+  // report) go to the work directory, not the patch directory, so the patch
+  // folder holds only game files and proprietary memory is not shipped with it.
+  const workDir = readOption(args, "--work-dir") ?? `${outDir}-work`;
+  const memoryPath = readOption(args, "--memory") ?? path.join(workDir, "translation-memory.jsonl");
   const detector = new MvMzEngineDetector();
   const detected = await detector.detect(projectPath);
   if (detected.engine === "unknown") {
@@ -81,10 +85,11 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
     );
     return 0;
   }
+  await mkdir(workDir, { recursive: true });
   await mkdir(outDir, { recursive: true });
-  await writeTranslationUnitsFile(path.join(outDir, "units.json"), units);
+  await writeTranslationUnitsFile(path.join(workDir, "units.json"), units);
   io.stdout(
-    `Detected ${detected.engine}. Extracted ${units.length} units from ${new Set(units.map((unit) => unit.filePath)).size} files.\n`
+    `Detected ${detected.engine}. Extracted ${units.length} units from ${new Set(units.map((unit) => unit.filePath)).size} files. Work directory: ${workDir}\n`
   );
   const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
   const characterGlossary = charactersPath ? await loadCharacterGlossary(charactersPath) : undefined;
@@ -92,7 +97,7 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
 
   // Persist a JSONL checkpoint per batch and resume from it, so a crash mid-run
   // does not discard completed translate/review/repair work on the next run.
-  const rawCheckpointPath = path.join(outDir, "translations.raw.jsonl");
+  const rawCheckpointPath = path.join(workDir, "translations.raw.jsonl");
   const rawCheckpointById = checkpointedTranslationsById(units, await readTranslationResultsJsonlFile(rawCheckpointPath));
   if (rawCheckpointById.size > 0) {
     io.stdout(`Resuming translation: ${rawCheckpointById.size}/${units.length} units already in checkpoint.\n`);
@@ -118,9 +123,9 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
       rawCheckpointById.get(unit.id) ??
       missingCheckpointResult(unit, providerName, providerOptions.model)
   );
-  await writeTranslationResultsFile(path.join(outDir, "translations.raw.json"), translations);
+  await writeTranslationResultsFile(path.join(workDir, "translations.raw.json"), translations);
   if (hasFlag(args, "--review")) {
-    const reviewCheckpointPath = path.join(outDir, "translations.reviewed.jsonl");
+    const reviewCheckpointPath = path.join(workDir, "translations.reviewed.jsonl");
     const reviewCheckpointById = checkpointedTranslationsById(units, await readTranslationResultsJsonlFile(reviewCheckpointPath));
     if (reviewCheckpointById.size > 0) {
       io.stdout(`Resuming review: ${reviewCheckpointById.size}/${units.length} units already in checkpoint.\n`);
@@ -141,13 +146,13 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
       }
     );
     translations = reviewResult.translations;
-    await writeTranslationResultsFile(path.join(outDir, "translations.reviewed.json"), translations);
+    await writeTranslationResultsFile(path.join(workDir, "translations.reviewed.json"), translations);
     io.stdout(`Reviewed: ${reviewResult.reviewed}, failed: ${reviewResult.failed}, skipped: ${reviewResult.skipped}\n`);
   }
   io.stdout("Validating translations...\n");
   let validationIssues = validateTranslationResults(units, translations, new DefaultValidator(glossary));
   if (repairEnabled) {
-    const repairCheckpointPath = path.join(outDir, "translations.repaired.jsonl");
+    const repairCheckpointPath = path.join(workDir, "translations.repaired.jsonl");
     const repairCheckpointById = checkpointedTranslationsById(units, await readTranslationResultsJsonlFile(repairCheckpointPath));
     if (repairCheckpointById.size > 0) {
       translations = mergeCheckpointTranslations(units, translations, repairCheckpointById);
@@ -191,10 +196,10 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
     await applyFontPatch(projectPath, outDir, { fontPath, numberFontPath });
   }
   io.stdout("Writing translations...\n");
-  await writeTranslationResultsFile(path.join(outDir, "translations.json"), translations);
+  await writeTranslationResultsFile(path.join(workDir, "translations.json"), translations);
   const report = createReport({ units, translations, validationIssues, engine: detected.engine, warnings: extractionWarnings });
   io.stdout("Writing report...\n");
-  await writeReportFile(path.join(outDir, "report.json"), report);
+  await writeReportFile(path.join(workDir, "report.json"), report);
   io.stdout(`${summarizeReport(report)}\n`);
   return 0;
 }

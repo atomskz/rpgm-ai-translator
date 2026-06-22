@@ -45,6 +45,7 @@ const COMMAND_HELP: Record<string, CommandHelpMeta> = {
 
 const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--out": "Output file or directory, depending on the command.",
+  "--work-dir": "Directory for intermediate artifacts (default: <out>-work).",
   "--report": "Write or read a validation report, depending on the command.",
   "--units": "Use saved translation units instead of re-extracting them.",
   "--translations": "Translations JSON used as context for the character glossary.",

@@ -210,7 +210,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   },
   run: {
     valueOptions: [
-      "--out", "--provider", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
+      "--out", "--work-dir", "--provider", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
       "--max-tokens", "--retry-attempts", "--memory", "--glossary", "--characters", "--repair-attempts",
       "--repair-codes", "--font", "--number-font", "--mode", "--backup"
     ],

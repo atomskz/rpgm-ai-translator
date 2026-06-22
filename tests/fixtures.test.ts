@@ -18,7 +18,7 @@ describe("synthetic fixtures", () => {
       }
     );
 
-    const report = JSON.parse(await readFile(path.join(outDir, "report.json"), "utf8"));
+    const report = JSON.parse(await readFile(path.join(`${outDir}-work`, "report.json"), "utf8"));
     const map = JSON.parse(await readFile(path.join(outDir, "data", "Map001.json"), "utf8"));
     const plugins = await readFile(path.join(outDir, "js", "plugins.js"), "utf8");
 
