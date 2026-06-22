@@ -304,6 +304,23 @@ describe("RpgMakerMvMzExtractor", () => {
     expect(withPlugins.some((unit) => unit.source === "MainMenu")).toBe(false);
     expect(withPlugins.some((unit) => unit.source === "true")).toBe(false);
   });
+
+  it("extracts CJK-only database names and descriptions while still skipping unsafe strings", async () => {
+    const root = await makeProject("mz");
+    await writeJson(path.join(root, "data", "Items.json"), [
+      null,
+      { id: 1, name: "勇者の剣", description: "伝説の力を宿した剣。" },
+      { id: 2, name: "Audio.ogg", description: "true" }
+    ]);
+
+    const units = await new RpgMakerMvMzExtractor().extract(root);
+    const byId = new Map(units.map((unit) => [unit.id, unit]));
+
+    expect(byId.get("Items.1.name")?.source).toBe("勇者の剣");
+    expect(byId.get("Items.1.description")?.source).toBe("伝説の力を宿した剣。");
+    expect(units.some((unit) => unit.source === "Audio.ogg")).toBe(false);
+    expect(units.some((unit) => unit.source === "true")).toBe(false);
+  });
 });
 
 async function makeProject(engine: "mv" | "mz"): Promise<string> {

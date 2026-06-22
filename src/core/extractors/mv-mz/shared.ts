@@ -2,6 +2,7 @@ import path from "node:path";
 import type { EngineId, TranslationCategory, TranslationUnit } from "../../types.js";
 import { protectPlaceholders } from "../../placeholders/index.js";
 import { hashSource } from "../../utils/hash.js";
+import { containsTranslatableLetter } from "../../utils/text.js";
 
 export type JsonObject = Record<string, unknown>;
 
@@ -90,7 +91,7 @@ export function isSafeRuntimeText(value: string): boolean {
   if (/^[\w./-]+\.(?:png|jpg|jpeg|webp|ogg|m4a|mp3|wav)$/i.test(trimmed)) {
     return false;
   }
-  return /[A-Za-zА-Яа-яЁё]/.test(trimmed);
+  return containsTranslatableLetter(trimmed);
 }
 
 export function stringOrUndefined(value: unknown): string | undefined {

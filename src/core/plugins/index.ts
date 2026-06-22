@@ -1,3 +1,5 @@
+import { containsTranslatableLetter } from "../utils/text.js";
+
 export type RpgMakerPlugin = {
   name?: string;
   status?: boolean;
@@ -77,7 +79,7 @@ export function isSafeTranslatablePluginParameter(key: string, value: string): b
     return false;
   }
 
-  if (!/[A-Za-zА-Яа-яЁёぁ-んァ-ン一-龯]/.test(trimmed)) {
+  if (!containsTranslatableLetter(trimmed)) {
     return false;
   }
 
