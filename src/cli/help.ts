@@ -81,6 +81,10 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--dry-run": "Report what would be written without creating or modifying files."
 };
 
+export function commandUsage(command: string): string | undefined {
+  return COMMAND_HELP[command]?.usage;
+}
+
 export function commandHelp(command: string): string {
   const meta = COMMAND_HELP[command];
   const spec = COMMAND_OPTION_SPECS[command];
@@ -102,6 +106,7 @@ export function commandHelp(command: string): string {
     lines.push("", ...meta.notes);
   }
   lines.push("", "  --config <value>  Load defaults from a project config file (default: ./rpgm-ai-translator.json).");
+  lines.push("  --verbose  Print the error stack and cause chain when the command fails.");
   return `${lines.join("\n")}\n`;
 }
 
@@ -278,6 +283,10 @@ Configuration:
       is used if present. Command-line flags always override config values, and
       config values override built-in defaults. Recognized keys mirror the flag
       names (e.g. provider, model, target, out, includePlugins, review).
+
+  --verbose
+      Print the error stack and full cause chain when a command fails. Without
+      it, only the human-readable error message is shown.
 
 Environment:
   DEEPSEEK_API_KEY

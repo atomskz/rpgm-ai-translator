@@ -53,3 +53,59 @@ describe("CLI help", () => {
     expect(text).toContain("--font and --number-font apply only in --mode patch together with --out.");
   });
 });
+
+describe("CLI error reporting", () => {
+  it("appends usage and a --help hint to a missing-argument error", async () => {
+    const errors: string[] = [];
+    const exitCode = await runCli(["translate"], {
+      stdout: () => undefined,
+      stderr: (text) => errors.push(text)
+    });
+    const text = errors.join("");
+
+    expect(exitCode).toBe(1);
+    expect(text).toContain("Missing units path");
+    expect(text).toContain("Usage: rpgm-ai-translator translate <units.json>");
+    expect(text).toContain("Run 'rpgm-ai-translator translate --help' for details.");
+  });
+
+  it("does not print a stack trace without --verbose", async () => {
+    const errors: string[] = [];
+    await runCli(["translate", "units.json", "--taget", "ru"], {
+      stdout: () => undefined,
+      stderr: (text) => errors.push(text)
+    });
+    const text = errors.join("");
+
+    expect(text).toContain("Unknown option --taget. Did you mean --target?");
+    expect(text).not.toContain("    at ");
+  });
+
+  it("prints the stack with --verbose", async () => {
+    const errors: string[] = [];
+    await runCli(["translate", "units.json", "--taget", "ru", "--verbose"], {
+      stdout: () => undefined,
+      stderr: (text) => errors.push(text)
+    });
+    const text = errors.join("");
+
+    expect(text).toContain("Unknown option --taget. Did you mean --target?");
+    expect(text).toContain("    at ");
+  });
+
+  it("prints the cause chain with --verbose", async () => {
+    const errors: string[] = [];
+    const exitCode = await runCli(
+      ["translate", "units.json", "--config", "/definitely/missing/config.json", "--verbose"],
+      {
+        stdout: () => undefined,
+        stderr: (text) => errors.push(text)
+      }
+    );
+    const text = errors.join("");
+
+    expect(exitCode).toBe(1);
+    expect(text).toContain("Cannot read config file");
+    expect(text).toContain("Caused by:");
+  });
+});

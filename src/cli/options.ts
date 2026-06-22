@@ -1,5 +1,15 @@
 import type { ApplyOptions, ExtractOptions, TranslateOptions, ValidationIssue } from "../core/types.js";
 
+// Marks errors caused by bad command-line input (missing/unknown/invalid
+// arguments) so the CLI can attach the command usage and a --help hint, as
+// opposed to runtime failures where that guidance would be noise.
+export class UsageError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = "UsageError";
+  }
+}
+
 export type ProviderCliOptions = Pick<
   TranslateOptions,
   "targetLanguage" | "model" | "batchSize" | "timeoutMs" | "temperature" | "maxTokens"
@@ -25,7 +35,7 @@ export function readPositiveIntegerOption(args: string[], name: string): number 
 
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 1) {
-    throw new Error(`${name} must be a positive integer`);
+    throw new UsageError(`${name} must be a positive integer`);
   }
   return parsed;
 }
@@ -38,7 +48,7 @@ export function readNonNegativeIntegerOption(args: string[], name: string): numb
 
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 0) {
-    throw new Error(`${name} must be a non-negative integer`);
+    throw new UsageError(`${name} must be a non-negative integer`);
   }
   return parsed;
 }
@@ -55,13 +65,13 @@ export function readNumberOption(
 
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) {
-    throw new Error(`${name} must be a number`);
+    throw new UsageError(`${name} must be a number`);
   }
   if (options.min != null && parsed < options.min) {
-    throw new Error(`${name} must be greater than or equal to ${options.min}`);
+    throw new UsageError(`${name} must be greater than or equal to ${options.min}`);
   }
   if (options.max != null && parsed > options.max) {
-    throw new Error(`${name} must be less than or equal to ${options.max}`);
+    throw new UsageError(`${name} must be less than or equal to ${options.max}`);
   }
   return parsed;
 }
@@ -78,7 +88,7 @@ export function readIssueCodesOption(args: string[], name: string): ValidationIs
     .filter((code) => code.length > 0);
   for (const code of codes) {
     if (!isValidationIssueCode(code)) {
-      throw new Error(`${name} contains unknown validation issue code '${code}'`);
+      throw new UsageError(`${name} contains unknown validation issue code '${code}'`);
     }
   }
   return codes as ValidationIssue["code"][];
@@ -90,7 +100,7 @@ export function hasFlag(args: string[], name: string): boolean {
 
 export function requireArg(value: string | undefined, label: string): string {
   if (!value) {
-    throw new Error(`Missing ${label}`);
+    throw new UsageError(`Missing ${label}`);
   }
   return value;
 }
@@ -98,7 +108,7 @@ export function requireArg(value: string | undefined, label: string): string {
 export function requireOption(args: string[], name: string): string {
   const value = readOption(args, name);
   if (!value) {
-    throw new Error(`Missing required option ${name}`);
+    throw new UsageError(`Missing required option ${name}`);
   }
   return value;
 }
@@ -227,8 +237,11 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
 };
 
 // Options accepted by every command. --config selects a project config file and
-// is consumed before dispatch (see runCli), so it must not be flagged as unknown.
+// is consumed before dispatch (see runCli); --verbose enables stack/cause output
+// on error. Both are handled outside command handlers, so they must not be
+// flagged as unknown options.
 export const GLOBAL_VALUE_OPTIONS: readonly string[] = ["--config"];
+export const GLOBAL_BOOLEAN_FLAGS: readonly string[] = ["--verbose"];
 
 export function validateCommandArgs(command: string, args: string[]): void {
   const spec = COMMAND_OPTION_SPECS[command];
@@ -236,8 +249,8 @@ export function validateCommandArgs(command: string, args: string[]): void {
     return;
   }
   const valueOptions = new Set<string>([...spec.valueOptions, ...GLOBAL_VALUE_OPTIONS]);
-  const booleanFlags = new Set<string>(spec.booleanFlags);
-  const knownOptions = [...spec.valueOptions, ...GLOBAL_VALUE_OPTIONS, ...spec.booleanFlags];
+  const booleanFlags = new Set<string>([...spec.booleanFlags, ...GLOBAL_BOOLEAN_FLAGS]);
+  const knownOptions = [...spec.valueOptions, ...GLOBAL_VALUE_OPTIONS, ...spec.booleanFlags, ...GLOBAL_BOOLEAN_FLAGS];
   const seenValueOptions = new Set<string>();
 
   for (let index = 0; index < args.length; index += 1) {
@@ -253,18 +266,18 @@ export function validateCommandArgs(command: string, args: string[]): void {
     }
     if (valueOptions.has(token)) {
       if (seenValueOptions.has(token)) {
-        throw new Error(`Option ${token} was provided more than once`);
+        throw new UsageError(`Option ${token} was provided more than once`);
       }
       seenValueOptions.add(token);
       const value = args[index + 1];
       if (value === undefined || value.startsWith("--")) {
-        throw new Error(`${token} requires a value`);
+        throw new UsageError(`${token} requires a value`);
       }
       index += 1;
       continue;
     }
     const suggestion = closestKnownOption(token, knownOptions);
-    throw new Error(
+    throw new UsageError(
       suggestion
         ? `Unknown option ${token}. Did you mean ${suggestion}?`
         : `Unknown option ${token} for '${command}'`
