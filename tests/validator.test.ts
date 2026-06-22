@@ -264,6 +264,37 @@ describe("DefaultValidator", () => {
     expect(codes(issues)).toContain("GLOSSARY_VIOLATION");
   });
 
+  it("matches alphabetic glossary terms on word boundaries", () => {
+    // "Ko" must not match inside "Kobold", so a kept term is not falsely flagged.
+    const issues = validate(
+      unit({ source: "A Kobold appears.", normalizedSource: "A Kobold appears." }),
+      result({ source: "A Kobold appears.", translation: "Появляется кобольд." }),
+      { Ko: { mode: "keep" } }
+    );
+
+    expect(codes(issues)).not.toContain("GLOSSARY_VIOLATION");
+  });
+
+  it("still flags a kept alphabetic term that appears as a whole word", () => {
+    const issues = validate(
+      unit({ source: "Ko stands guard.", normalizedSource: "Ko stands guard." }),
+      result({ source: "Ko stands guard.", translation: "Ко на страже." }),
+      { Ko: { mode: "keep" } }
+    );
+
+    expect(codes(issues)).toContain("GLOSSARY_VIOLATION");
+  });
+
+  it("matches CJK glossary terms as substrings", () => {
+    const issues = validate(
+      unit({ source: "これは勇者の剣です。", normalizedSource: "これは勇者の剣です。" }),
+      result({ source: "これは勇者の剣です。", translation: "Это меч." }),
+      { 勇者: { mode: "keep" } }
+    );
+
+    expect(codes(issues)).toContain("GLOSSARY_VIOLATION");
+  });
+
   it("treats translate and transliterate glossary modes as advisory", () => {
     const transliterate = validate(
       unit({ source: "Aria", normalizedSource: "Aria" }),
