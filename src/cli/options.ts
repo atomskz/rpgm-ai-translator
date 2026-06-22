@@ -156,6 +156,142 @@ export function readFontOptions(args: string[]): FontCliOptions {
   };
 }
 
+type CommandOptionSpec = {
+  valueOptions: readonly string[];
+  booleanFlags: readonly string[];
+};
+
+// Allowed options per command, mirroring exactly what each command handler reads.
+// Used to reject unknown flags, missing values, and duplicate value options before
+// a command runs, so a typo silently falls back to a default no longer.
+const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
+  detect: { valueOptions: [], booleanFlags: [] },
+  extract: {
+    valueOptions: ["--out", "--report"],
+    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names"]
+  },
+  translate: {
+    valueOptions: [
+      "--provider", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
+      "--max-tokens", "--retry-attempts", "--out", "--checkpoint", "--report", "--memory", "--glossary"
+    ],
+    booleanFlags: []
+  },
+  characters: {
+    valueOptions: [
+      "--out", "--translations", "--provider", "--target", "--model", "--batch-size",
+      "--timeout-ms", "--temperature", "--max-tokens"
+    ],
+    booleanFlags: ["--draft-only", "--include-mentions"]
+  },
+  review: {
+    valueOptions: [
+      "--provider", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
+      "--max-tokens", "--out", "--checkpoint", "--glossary", "--characters"
+    ],
+    booleanFlags: []
+  },
+  validate: {
+    valueOptions: ["--out", "--glossary"],
+    booleanFlags: []
+  },
+  repair: {
+    valueOptions: [
+      "--report", "--out", "--provider", "--target", "--model", "--batch-size", "--timeout-ms",
+      "--temperature", "--max-tokens", "--checkpoint", "--glossary", "--characters", "--codes", "--attempts"
+    ],
+    booleanFlags: []
+  },
+  apply: {
+    valueOptions: ["--mode", "--out", "--backup", "--font", "--number-font", "--report", "--units"],
+    booleanFlags: ["--include-plugins", "--include-speaker-names"]
+  },
+  run: {
+    valueOptions: [
+      "--out", "--provider", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
+      "--max-tokens", "--retry-attempts", "--memory", "--glossary", "--characters", "--repair-attempts",
+      "--repair-codes", "--font", "--number-font", "--mode", "--backup"
+    ],
+    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--review", "--repair"]
+  },
+  "patch-font": {
+    valueOptions: ["--out", "--font", "--number-font"],
+    booleanFlags: []
+  }
+};
+
+export function validateCommandArgs(command: string, args: string[]): void {
+  const spec = COMMAND_OPTION_SPECS[command];
+  if (!spec) {
+    return;
+  }
+  const valueOptions = new Set<string>(spec.valueOptions);
+  const booleanFlags = new Set<string>(spec.booleanFlags);
+  const knownOptions = [...spec.valueOptions, ...spec.booleanFlags];
+  const seenValueOptions = new Set<string>();
+
+  for (let index = 0; index < args.length; index += 1) {
+    const token = args[index];
+    if (!token.startsWith("--")) {
+      continue;
+    }
+    if (token === "--help") {
+      continue;
+    }
+    if (booleanFlags.has(token)) {
+      continue;
+    }
+    if (valueOptions.has(token)) {
+      if (seenValueOptions.has(token)) {
+        throw new Error(`Option ${token} was provided more than once`);
+      }
+      seenValueOptions.add(token);
+      const value = args[index + 1];
+      if (value === undefined || value.startsWith("--")) {
+        throw new Error(`${token} requires a value`);
+      }
+      index += 1;
+      continue;
+    }
+    const suggestion = closestKnownOption(token, knownOptions);
+    throw new Error(
+      suggestion
+        ? `Unknown option ${token}. Did you mean ${suggestion}?`
+        : `Unknown option ${token} for '${command}'`
+    );
+  }
+}
+
+function closestKnownOption(token: string, knownOptions: readonly string[]): string | undefined {
+  let best: string | undefined;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const candidate of knownOptions) {
+    const distance = levenshteinDistance(token, candidate);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = candidate;
+    }
+  }
+  return best !== undefined && bestDistance <= 2 ? best : undefined;
+}
+
+function levenshteinDistance(a: string, b: string): number {
+  const matrix = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0));
+  for (let i = 0; i <= a.length; i += 1) {
+    matrix[i][0] = i;
+  }
+  for (let j = 0; j <= b.length; j += 1) {
+    matrix[0][j] = j;
+  }
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
+    }
+  }
+  return matrix[a.length][b.length];
+}
+
 function isValidationIssueCode(value: string): value is ValidationIssue["code"] {
   return VALIDATION_ISSUE_CODES.has(value as ValidationIssue["code"]);
 }
