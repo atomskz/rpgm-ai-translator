@@ -39,6 +39,19 @@ describe("reports", () => {
     });
   });
 
+  it("aggregates provider-neutral token usage across translations", () => {
+    const report = createReport({
+      units: [unit("Actors.1.name"), unit("Actors.2.name")],
+      translations: [
+        { ...result("Actors.1.name", "translated"), metadata: { tokenUsage: { inputTokens: 10, outputTokens: 4, totalTokens: 14 } } },
+        { ...result("Actors.2.name", "translated"), metadata: { tokenUsage: { inputTokens: 6, outputTokens: 2, totalTokens: 8 } } }
+      ]
+    });
+
+    expect(report.tokenUsage).toEqual({ inputTokens: 16, outputTokens: 6, totalTokens: 22, cachedInputTokens: 0 });
+    expect(summarizeReport(report)).toContain("Token usage: 22 total (16 in, 6 out)");
+  });
+
   it("creates human-readable summaries", () => {
     const summary = summarizeReport(
       createReport({

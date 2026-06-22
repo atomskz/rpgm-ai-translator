@@ -61,6 +61,7 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--timeout-ms": "Provider request timeout in milliseconds.",
   "--temperature": "Provider sampling temperature (0..2).",
   "--max-tokens": "Provider output token limit.",
+  "--max-tokens-budget": "Abort the run if estimated or used tokens exceed this budget.",
   "--retry-attempts": "CLI-level retries for failed translate batches.",
   "--codes": "Comma-separated validation issue codes to repair.",
   "--attempts": "Number of repair passes.",

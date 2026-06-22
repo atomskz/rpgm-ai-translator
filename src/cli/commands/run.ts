@@ -4,6 +4,7 @@ import { loadCharacterGlossary, loadGlossary } from "../../config/index.js";
 import { MvMzEngineDetector } from "../../core/engine-detector/index.js";
 import { RpgMakerMvMzExtractor } from "../../core/extractors/index.js";
 import { applyFontPatch } from "../../core/font-patch/index.js";
+import { estimateInputTokens, TokenBudget } from "../../core/cost/index.js";
 import { JsonlTranslationMemory, translateWithMemory } from "../../core/memory/index.js";
 import { assertPatchOutputOutsideGame } from "../../core/patch-writer/index.js";
 import { repairTranslations } from "../../core/repair/index.js";
@@ -61,6 +62,8 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
   const repairEnabled = hasFlag(args, "--repair");
   const repairAttempts = readPositiveIntegerOption(args, "--repair-attempts") ?? 1;
   const repairCodes = readIssueCodesOption(args, "--repair-codes");
+  const tokenBudgetLimit = readPositiveIntegerOption(args, "--max-tokens-budget");
+  const budget = tokenBudgetLimit != null ? new TokenBudget(tokenBudgetLimit) : undefined;
   // Intermediate artifacts (units, raw/reviewed/repaired translations, memory,
   // report) go to the work directory, not the patch directory, so the patch
   // folder holds only game files and proprietary memory is not shipped with it.
@@ -82,10 +85,11 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
   });
   if (dryRun) {
     io.stdout(
-      `[dry run] Detected ${detected.engine}. Would extract ${units.length} units from ${new Set(units.map((unit) => unit.filePath)).size} files and translate, validate and patch into '${outDir}'. No files were written.\n`
+      `[dry run] Detected ${detected.engine}. Would extract ${units.length} units from ${new Set(units.map((unit) => unit.filePath)).size} files (estimated ~${estimateInputTokens(units)} input tokens) and translate, validate and patch into '${outDir}'. No files were written.\n`
     );
     return 0;
   }
+  budget?.assertEstimateWithin(estimateInputTokens(units));
   await mkdir(workDir, { recursive: true });
   await mkdir(outDir, { recursive: true });
   await writeTranslationUnitsFile(path.join(workDir, "units.json"), units);
@@ -113,6 +117,8 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
       onProgress: createProgressLogger(io),
       onBatchResults: async (batchResults) => {
         await appendTranslationResultsJsonlFile(rawCheckpointPath, batchResults);
+        budget?.record(batchResults);
+        budget?.assertWithin();
       }
     },
     new JsonlTranslationMemory(memoryPath)
@@ -143,6 +149,8 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
         onProgress: createProgressLogger(io),
         onBatchResults: async (batchResults) => {
           await appendTranslationResultsJsonlFile(reviewCheckpointPath, batchResults);
+          budget?.record(batchResults);
+          budget?.assertWithin();
         }
       }
     );
@@ -170,6 +178,8 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
         onProgress: createProgressLogger(io),
         onBatchResults: async (batchResults) => {
           await appendTranslationResultsJsonlFile(repairCheckpointPath, batchResults);
+          budget?.record(batchResults);
+          budget?.assertWithin();
         }
       });
       translations = repairResult.translations;

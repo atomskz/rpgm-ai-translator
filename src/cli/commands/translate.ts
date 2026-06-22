@@ -1,3 +1,4 @@
+import { estimateInputTokens, TokenBudget } from "../../core/cost/index.js";
 import { JsonlTranslationMemory, translateWithMemory } from "../../core/memory/index.js";
 import { createReport } from "../../core/reports/index.js";
 import {
@@ -18,6 +19,7 @@ import { maybeWriteReport } from "../file-utils.js";
 import {
   assertProviderReady,
   readOption,
+  readPositiveIntegerOption,
   readProviderConfig,
   readProviderName,
   readTranslateCliOptions,
@@ -42,6 +44,9 @@ export async function translateCommand(args: string[], io: CliIO): Promise<numbe
   const checkpointResults = checkpointOption ? await readTranslationResultsJsonlFile(checkpointOption) : [];
   const checkpointById = checkpointedTranslationsById(units, checkpointResults);
   const unitsToTranslate = units.filter((unit) => !checkpointById.has(unit.id));
+  const tokenBudgetLimit = readPositiveIntegerOption(args, "--max-tokens-budget");
+  const budget = tokenBudgetLimit != null ? new TokenBudget(tokenBudgetLimit) : undefined;
+  budget?.assertEstimateWithin(estimateInputTokens(unitsToTranslate));
   if (checkpointPath) {
     if (checkpointOption) {
       io.stdout(`Loaded checkpoint: ${checkpointById.size}/${units.length} translated units from ${checkpointPath}\n`);
@@ -58,12 +63,17 @@ export async function translateCommand(args: string[], io: CliIO): Promise<numbe
       ...providerOptions,
       glossary,
       onProgress: createProgressLogger(io),
-      onBatchResults: checkpointPath
-        ? async (batchResults) => {
-            await appendTranslationResultsJsonlFile(checkpointPath, batchResults);
-            io.stdout(`Checkpoint saved: ${batchResults.length} results.\n`);
-          }
-        : undefined
+      onBatchResults:
+        checkpointPath || budget
+          ? async (batchResults) => {
+              if (checkpointPath) {
+                await appendTranslationResultsJsonlFile(checkpointPath, batchResults);
+                io.stdout(`Checkpoint saved: ${batchResults.length} results.\n`);
+              }
+              budget?.record(batchResults);
+              budget?.assertWithin();
+            }
+          : undefined
     },
     memoryPath ? new JsonlTranslationMemory(memoryPath) : undefined
   );

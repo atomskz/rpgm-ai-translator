@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import type { EngineId, TranslationReport, TranslationResult, TranslationUnit, ValidationIssue } from "../types.js";
+import { aggregateTokenUsage } from "../cost/index.js";
 import { writeFileAtomic } from "../utils/fs.js";
 
 export type ReportInput = {
@@ -33,6 +34,10 @@ export function createReport(input: ReportInput): TranslationReport {
   };
   if (input.warnings && input.warnings.length > 0) {
     report.warnings = input.warnings;
+  }
+  const tokenUsage = aggregateTokenUsage(translations);
+  if (tokenUsage) {
+    report.tokenUsage = tokenUsage;
   }
   return report;
 }
@@ -78,6 +83,12 @@ export function summarizeReport(report: TranslationReport): string {
   const topCodes = topEntries(report.issuesByCode, 5);
   if (topCodes.length > 0) {
     lines.push(`Top issue codes: ${topCodes.map(([code, count]) => `${code}=${count}`).join(", ")}`);
+  }
+
+  if (report.tokenUsage) {
+    lines.push(
+      `Token usage: ${report.tokenUsage.totalTokens ?? 0} total (${report.tokenUsage.inputTokens ?? 0} in, ${report.tokenUsage.outputTokens ?? 0} out)`
+    );
   }
 
   return lines.join("\n");
@@ -150,6 +161,7 @@ function isTranslationReport(value: unknown): value is TranslationReport {
     (candidate.issuesByFile == null || isCountMap(candidate.issuesByFile)) &&
     (candidate.issuesByCategory == null || isCountMap(candidate.issuesByCategory)) &&
     (candidate.warnings == null || (Array.isArray(candidate.warnings) && candidate.warnings.every((item) => typeof item === "string"))) &&
+    (candidate.tokenUsage == null || (typeof candidate.tokenUsage === "object" && !Array.isArray(candidate.tokenUsage))) &&
     Array.isArray(candidate.validationIssues)
   );
 }

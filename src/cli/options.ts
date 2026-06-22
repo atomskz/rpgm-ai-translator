@@ -179,7 +179,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   translate: {
     valueOptions: [
       "--provider", "--base-url", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
-      "--max-tokens", "--retry-attempts", "--out", "--checkpoint", "--report", "--memory", "--glossary"
+      "--max-tokens", "--max-tokens-budget", "--retry-attempts", "--out", "--checkpoint", "--report", "--memory", "--glossary"
     ],
     booleanFlags: []
   },
@@ -215,7 +215,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   run: {
     valueOptions: [
       "--out", "--work-dir", "--provider", "--base-url", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
-      "--max-tokens", "--retry-attempts", "--memory", "--glossary", "--characters", "--repair-attempts",
+      "--max-tokens", "--max-tokens-budget", "--retry-attempts", "--memory", "--glossary", "--characters", "--repair-attempts",
       "--repair-codes", "--font", "--number-font", "--mode", "--backup"
     ],
     booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--review", "--repair", "--dry-run"]

@@ -129,6 +129,27 @@ describe("run command", () => {
     await expect(readFile(path.join(outDir, "units.json"), "utf8")).rejects.toThrow();
   });
 
+  it("stops before calling the provider when the estimate exceeds --max-tokens-budget", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-budget-"));
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "out");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await mkdir(path.join(gamePath, "js"), { recursive: true });
+    await writeFile(path.join(gamePath, "js", "rpg_core.js"), "", "utf8");
+    await writeJson(path.join(gamePath, "data", "Actors.json"), [null, { id: 1, name: "Aria", profile: "A wandering knight." }]);
+
+    const errors: string[] = [];
+    const exitCode = await runCli(["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--max-tokens-budget", "1"], {
+      stdout: () => undefined,
+      stderr: (text) => errors.push(text)
+    });
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("")).toContain("exceed the --max-tokens-budget of 1");
+    // Nothing was written because the run stopped before extraction output.
+    await expect(readFile(path.join(`${outDir}-work`, "units.json"), "utf8")).rejects.toThrow();
+  });
+
   it("does not apply translations that have validation errors", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-invalid-"));
     const gamePath = path.join(root, "game");
