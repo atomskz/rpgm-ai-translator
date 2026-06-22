@@ -20,6 +20,24 @@ type PreparedFile = {
   skipped: number;
 };
 
+// Patch mode must never write into the original game folder, because patch mode
+// does not create a backup. Reject an output directory that is the game folder
+// itself or is nested in (or contains) it, before any files are read or written.
+export function assertPatchOutputOutsideGame(projectPath: string, outDir: string): void {
+  const root = path.resolve(projectPath);
+  const resolvedOut = path.resolve(outDir);
+  if (resolvedOut === root || isInsideDirectory(root, resolvedOut) || isInsideDirectory(resolvedOut, root)) {
+    throw new Error(
+      `Output directory must be outside the game folder to avoid overwriting it (game: '${projectPath}', out: '${outDir}')`
+    );
+  }
+}
+
+function isInsideDirectory(parent: string, candidate: string): boolean {
+  const relative = path.relative(parent, candidate);
+  return relative.length > 0 && !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
 export async function writePatch(
   projectPath: string,
   units: TranslationUnit[],
@@ -31,6 +49,9 @@ export async function writePatch(
   }
   if (options.mode === "patch" && !options.outDir) {
     throw new Error("Patch mode requires options.outDir");
+  }
+  if (options.mode === "patch") {
+    assertPatchOutputOutsideGame(projectPath, options.outDir ?? "");
   }
 
   const root = path.resolve(projectPath);

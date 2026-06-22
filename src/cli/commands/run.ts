@@ -5,6 +5,7 @@ import { MvMzEngineDetector } from "../../core/engine-detector/index.js";
 import { RpgMakerMvMzExtractor } from "../../core/extractors/index.js";
 import { applyFontPatch } from "../../core/font-patch/index.js";
 import { JsonlTranslationMemory, translateWithMemory } from "../../core/memory/index.js";
+import { assertPatchOutputOutsideGame } from "../../core/patch-writer/index.js";
 import { repairTranslations } from "../../core/repair/index.js";
 import { createReport, summarizeReport, writeReportFile } from "../../core/reports/index.js";
 import { reviewTranslations } from "../../core/review/index.js";
@@ -38,6 +39,7 @@ import type { CliIO } from "../types.js";
 export async function runCommand(args: string[], io: CliIO): Promise<number> {
   const projectPath = requireArg(args[0], "project path");
   const outDir = requireOption(args, "--out");
+  assertPatchOutputOutsideGame(projectPath, outDir);
   const providerName = readProviderName(args);
   assertProviderReady(providerName);
   const providerOptions = readTranslateCliOptions(args);

@@ -404,6 +404,42 @@ describe("patch writer", () => {
     expect(patchedRaw).toContain("autoheal");
   });
 
+  it("refuses to patch when the output directory is the game folder", async () => {
+    const root = path.join(tmpdir(), `rpgm-patch-same-${Date.now()}`);
+    await mkdir(path.join(root, "data"), { recursive: true });
+    await mkdir(path.join(root, "js"), { recursive: true });
+    await writeFile(path.join(root, "js", "rmmz_core.js"), "", "utf8");
+    await writeJson(path.join(root, "data", "Actors.json"), [null, { id: 1, name: "Aria" }]);
+
+    const extractor = new RpgMakerMvMzExtractor();
+    await expect(
+      extractor.applyTranslations(
+        root,
+        [{ id: "Actors.1.name", source: "Aria", translation: "Ария", provider: "manual", model: "manual", status: "translated" }],
+        { mode: "patch", outDir: root }
+      )
+    ).rejects.toThrow(/outside the game folder/);
+
+    expect(await readFile(path.join(root, "data", "Actors.json"), "utf8")).toContain("Aria");
+  });
+
+  it("refuses to patch when the output directory is nested in the game folder", async () => {
+    const root = path.join(tmpdir(), `rpgm-patch-nested-${Date.now()}`);
+    await mkdir(path.join(root, "data"), { recursive: true });
+    await mkdir(path.join(root, "js"), { recursive: true });
+    await writeFile(path.join(root, "js", "rmmz_core.js"), "", "utf8");
+    await writeJson(path.join(root, "data", "Actors.json"), [null, { id: 1, name: "Aria" }]);
+
+    const extractor = new RpgMakerMvMzExtractor();
+    await expect(
+      extractor.applyTranslations(
+        root,
+        [{ id: "Actors.1.name", source: "Aria", translation: "Ария", provider: "manual", model: "manual", status: "translated" }],
+        { mode: "patch", outDir: path.join(root, "translated") }
+      )
+    ).rejects.toThrow(/outside the game folder/);
+  });
+
   it("writes translated JSON-encoded plugin parameters to plugins.js", async () => {
     const root = path.join(tmpdir(), `rpgm-plugin-json-patch-${Date.now()}`);
     const outDir = path.join(tmpdir(), `rpgm-plugin-json-patch-out-${Date.now()}`);
