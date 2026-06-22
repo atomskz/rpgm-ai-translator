@@ -176,6 +176,51 @@ describe("run command", () => {
     expect(patchedActors[1].profile).toBe(String.raw`[ru] Hello \N[1].`);
     expect(report.validationIssues).toEqual([]);
   });
+
+  it("resumes translation and review from existing checkpoints without re-calling the provider", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-resume-"));
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "out");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await mkdir(path.join(gamePath, "js"), { recursive: true });
+    await mkdir(outDir, { recursive: true });
+    await writeFile(path.join(gamePath, "js", "rpg_core.js"), "", "utf8");
+    await writeJson(path.join(gamePath, "data", "Map001.json"), {
+      displayName: "Town",
+      events: [null, { id: 1, name: "NPC", pages: [{ list: [{ code: 401, parameters: ["Hello."] }] }] }]
+    });
+
+    const dialogueId = "Map001.events.1.pages.0.list.0.parameters.0";
+    await writeFile(
+      path.join(outDir, "translations.raw.jsonl"),
+      [
+        JSON.stringify({ id: "Map001.displayName", source: "Town", translation: "Город", provider: "manual", model: "manual", status: "translated" }),
+        JSON.stringify({ id: dialogueId, source: "Hello.", translation: "[ru] Hello.", provider: "manual", model: "manual", status: "translated" })
+      ].join("\n") + "\n",
+      "utf8"
+    );
+    await writeFile(
+      path.join(outDir, "translations.reviewed.jsonl"),
+      `${JSON.stringify({ id: dialogueId, source: "Hello.", translation: "Привет!", provider: "manual", model: "manual", status: "translated" })}\n`,
+      "utf8"
+    );
+
+    const output: string[] = [];
+    const exitCode = await runCli(["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--review"], {
+      stdout: (text) => output.push(text),
+      stderr: () => undefined
+    });
+
+    const patched = JSON.parse(await readFile(path.join(outDir, "data", "Map001.json"), "utf8"));
+    const stdout = output.join("");
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("Resuming translation: 2/2");
+    expect(stdout).toContain("Resuming review: 1/2");
+    // Translation kept from the raw checkpoint, not re-translated to "[ru] Town".
+    expect(patched.displayName).toBe("Город");
+    // Review kept from the reviewed checkpoint, not re-reviewed back to the raw value.
+    expect(patched.events[1].pages[0].list[0].parameters[0]).toBe("Привет!");
+  });
 });
 
 async function writeJson(filePath: string, value: unknown): Promise<void> {

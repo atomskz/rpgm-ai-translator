@@ -10,6 +10,8 @@ import { repairTranslations } from "../../core/repair/index.js";
 import { createReport, summarizeReport, writeReportFile } from "../../core/reports/index.js";
 import { reviewTranslations } from "../../core/review/index.js";
 import {
+  appendTranslationResultsJsonlFile,
+  readTranslationResultsJsonlFile,
   writeTranslationResultsFile,
   writeTranslationUnitsFile
 } from "../../core/translation-units/index.js";
@@ -33,6 +35,11 @@ import {
   requireArg,
   requireOption
 } from "../options.js";
+import {
+  checkpointedTranslationsById,
+  mergeCheckpointTranslations,
+  missingCheckpointResult
+} from "../checkpoints.js";
 import { createProgressLogger } from "../progress.js";
 import type { CliIO } from "../types.js";
 
@@ -66,29 +73,71 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
   const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
   const characterGlossary = charactersPath ? await loadCharacterGlossary(charactersPath) : undefined;
   const provider = createProvider(providerName);
-  let translations = await translateWithMemory(
-    units,
+
+  // Persist a JSONL checkpoint per batch and resume from it, so a crash mid-run
+  // does not discard completed translate/review/repair work on the next run.
+  const rawCheckpointPath = path.join(outDir, "translations.raw.jsonl");
+  const rawCheckpointById = checkpointedTranslationsById(units, await readTranslationResultsJsonlFile(rawCheckpointPath));
+  if (rawCheckpointById.size > 0) {
+    io.stdout(`Resuming translation: ${rawCheckpointById.size}/${units.length} units already in checkpoint.\n`);
+  }
+  const unitsToTranslate = units.filter((unit) => !rawCheckpointById.has(unit.id));
+  const translatedResults = await translateWithMemory(
+    unitsToTranslate,
     provider,
     {
       ...providerOptions,
       glossary,
-      onProgress: createProgressLogger(io)
+      onProgress: createProgressLogger(io),
+      onBatchResults: async (batchResults) => {
+        await appendTranslationResultsJsonlFile(rawCheckpointPath, batchResults);
+      }
     },
     new JsonlTranslationMemory(memoryPath)
   );
+  const translatedById = new Map(translatedResults.map((result) => [result.id, result]));
+  let translations = units.map(
+    (unit) =>
+      translatedById.get(unit.id) ??
+      rawCheckpointById.get(unit.id) ??
+      missingCheckpointResult(unit, providerName, providerOptions.model)
+  );
+  await writeTranslationResultsFile(path.join(outDir, "translations.raw.json"), translations);
   if (hasFlag(args, "--review")) {
-    const reviewResult = await reviewTranslations(units, translations, provider, {
-      ...providerOptions,
-      glossary,
-      characterGlossary,
-      onProgress: createProgressLogger(io)
-    });
+    const reviewCheckpointPath = path.join(outDir, "translations.reviewed.jsonl");
+    const reviewCheckpointById = checkpointedTranslationsById(units, await readTranslationResultsJsonlFile(reviewCheckpointPath));
+    if (reviewCheckpointById.size > 0) {
+      io.stdout(`Resuming review: ${reviewCheckpointById.size}/${units.length} units already in checkpoint.\n`);
+    }
+    const unitsToReview = units.filter((unit) => !reviewCheckpointById.has(unit.id));
+    const reviewResult = await reviewTranslations(
+      unitsToReview,
+      mergeCheckpointTranslations(units, translations, reviewCheckpointById),
+      provider,
+      {
+        ...providerOptions,
+        glossary,
+        characterGlossary,
+        onProgress: createProgressLogger(io),
+        onBatchResults: async (batchResults) => {
+          await appendTranslationResultsJsonlFile(reviewCheckpointPath, batchResults);
+        }
+      }
+    );
     translations = reviewResult.translations;
+    await writeTranslationResultsFile(path.join(outDir, "translations.reviewed.json"), translations);
     io.stdout(`Reviewed: ${reviewResult.reviewed}, failed: ${reviewResult.failed}, skipped: ${reviewResult.skipped}\n`);
   }
   io.stdout("Validating translations...\n");
   let validationIssues = validateTranslationResults(units, translations, new DefaultValidator(glossary));
   if (repairEnabled) {
+    const repairCheckpointPath = path.join(outDir, "translations.repaired.jsonl");
+    const repairCheckpointById = checkpointedTranslationsById(units, await readTranslationResultsJsonlFile(repairCheckpointPath));
+    if (repairCheckpointById.size > 0) {
+      translations = mergeCheckpointTranslations(units, translations, repairCheckpointById);
+      validationIssues = validateTranslationResults(units, translations, new DefaultValidator(glossary));
+      io.stdout(`Resuming repair: ${repairCheckpointById.size} units already in checkpoint.\n`);
+    }
     for (let attempt = 1; attempt <= repairAttempts && validationIssues.length > 0; attempt += 1) {
       io.stdout(`Repairing validation issues, attempt ${attempt}/${repairAttempts} (${validationIssues.length} issues)...\n`);
       const repairResult = await repairTranslations(units, translations, validationIssues, provider, {
@@ -96,7 +145,10 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
         glossary,
         characterGlossary,
         issueCodes: repairCodes,
-        onProgress: createProgressLogger(io)
+        onProgress: createProgressLogger(io),
+        onBatchResults: async (batchResults) => {
+          await appendTranslationResultsJsonlFile(repairCheckpointPath, batchResults);
+        }
       });
       translations = repairResult.translations;
       io.stdout(
