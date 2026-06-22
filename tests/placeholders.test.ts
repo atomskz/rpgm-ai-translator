@@ -62,6 +62,35 @@ describe("placeholder protection", () => {
     expect(restorePlaceholders(protectedText.text, protectedText.placeholders)).toBe(source);
   });
 
+  it("does not capture comparison prose as a tag", () => {
+    const source = "if a < b then c > d";
+
+    const protectedText = protectPlaceholders(source);
+
+    expect(protectedText.placeholders).toEqual([]);
+    expect(protectedText.text).toBe(source);
+    expect(restorePlaceholders(protectedText.text, protectedText.placeholders)).toBe(source);
+  });
+
+  it("round-trips source that literally contains a placeholder-shaped token", () => {
+    const source = String.raw`Set \V[1] then show <PH_2> literally`;
+
+    const protectedText = protectPlaceholders(source);
+
+    expect(protectedText.placeholders.map((placeholder) => placeholder.value)).toEqual([String.raw`\V[1]`, "<PH_2>"]);
+    expect(restorePlaceholders(protectedText.text, protectedText.placeholders)).toBe(source);
+  });
+
+  it("protects a nested control code as a single token without leaking a bracket", () => {
+    const source = String.raw`Name: \N[\V[1]]!`;
+
+    const protectedText = protectPlaceholders(source);
+
+    expect(protectedText.placeholders.map((placeholder) => placeholder.value)).toEqual([String.raw`\N[\V[1]]`]);
+    expect(protectedText.text).toBe("Name: <PH_1>!");
+    expect(restorePlaceholders(protectedText.text, protectedText.placeholders)).toBe(source);
+  });
+
   it("treats an escaped backslash before a letter as a single token", () => {
     const source = String.raw`\\N[1]`;
 

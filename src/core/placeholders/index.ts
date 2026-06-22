@@ -10,10 +10,16 @@ export type PlaceholderProtectionResult = {
 // (gold window), `\<`/`\>` (instant-print toggle) and `\^` (skip wait at end of
 // message). The `\\` alternative is listed first so a literal backslash is
 // consumed before the lettered branch can misread the following text.
-const CONTROL_CODE_PATTERN = /\\(?:\\|[A-Za-z]+(?:\[[^\]\r\n]*\])?|\{|\}|\.|\||!|>|<|\$|\^)/g;
+// The bracket sub-pattern allows one level of nesting (e.g. `\N[\V[1]]`) so a
+// nested control code is captured whole instead of stopping at the first `]` and
+// leaking a stray bracket into the translatable text.
+const CONTROL_CODE_PATTERN = /\\(?:\\|[A-Za-z]+(?:\[(?:[^[\]\r\n]|\[[^[\]\r\n]*\])*\])?|\{|\}|\.|\||!|>|<|\$|\^)/g;
 const FORMAT_TOKEN_PATTERN = /%(?:\d+|(?:\.\d+)?[sdif])/g;
 const TEMPLATE_TOKEN_PATTERN = /\{[A-Za-z_][A-Za-z0-9_]*\}/g;
-const TAG_PATTERN = /<[^<>\n]+>/g;
+// Only treat `<...>` as a tag when it starts like one (optional slash then a
+// letter), so prose such as `if a < b then c > d` is not swallowed as a tag.
+const TAG_PATTERN = /<\/?[A-Za-z][^<>\n]*>/g;
+const TOKEN_PATTERN = /<PH_\d+>/g;
 
 type MatchKind = Placeholder["kind"];
 
@@ -52,10 +58,14 @@ export function protectPlaceholders(source: string): PlaceholderProtectionResult
 }
 
 export function restorePlaceholders(text: string, placeholders: Placeholder[] = []): string {
-  return placeholders.reduce(
-    (current, placeholder) => current.split(placeholder.token).join(placeholder.value),
-    text
-  );
+  if (placeholders.length === 0) {
+    return text;
+  }
+  // Single pass over the token occurrences so a restored value that happens to
+  // look like another token (e.g. source text that literally contained `<PH_2>`)
+  // is not re-substituted by a later placeholder.
+  const valueByToken = new Map(placeholders.map((placeholder) => [placeholder.token, placeholder.value]));
+  return text.replace(TOKEN_PATTERN, (token) => valueByToken.get(token) ?? token);
 }
 
 export function countToken(text: string, token: string): number {
