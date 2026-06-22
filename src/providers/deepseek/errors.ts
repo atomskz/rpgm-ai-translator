@@ -86,15 +86,58 @@ function issueCodeForHttpStatus(status: number): ValidationIssue["code"] {
   return "PROVIDER_RESPONSE_ERROR";
 }
 
+// Node/undici socket error codes that mean the request never got a usable
+// response and is safe to retry. undici wraps the original socket error as the
+// `cause` of a generic "fetch failed" TypeError, so classification walks the
+// cause chain by code rather than matching the wrapper message.
+const NETWORK_ERROR_CODES = new Set([
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "ETIMEDOUT",
+  "EPIPE",
+  "EHOSTUNREACH",
+  "ENETUNREACH"
+]);
+
+export function networkErrorCode(error: unknown): string | undefined {
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  while (current != null && !seen.has(current)) {
+    seen.add(current);
+    const code = (current as { code?: unknown }).code;
+    if (typeof code === "string" && (NETWORK_ERROR_CODES.has(code) || code.startsWith("UND_ERR"))) {
+      return code;
+    }
+    current = (current as { cause?: unknown }).cause;
+  }
+  return undefined;
+}
+
+export function isTimeoutError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
+export function isNetworkError(error: unknown): boolean {
+  if (networkErrorCode(error) !== undefined) {
+    return true;
+  }
+  // Fallback for runtimes that surface only the wrapper message without a cause.
+  return error instanceof Error && error.message.includes("fetch failed");
+}
+
 function normalizeProviderError(error: unknown): { code: ValidationIssue["code"]; message: string } {
   if (error instanceof DeepSeekProviderError) {
     return { code: error.issueCode, message: error.message };
   }
-  if (error instanceof Error && error.name === "AbortError") {
+  if (isTimeoutError(error)) {
     return { code: "PROVIDER_TIMEOUT", message: "DeepSeek API request timed out" };
   }
-  if (error instanceof Error && error.message.includes("fetch failed")) {
-    return { code: "PROVIDER_NETWORK_ERROR", message: error.message };
+  if (isNetworkError(error)) {
+    const code = networkErrorCode(error);
+    const message = error instanceof Error ? error.message : String(error);
+    return { code: "PROVIDER_NETWORK_ERROR", message: code ? `${message} (${code})` : message };
   }
   if (error instanceof Error) {
     return { code: "PROVIDER_RESPONSE_ERROR", message: error.message };

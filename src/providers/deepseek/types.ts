@@ -14,6 +14,8 @@ export type DeepSeekResponse = {
   status: number;
   statusText: string;
   json: () => Promise<unknown>;
+  // Present on real fetch responses (Headers); used to honor Retry-After.
+  headers?: { get(name: string): string | null };
 };
 
 export type DeepSeekProviderConfig = {

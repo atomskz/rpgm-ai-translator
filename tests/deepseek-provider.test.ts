@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DeepSeekProvider } from "../src/providers/deepseek/index.js";
+import { backoffDelay, retryAfterMs } from "../src/providers/deepseek/client.js";
 import type { TranslationUnit } from "../src/core/types.js";
 
 type FetchInit = {
@@ -194,6 +195,70 @@ describe("DeepSeekProvider", () => {
       code: "PROVIDER_RATE_LIMIT",
       message: "DeepSeek API error 429: Rate limit reached"
     });
+  });
+
+  it("retries a 429 that carries a Retry-After header and then succeeds", async () => {
+    let calls = 0;
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      retryDelayMs: 0,
+      maxRetries: 1,
+      fetchFn: async () => {
+        calls += 1;
+        if (calls === 1) {
+          return response(429, { message: "slow down" }, false, "Too Many Requests", { "Retry-After": "0" });
+        }
+        return response(200, {
+          choices: [{ message: { content: JSON.stringify({ translations: [{ id: "Actors.1.name", translation: "Ария" }] }) } }]
+        });
+      }
+    });
+
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    expect(calls).toBe(2);
+    expect(results[0].status).toBe("translated");
+  });
+
+  it("retries a network failure classified by cause code, not message", async () => {
+    let calls = 0;
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      retryDelayMs: 0,
+      maxRetries: 1,
+      fetchFn: async () => {
+        calls += 1;
+        if (calls === 1) {
+          // The message says nothing about the network; only error.cause.code does.
+          throw Object.assign(new TypeError("connection dropped"), { cause: { code: "ECONNRESET" } });
+        }
+        return response(200, {
+          choices: [{ message: { content: JSON.stringify({ translations: [{ id: "Actors.1.name", translation: "Ария" }] }) } }]
+        });
+      }
+    });
+
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    expect(calls).toBe(2);
+    expect(results[0].status).toBe("translated");
+  });
+
+  it("maps a persistent network cause code to a network provider issue", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      retryDelayMs: 0,
+      maxRetries: 1,
+      fetchFn: async () => {
+        throw Object.assign(new TypeError("boom"), { cause: { code: "ENOTFOUND" } });
+      }
+    });
+
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    expect(results[0].status).toBe("failed");
+    expect(results[0].issues?.[0]).toMatchObject({ code: "PROVIDER_NETWORK_ERROR" });
+    expect(results[0].issues?.[0].message).toContain("ENOTFOUND");
   });
 
   it("returns per-unit failures when the API key is missing", async () => {
@@ -391,6 +456,38 @@ describe("DeepSeekProvider", () => {
   });
 });
 
+describe("DeepSeek retry backoff", () => {
+  it("honors a Retry-After header in seconds", () => {
+    expect(retryAfterMs(response(429, {}, false, "Too Many Requests", { "Retry-After": "2" }))).toBe(2000);
+  });
+
+  it("honors a Retry-After HTTP-date in the future", () => {
+    const future = new Date(Date.now() + 5000).toUTCString();
+    const delay = retryAfterMs(response(503, {}, false, "Service Unavailable", { "Retry-After": future }));
+    expect(delay).toBeGreaterThan(3000);
+    expect(delay).toBeLessThanOrEqual(5000);
+  });
+
+  it("returns undefined when there is no Retry-After header", () => {
+    expect(retryAfterMs(response(500, {}, false))).toBeUndefined();
+  });
+
+  it("uses Retry-After when provided, capped to the maximum", () => {
+    expect(backoffDelay(0, 250, 1000)).toBe(1000);
+    expect(backoffDelay(5, 250, 10 * 60_000)).toBe(60_000);
+  });
+
+  it("grows exponentially with jitter and stays within bounds", () => {
+    expect(backoffDelay(0, 0)).toBe(0);
+    for (const attempt of [0, 1, 2, 3]) {
+      const expected = 250 * 2 ** attempt;
+      const delay = backoffDelay(attempt, 250);
+      expect(delay).toBeGreaterThanOrEqual(expected / 2);
+      expect(delay).toBeLessThanOrEqual(expected);
+    }
+  });
+});
+
 function unit(): TranslationUnit {
   return {
     id: "Actors.1.name",
@@ -404,11 +501,19 @@ function unit(): TranslationUnit {
   };
 }
 
-function response(status: number, body: unknown, ok = status >= 200 && status < 300, statusText = "OK") {
+function response(
+  status: number,
+  body: unknown,
+  ok = status >= 200 && status < 300,
+  statusText = "OK",
+  headers: Record<string, string> = {}
+) {
+  const normalizedHeaders = new Map(Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value]));
   return {
     ok,
     status,
     statusText,
-    json: async () => body
+    json: async () => body,
+    headers: { get: (name: string) => normalizedHeaders.get(name.toLowerCase()) ?? null }
   };
 }

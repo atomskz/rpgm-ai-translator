@@ -5,7 +5,7 @@ import {
   DEFAULT_MAX_TOKENS,
   DEFAULT_TEMPERATURE
 } from "./defaults.js";
-import { createHttpError, DeepSeekProviderError } from "./errors.js";
+import { createHttpError, DeepSeekProviderError, isNetworkError, isTimeoutError } from "./errors.js";
 import { isChatCompletionResponse } from "./schemas.js";
 import type {
   ChatCompletionResponse,
@@ -14,6 +14,10 @@ import type {
   DeepSeekThinkingMode,
   FetchLike
 } from "./types.js";
+
+// Cap any single backoff (including a server-provided Retry-After) so a large or
+// malicious value cannot stall the run indefinitely.
+const MAX_RETRY_DELAY_MS = 60_000;
 
 export class DeepSeekClient {
   private readonly apiKey?: string;
@@ -76,7 +80,7 @@ export class DeepSeekClient {
           const error = await createHttpError(response);
           if (attempt < maxRetries && isRetryableStatus(response.status)) {
             lastError = error;
-            await sleep(this.retryDelayMs * (attempt + 1));
+            await sleep(backoffDelay(attempt, this.retryDelayMs, retryAfterMs(response)));
             continue;
           }
           throw error;
@@ -94,7 +98,7 @@ export class DeepSeekClient {
         clearTimeout(timeout);
         lastError = error;
         if (attempt < maxRetries && isRetryableError(error)) {
-          await sleep(this.retryDelayMs * (attempt + 1));
+          await sleep(backoffDelay(attempt, this.retryDelayMs));
           continue;
         }
         break;
@@ -110,7 +114,40 @@ function isRetryableStatus(status: number): boolean {
 }
 
 function isRetryableError(error: unknown): boolean {
-  return error instanceof Error && (error.name === "AbortError" || error.message.includes("fetch failed"));
+  // Classify by AbortError (timeout) and by the underlying socket error code,
+  // not by the error message string, so transient network failures retry.
+  return isTimeoutError(error) || isNetworkError(error);
+}
+
+// Exponential backoff with equal jitter. A server-provided Retry-After (seconds
+// or HTTP-date) takes precedence and is honored as-is, both capped to avoid an
+// unbounded wait. Jitter spreads retries so concurrent batches do not stampede.
+export function backoffDelay(attempt: number, baseMs: number, retryAfter?: number): number {
+  if (retryAfter != null) {
+    return Math.min(retryAfter, MAX_RETRY_DELAY_MS);
+  }
+  if (baseMs <= 0) {
+    return 0;
+  }
+  const exponential = Math.min(baseMs * 2 ** attempt, MAX_RETRY_DELAY_MS);
+  const half = exponential / 2;
+  return Math.round(half + Math.random() * half);
+}
+
+export function retryAfterMs(response: DeepSeekResponse): number | undefined {
+  const header = response.headers?.get("retry-after");
+  if (!header) {
+    return undefined;
+  }
+  const seconds = Number(header);
+  if (Number.isFinite(seconds)) {
+    return Math.max(0, seconds * 1000);
+  }
+  const dateMs = Date.parse(header);
+  if (!Number.isNaN(dateMs)) {
+    return Math.max(0, dateMs - Date.now());
+  }
+  return undefined;
 }
 
 async function sleep(ms: number): Promise<void> {
