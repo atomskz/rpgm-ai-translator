@@ -97,4 +97,7 @@ export type ExtractOptions = {
   includeEventComments?: boolean;
   includePlugins?: boolean;
   includeSpeakerNames?: boolean;
+  // Called for each data or plugin file that could not be read or parsed and was
+  // skipped, so one corrupt file does not abort extraction of the whole project.
+  onWarning?: (warning: string) => void;
 };

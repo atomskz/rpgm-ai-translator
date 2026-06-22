@@ -12,4 +12,7 @@ export type TranslationReport = {
   issuesByFile: Record<string, number>;
   issuesByCategory: Record<string, number>;
   validationIssues: ValidationIssue[];
+  // Non-fatal extraction/apply warnings, e.g. a data file that was skipped
+  // because it could not be parsed. Omitted when there are none.
+  warnings?: string[];
 };

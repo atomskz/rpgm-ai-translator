@@ -305,6 +305,21 @@ describe("RpgMakerMvMzExtractor", () => {
     expect(withPlugins.some((unit) => unit.source === "true")).toBe(false);
   });
 
+  it("skips a corrupt data file and reports it as a warning instead of aborting", async () => {
+    const root = await makeProject("mz");
+    await writeJson(path.join(root, "data", "Actors.json"), [null, { id: 1, name: "Aria" }]);
+    await writeFile(path.join(root, "data", "Map001.json"), "{ this is not valid json", "utf8");
+
+    const warnings: string[] = [];
+    const units = await new RpgMakerMvMzExtractor().extract(root, {
+      onWarning: (warning) => warnings.push(warning)
+    });
+
+    expect(units.map((unit) => unit.id)).toEqual(["Actors.1.name"]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("Map001.json");
+  });
+
   it("extracts CJK-only database names and descriptions while still skipping unsafe strings", async () => {
     const root = await makeProject("mz");
     await writeJson(path.join(root, "data", "Items.json"), [

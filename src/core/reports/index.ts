@@ -8,6 +8,7 @@ export type ReportInput = {
   validationIssues?: ValidationIssue[];
   fromMemory?: number;
   engine?: EngineId;
+  warnings?: string[];
 };
 
 export function createReport(input: ReportInput): TranslationReport {
@@ -16,7 +17,7 @@ export function createReport(input: ReportInput): TranslationReport {
   const validationIssues = input.validationIssues ?? [];
   const issueSummary = summarizeIssues(input.units, validationIssues);
 
-  return {
+  const report: TranslationReport = {
     engine,
     filesScanned: new Set(input.units.map((unit) => unit.filePath)).size,
     unitsExtracted: input.units.length,
@@ -30,6 +31,10 @@ export function createReport(input: ReportInput): TranslationReport {
     issuesByCategory: issueSummary.byCategory,
     validationIssues
   };
+  if (input.warnings && input.warnings.length > 0) {
+    report.warnings = input.warnings;
+  }
+  return report;
 }
 
 export function createEmptyReport(engine: TranslationReport["engine"]): TranslationReport {
@@ -144,6 +149,7 @@ function isTranslationReport(value: unknown): value is TranslationReport {
     (candidate.issuesByCode == null || isCountMap(candidate.issuesByCode)) &&
     (candidate.issuesByFile == null || isCountMap(candidate.issuesByFile)) &&
     (candidate.issuesByCategory == null || isCountMap(candidate.issuesByCategory)) &&
+    (candidate.warnings == null || (Array.isArray(candidate.warnings) && candidate.warnings.every((item) => typeof item === "string"))) &&
     Array.isArray(candidate.validationIssues)
   );
 }

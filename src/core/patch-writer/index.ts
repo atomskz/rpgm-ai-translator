@@ -88,13 +88,19 @@ async function prepareFiles(
   const files: PreparedFile[] = [];
   for (const [relativeFilePath, entries] of translatedByFile.entries()) {
     const sourcePath = path.join(root, relativeFilePath);
-    const preparedFile = relativeFilePath.endsWith("js/plugins.js")
-      ? await preparePluginsFile(relativeFilePath, sourcePath, entries)
-      : await prepareJsonFile(relativeFilePath, sourcePath, entries);
+    try {
+      const preparedFile = relativeFilePath.endsWith("js/plugins.js")
+        ? await preparePluginsFile(relativeFilePath, sourcePath, entries)
+        : await prepareJsonFile(relativeFilePath, sourcePath, entries);
 
-    skipped += preparedFile.skipped;
-    if (preparedFile.unitsApplied > 0) {
-      files.push(preparedFile);
+      skipped += preparedFile.skipped;
+      if (preparedFile.unitsApplied > 0) {
+        files.push(preparedFile);
+      }
+    } catch {
+      // A source file that cannot be read or parsed (e.g. a non-standard
+      // plugins.js) is skipped so its translations do not abort the whole patch.
+      skipped += entries.length;
     }
   }
 

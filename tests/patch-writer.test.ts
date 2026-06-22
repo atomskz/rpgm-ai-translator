@@ -3,7 +3,8 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import { RpgMakerMvMzExtractor } from "../src/core/extractors";
-import type { TranslationResult } from "../src/core/types";
+import { writePatch } from "../src/core/patch-writer/index";
+import type { TranslationResult, TranslationUnit } from "../src/core/types";
 
 describe("patch writer", () => {
   it("writes translated JSON to a patch directory without changing source files", async () => {
@@ -402,6 +403,31 @@ describe("patch writer", () => {
     expect(await readFile(path.join(root, "js", "plugins.js"), "utf8")).toContain("Auto Recover");
     expect(patchedRaw).toContain("Автолечение");
     expect(patchedRaw).toContain("autoheal");
+  });
+
+  it("skips an unparseable plugins.js and still applies data translations", async () => {
+    const root = path.join(tmpdir(), `rpgm-patch-bad-plugins-${Date.now()}`);
+    const outDir = path.join(tmpdir(), `rpgm-patch-bad-plugins-out-${Date.now()}`);
+    await mkdir(path.join(root, "data"), { recursive: true });
+    await mkdir(path.join(root, "js"), { recursive: true });
+    await writeJson(path.join(root, "data", "Actors.json"), [null, { id: 1, name: "Aria" }]);
+    await writeFile(path.join(root, "js", "plugins.js"), "this is not a valid plugins file", "utf8");
+
+    const units: TranslationUnit[] = [
+      { id: "Actors.1.name", source: "Aria", normalizedSource: "Aria", filePath: "data/Actors.json", jsonPath: "1.name", engine: "rpgmaker-mz", category: "name", hash: "h1" },
+      { id: "plugins.0.parameters.Label", source: "Quest Log", normalizedSource: "Quest Log", filePath: "js/plugins.js", jsonPath: "0.parameters.Label", engine: "rpgmaker-mz", category: "plugin-parameter", hash: "h2" }
+    ];
+    const translations: TranslationResult[] = [
+      { id: "Actors.1.name", source: "Aria", translation: "Ария", provider: "manual", model: "manual", status: "translated" },
+      { id: "plugins.0.parameters.Label", source: "Quest Log", translation: "Журнал", provider: "manual", model: "manual", status: "translated" }
+    ];
+
+    const result = await writePatch(root, units, translations, { mode: "patch", outDir });
+
+    const patched = JSON.parse(await readFile(path.join(outDir, "data", "Actors.json"), "utf8"));
+    expect(result.unitsApplied).toBe(1);
+    expect(result.skipped).toBe(1);
+    expect(patched[1].name).toBe("Ария");
   });
 
   it("refuses to patch when the output directory is the game folder", async () => {

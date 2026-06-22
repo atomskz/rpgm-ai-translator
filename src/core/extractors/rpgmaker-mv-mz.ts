@@ -34,26 +34,35 @@ export class RpgMakerMvMzExtractor implements Extractor {
     const units: TranslationUnit[] = [];
     for (const filePath of jsonFiles) {
       const fileName = path.basename(filePath);
-      const data = await readJsonFile(filePath);
       const relativeFilePath = toPosixPath(path.relative(detected.projectPath, filePath));
-      const drafts = extractFromKnownFile(fileName, data, {
-        absoluteFilePath: filePath,
-        relativeFilePath,
-        engine,
-        extractOptions: options
-      });
-      units.push(...drafts.map(toTranslationUnit));
+      try {
+        const data = await readJsonFile(filePath);
+        const drafts = extractFromKnownFile(fileName, data, {
+          absoluteFilePath: filePath,
+          relativeFilePath,
+          engine,
+          extractOptions: options
+        });
+        units.push(...drafts.map(toTranslationUnit));
+      } catch (error: unknown) {
+        // Skip a corrupt or non-standard data file instead of aborting the run.
+        options.onWarning?.(`Skipped ${relativeFilePath}: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
 
     if (options.includePlugins && detected.pluginsPath) {
       const relativeFilePath = toPosixPath(path.relative(detected.projectPath, detected.pluginsPath));
-      units.push(
-        ...extractPluginsJs(await readFile(detected.pluginsPath, "utf8"), {
-          absoluteFilePath: detected.pluginsPath,
-          relativeFilePath,
-          engine
-        }).map(toTranslationUnit)
-      );
+      try {
+        units.push(
+          ...extractPluginsJs(await readFile(detected.pluginsPath, "utf8"), {
+            absoluteFilePath: detected.pluginsPath,
+            relativeFilePath,
+            engine
+          }).map(toTranslationUnit)
+        );
+      } catch (error: unknown) {
+        options.onWarning?.(`Skipped ${relativeFilePath}: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
 
     return units;

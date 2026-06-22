@@ -64,7 +64,14 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
     throw new Error(`Unsupported or unknown RPG Maker engine for '${projectPath}'`);
   }
 
-  const units = await new RpgMakerMvMzExtractor(detector).extract(projectPath, extractOptions);
+  const extractionWarnings: string[] = [];
+  const units = await new RpgMakerMvMzExtractor(detector).extract(projectPath, {
+    ...extractOptions,
+    onWarning: (warning) => {
+      extractionWarnings.push(warning);
+      io.stderr(`Warning: ${warning}\n`);
+    }
+  });
   await mkdir(outDir, { recursive: true });
   await writeTranslationUnitsFile(path.join(outDir, "units.json"), units);
   io.stdout(
@@ -176,7 +183,7 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
   }
   io.stdout("Writing translations...\n");
   await writeTranslationResultsFile(path.join(outDir, "translations.json"), translations);
-  const report = createReport({ units, translations, validationIssues, engine: detected.engine });
+  const report = createReport({ units, translations, validationIssues, engine: detected.engine, warnings: extractionWarnings });
   io.stdout("Writing report...\n");
   await writeReportFile(path.join(outDir, "report.json"), report);
   io.stdout(`${summarizeReport(report)}\n`);
