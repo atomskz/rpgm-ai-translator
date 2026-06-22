@@ -54,6 +54,7 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--glossary": "Glossary JSON for prompts and validation.",
   "--characters": "Character glossary JSON for review or repair.",
   "--provider": "Translation provider: mock, deepseek, or none where supported.",
+  "--base-url": "Override the provider base URL (e.g. a local OpenAI-compatible endpoint).",
   "--target": "Target language code. Default: ru.",
   "--model": "Provider model name.",
   "--batch-size": "Translation units per provider request.",

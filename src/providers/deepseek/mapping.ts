@@ -1,13 +1,37 @@
 import type {
   CharacterCandidate,
   CharacterGlossary,
+  ProviderUsage,
   ReviewUnit,
+  TokenUsage,
   TranslationResult,
   TranslationUnit,
   ValidationIssue
 } from "../../core/types.js";
 import { DeepSeekProviderError, providerIssue } from "./errors.js";
 import type { ChatCompletionResponse, ModelTranslationPayload } from "./types.js";
+
+// Map DeepSeek's OpenAI-shaped usage payload to the provider-neutral TokenUsage.
+function toTokenUsage(usage: ProviderUsage | undefined): TokenUsage | undefined {
+  if (!usage) {
+    return undefined;
+  }
+  const tokenUsage: TokenUsage = {};
+  if (typeof usage.prompt_tokens === "number") {
+    tokenUsage.inputTokens = usage.prompt_tokens;
+  }
+  if (typeof usage.completion_tokens === "number") {
+    tokenUsage.outputTokens = usage.completion_tokens;
+  }
+  if (typeof usage.total_tokens === "number") {
+    tokenUsage.totalTokens = usage.total_tokens;
+  }
+  const cached = usage.prompt_cache_hit_tokens ?? usage.prompt_tokens_details?.cached_tokens;
+  if (typeof cached === "number") {
+    tokenUsage.cachedInputTokens = cached;
+  }
+  return tokenUsage;
+}
 
 type ModelTranslation = ModelTranslationPayload["translations"][number];
 
@@ -128,6 +152,7 @@ export function translationResultsFromPayload(
   const byId = indexTranslationsById(payload.translations);
   const requestedIds = new Set(batch.map((unit) => unit.id));
   const usage = response.usage;
+  const tokenUsage = toTokenUsage(usage);
 
   const results = batch.map((unit) => {
     const translation = byId.get(unit.id);
@@ -150,7 +175,7 @@ export function translationResultsFromPayload(
       provider: providerName,
       model,
       status: "translated" as const,
-      metadata: usage ? { usage } : undefined
+      metadata: usage ? { usage, tokenUsage } : undefined
     };
   });
 
@@ -167,6 +192,7 @@ export function reviewResultsFromPayload(
   const byId = indexTranslationsById(payload.translations);
   const requestedIds = new Set(batch.map((unit) => unit.id));
   const usage = response.usage;
+  const tokenUsage = toTokenUsage(usage);
 
   const results = batch.map((unit) => {
     const translation = byId.get(unit.id);
@@ -189,7 +215,7 @@ export function reviewResultsFromPayload(
       provider: providerName,
       model,
       status: "translated" as const,
-      metadata: usage ? { usage, reviewed: true } : { reviewed: true }
+      metadata: usage ? { usage, tokenUsage, reviewed: true } : { reviewed: true }
     };
   });
 

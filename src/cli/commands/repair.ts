@@ -21,6 +21,7 @@ import {
   readIssueCodesOption,
   readOption,
   readProviderCliOptions,
+  readProviderConfig,
   readProviderName,
   readPositiveIntegerOption,
   requireArg,
@@ -67,7 +68,7 @@ export async function repairCommand(args: string[], io: CliIO): Promise<number> 
   let reviewed = 0;
   let failed = 0;
   let skipped = 0;
-  const provider = createProvider(providerName);
+  const provider = createProvider(providerName, readProviderConfig(args));
   for (let attempt = 1; attempt <= attempts && validationIssues.length > 0; attempt += 1) {
     io.stdout(`Repair attempt ${attempt}/${attempts}: ${validationIssues.length} targeted issues...\n`);
     const result = await repairTranslations(units, translations, validationIssues, provider, {

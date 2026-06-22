@@ -50,9 +50,47 @@ describe("DeepSeekProvider", () => {
         provider: "deepseek",
         model: "deepseek-v4-flash",
         status: "translated",
-        metadata: { usage: { total_tokens: 42 } }
+        metadata: { usage: { total_tokens: 42 }, tokenUsage: { totalTokens: 42 } }
       }
     ]);
+  });
+
+  it("maps provider usage into provider-neutral token usage", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      fetchFn: async () =>
+        response(200, {
+          choices: [{ message: { content: JSON.stringify({ translations: [{ id: "Actors.1.name", translation: "Ария" }] }) } }],
+          usage: { prompt_tokens: 100, completion_tokens: 20, total_tokens: 120, prompt_cache_hit_tokens: 40 }
+        })
+    });
+
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    expect(results[0].metadata?.tokenUsage).toEqual({
+      inputTokens: 100,
+      outputTokens: 20,
+      totalTokens: 120,
+      cachedInputTokens: 40
+    });
+  });
+
+  it("targets a custom base URL for OpenAI-compatible endpoints", async () => {
+    const calls: string[] = [];
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      baseUrl: "http://localhost:1234/v1",
+      fetchFn: async (url) => {
+        calls.push(url);
+        return response(200, {
+          choices: [{ message: { content: JSON.stringify({ translations: [{ id: "Actors.1.name", translation: "Ария" }] }) } }]
+        });
+      }
+    });
+
+    await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    expect(calls[0]).toBe("http://localhost:1234/v1/chat/completions");
   });
 
   it("keeps the first translation for duplicate ids and flags unexpected ids", async () => {

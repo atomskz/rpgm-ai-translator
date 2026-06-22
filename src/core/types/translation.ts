@@ -76,8 +76,18 @@ export type ProviderUsageDetails = {
   [key: string]: unknown;
 };
 
+// Provider-neutral token usage. Each provider maps its own usage payload into
+// this shape so cost/usage aggregation does not depend on a vendor's field names.
+export type TokenUsage = {
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  cachedInputTokens?: number;
+};
+
 export type TranslationMetadata = {
   usage?: ProviderUsage;
+  tokenUsage?: TokenUsage;
   reviewed?: boolean;
   repaired?: boolean;
   repairMode?: "translate" | "review";

@@ -14,6 +14,7 @@ import {
   hasFlag,
   readOption,
   readProviderCliOptions,
+  readProviderConfig,
   readProviderName,
   requireArg,
   requireOption
@@ -37,7 +38,7 @@ export async function charactersCommand(args: string[], io: CliIO): Promise<numb
   const glossary =
     providerName === "none" || hasFlag(args, "--draft-only")
       ? candidatesToDraftGlossary(candidates)
-      : await inferCharacterGlossary(candidates, createProvider(providerName), providerOptions);
+      : await inferCharacterGlossary(candidates, createProvider(providerName, readProviderConfig(args)), providerOptions);
   await writeJson(out, glossary);
   io.stdout(`Character candidates: ${candidates.length}. Wrote ${Object.keys(glossary).length} character entries.\n`);
   return 0;

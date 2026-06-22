@@ -29,6 +29,7 @@ import {
   readFontOptions,
   readIssueCodesOption,
   readOption,
+  readProviderConfig,
   readProviderName,
   readPositiveIntegerOption,
   readTranslateCliOptions,
@@ -93,7 +94,7 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
   );
   const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
   const characterGlossary = charactersPath ? await loadCharacterGlossary(charactersPath) : undefined;
-  const provider = createProvider(providerName);
+  const provider = createProvider(providerName, readProviderConfig(args));
 
   // Persist a JSONL checkpoint per batch and resume from it, so a crash mid-run
   // does not discard completed translate/review/repair work on the next run.

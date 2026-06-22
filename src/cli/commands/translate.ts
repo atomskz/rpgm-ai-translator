@@ -18,6 +18,7 @@ import { maybeWriteReport } from "../file-utils.js";
 import {
   assertProviderReady,
   readOption,
+  readProviderConfig,
   readProviderName,
   readTranslateCliOptions,
   requireArg
@@ -49,7 +50,7 @@ export async function translateCommand(args: string[], io: CliIO): Promise<numbe
     }
     io.stdout(`Writing checkpoint: ${checkpointPath}\n`);
   }
-  const provider = createProvider(providerName);
+  const provider = createProvider(providerName, readProviderConfig(args));
   const translatedResults = await translateWithMemory(
     unitsToTranslate,
     provider,

@@ -18,6 +18,7 @@ import {
   assertProviderReady,
   readOption,
   readProviderCliOptions,
+  readProviderConfig,
   readProviderName,
   requireArg,
   requireOption
@@ -50,7 +51,7 @@ export async function reviewCommand(args: string[], io: CliIO): Promise<number> 
     await resetTranslationResultsJsonlFile(checkpointPath);
   }
   io.stdout(`Writing review checkpoint: ${checkpointPath}\n`);
-  const result = await reviewTranslations(unitsToReview, translationsWithCheckpoint, createProvider(providerName), {
+  const result = await reviewTranslations(unitsToReview, translationsWithCheckpoint, createProvider(providerName, readProviderConfig(args)), {
     ...providerOptions,
     glossary,
     characterGlossary,

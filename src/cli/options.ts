@@ -113,6 +113,10 @@ export function readProviderName(args: string[], defaultProvider = "mock"): stri
   return readOption(args, "--provider") ?? defaultProvider;
 }
 
+export function readProviderConfig(args: string[]): { baseUrl?: string } {
+  return { baseUrl: readOption(args, "--base-url") };
+}
+
 export function readProviderCliOptions(args: string[]): ProviderCliOptions {
   return {
     targetLanguage: readOption(args, "--target") ?? "ru",
@@ -174,21 +178,21 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   },
   translate: {
     valueOptions: [
-      "--provider", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
+      "--provider", "--base-url", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
       "--max-tokens", "--retry-attempts", "--out", "--checkpoint", "--report", "--memory", "--glossary"
     ],
     booleanFlags: []
   },
   characters: {
     valueOptions: [
-      "--out", "--translations", "--provider", "--target", "--model", "--batch-size",
+      "--out", "--translations", "--provider", "--base-url", "--target", "--model", "--batch-size",
       "--timeout-ms", "--temperature", "--max-tokens"
     ],
     booleanFlags: ["--draft-only", "--include-mentions"]
   },
   review: {
     valueOptions: [
-      "--provider", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
+      "--provider", "--base-url", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
       "--max-tokens", "--out", "--checkpoint", "--glossary", "--characters"
     ],
     booleanFlags: []
@@ -199,7 +203,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   },
   repair: {
     valueOptions: [
-      "--report", "--out", "--provider", "--target", "--model", "--batch-size", "--timeout-ms",
+      "--report", "--out", "--provider", "--base-url", "--target", "--model", "--batch-size", "--timeout-ms",
       "--temperature", "--max-tokens", "--checkpoint", "--glossary", "--characters", "--codes", "--attempts"
     ],
     booleanFlags: []
@@ -210,7 +214,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   },
   run: {
     valueOptions: [
-      "--out", "--work-dir", "--provider", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
+      "--out", "--work-dir", "--provider", "--base-url", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
       "--max-tokens", "--retry-attempts", "--memory", "--glossary", "--characters", "--repair-attempts",
       "--repair-codes", "--font", "--number-font", "--mode", "--backup"
     ],
