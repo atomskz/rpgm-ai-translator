@@ -74,13 +74,68 @@ describe("translation memory", () => {
     ]);
 
     const aria = await memory.get(sourceHash);
+    // The log is append-only: the superseded Aria line is kept on disk (3 physical
+    // lines for 2 live entries) and resolved last-wins on read, rather than the
+    // whole file being rewritten on every upsert.
     const rawLines = (await readFile(memoryPath, "utf8")).trim().split(/\n/);
-    expect(rawLines).toHaveLength(2);
+    expect(rawLines).toHaveLength(3);
     expect(aria).toMatchObject({
       translation: "Ария!",
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-02-01T00:00:00.000Z"
     });
+  });
+
+  it("appends upserts and resolves the latest entry on a fresh read", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-memory-append-"));
+    const memoryPath = path.join(root, "memory.jsonl");
+    const writer = new JsonlTranslationMemory(memoryPath);
+    const sourceHash = hashSource("Aria");
+
+    for (const translation of ["Ария1", "Ария2", "Ария3"]) {
+      await writer.upsert({
+        source: "Aria",
+        sourceHash,
+        translation,
+        category: "name",
+        provider: "mock",
+        model: "mock",
+        status: "translated",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      });
+    }
+
+    const rawLines = (await readFile(memoryPath, "utf8")).trim().split(/\n/);
+    expect(rawLines).toHaveLength(3);
+    // A new instance must read the same last-wins value from the append-only log.
+    const reader = new JsonlTranslationMemory(memoryPath);
+    expect(await reader.get(sourceHash)).toMatchObject({ translation: "Ария3" });
+  });
+
+  it("compacts the log once it grows past the live entry count", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-memory-compact-"));
+    const memoryPath = path.join(root, "memory.jsonl");
+    const memory = new JsonlTranslationMemory(memoryPath, { compactionMinLines: 3, compactionGrowthFactor: 2 });
+    const sourceHash = hashSource("Aria");
+
+    for (const translation of ["v1", "v2", "v3", "v4"]) {
+      await memory.upsert({
+        source: "Aria",
+        sourceHash,
+        translation,
+        category: "name",
+        provider: "mock",
+        model: "mock",
+        status: "translated",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      });
+    }
+
+    const rawLines = (await readFile(memoryPath, "utf8")).trim().split(/\n/);
+    expect(rawLines).toHaveLength(1);
+    expect(await new JsonlTranslationMemory(memoryPath).get(sourceHash)).toMatchObject({ translation: "v4" });
   });
 
   it("persists memory atomically without leaving temporary files behind", async () => {

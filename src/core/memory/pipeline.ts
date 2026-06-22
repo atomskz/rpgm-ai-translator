@@ -21,6 +21,10 @@ export async function translateWithMemory(
   const resultsByUnitId = new Map<string, TranslationResult>();
   const missesByKey = new Map<string, TranslationUnit>();
   const missedUnitsByKey = new Map<string, TranslationUnit[]>();
+  // Reverse index from a representative miss unit's id to its cache key, so a
+  // batch result is matched back to its key in O(1) instead of scanning all
+  // misses for every result (which was O(misses * results)).
+  const keyByRepresentativeId = new Map<string, string>();
   let memoryCompleted = 0;
 
   for (const unit of units) {
@@ -48,6 +52,7 @@ export async function translateWithMemory(
 
     if (!missesByKey.has(cacheKey)) {
       missesByKey.set(cacheKey, unit);
+      keyByRepresentativeId.set(unit.id, cacheKey);
     }
     const missedUnits = missedUnitsByKey.get(cacheKey) ?? [];
     missedUnits.push(unit);
@@ -56,7 +61,7 @@ export async function translateWithMemory(
 
   const optionsWithExpandedBatchResults = expandBatchResultsForDuplicateMisses(
     options,
-    missesByKey,
+    keyByRepresentativeId,
     missedUnitsByKey
   );
   const translatedMisses =
@@ -67,7 +72,7 @@ export async function translateWithMemory(
   const memoryEntriesToUpsert: MemoryEntry[] = [];
 
   for (const result of translatedMisses) {
-    const cacheKey = keyForResult(result, missesByKey);
+    const cacheKey = keyForResult(result, keyByRepresentativeId);
     const unit = cacheKey ? missesByKey.get(cacheKey) : undefined;
     if (!unit) {
       continue;
@@ -145,7 +150,7 @@ async function translateUniqueBatches(
 
 function expandBatchResultsForDuplicateMisses(
   options: TranslateOptions,
-  missesByKey: Map<string, TranslationUnit>,
+  keyByRepresentativeId: Map<string, string>,
   missedUnitsByKey: Map<string, TranslationUnit[]>
 ): TranslateOptions {
   const originalOnBatchResults = options.onBatchResults;
@@ -157,7 +162,7 @@ function expandBatchResultsForDuplicateMisses(
     ...options,
     onBatchResults: async (batchResults) => {
       const expandedResults = batchResults.flatMap((result) => {
-        const cacheKey = keyForResult(result, missesByKey);
+        const cacheKey = keyForResult(result, keyByRepresentativeId);
         const missedUnits = cacheKey ? missedUnitsByKey.get(cacheKey) : undefined;
         if (!missedUnits) {
           return [result];
@@ -184,13 +189,8 @@ async function upsertMemoryEntries(memory: TranslationMemory, entries: MemoryEnt
   }
 }
 
-function keyForResult(result: TranslationResult, missesByKey: Map<string, TranslationUnit>): string {
-  for (const [cacheKey, unit] of missesByKey.entries()) {
-    if (unit.id === result.id) {
-      return cacheKey;
-    }
-  }
-  return "";
+function keyForResult(result: TranslationResult, keyByRepresentativeId: Map<string, string>): string {
+  return keyByRepresentativeId.get(result.id) ?? "";
 }
 
 /**
