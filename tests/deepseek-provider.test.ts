@@ -347,6 +347,48 @@ describe("DeepSeekProvider", () => {
       }
     });
   });
+
+  it("returns a degraded glossary instead of throwing when inference fails, retrying only in the client", async () => {
+    let calls = 0;
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      retryDelayMs: 0,
+      maxRetries: 1,
+      fetchFn: async () => {
+        calls += 1;
+        return response(500, { message: "boom" }, false, "Internal Server Error");
+      }
+    });
+
+    const result = await provider.inferCharacters(
+      [{ name: "Aria", suggestedTranslation: "Ария", sources: ["actor"], occurrences: 1, evidence: [] }],
+      { targetLanguage: "ru" }
+    );
+
+    // Client retried once (single retry layer), then degraded rather than threw.
+    expect(calls).toBe(2);
+    expect(result.Aria).toMatchObject({ review: true, confidence: 0 });
+    expect(result.Aria.description).toContain("Character inference failed");
+  });
+
+  it("honors --retry-attempts (retryAttempts) as the client retry count", async () => {
+    let calls = 0;
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      retryDelayMs: 0,
+      maxRetries: 5,
+      fetchFn: async () => {
+        calls += 1;
+        return response(503, { message: "unavailable" }, false, "Service Unavailable");
+      }
+    });
+
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru", retryAttempts: 0 });
+
+    // retryAttempts: 0 disables retries even though the client default is higher.
+    expect(calls).toBe(1);
+    expect(results[0].status).toBe("failed");
+  });
 });
 
 function unit(): TranslationUnit {

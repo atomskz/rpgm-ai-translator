@@ -142,6 +142,25 @@ export function missingApiKeyCharacterGlossary(candidates: CharacterCandidate[])
   );
 }
 
+// Degraded glossary returned when character inference fails, so the provider
+// reports failure as data rather than throwing (consistent with translate/review).
+export function failedCharacterGlossary(candidates: CharacterCandidate[], error: unknown): CharacterGlossary {
+  const message = error instanceof Error ? error.message : String(error);
+  return Object.fromEntries(
+    candidates.map((candidate) => [
+      candidate.name,
+      {
+        translation: candidate.suggestedTranslation ?? candidate.name,
+        gender: "unknown" as const,
+        type: "unknown" as const,
+        description: `Character inference failed: ${message}`,
+        confidence: 0,
+        review: true
+      }
+    ])
+  );
+}
+
 export function translationResultsFromPayload(
   providerName: string,
   model: string,

@@ -17,6 +17,7 @@ import {
 import { DeepSeekClient } from "./client.js";
 import { DEFAULT_MODEL } from "./defaults.js";
 import {
+  failedCharacterGlossary,
   failedReviewResults,
   failedTranslationResults,
   missingApiKeyCharacterGlossary,
@@ -96,13 +97,20 @@ export class DeepSeekProvider implements LLMProvider {
       return missingApiKeyCharacterGlossary(candidates);
     }
 
-    const response = await this.client.requestChatCompletion(
-      buildCharacterInferenceMessages(candidates, options),
-      options,
-      model,
-      "disabled"
-    );
-    return parseCharactersPayload(response).characters;
+    try {
+      const response = await this.client.requestChatCompletion(
+        buildCharacterInferenceMessages(candidates, options),
+        options,
+        model,
+        "disabled"
+      );
+      return parseCharactersPayload(response).characters;
+    } catch (error: unknown) {
+      // Match translate/review: report failure as a degraded glossary rather than
+      // throwing, so the client stays the single retry layer and callers do not
+      // retry again (which would double the backoff).
+      return failedCharacterGlossary(candidates, error);
+    }
   }
 }
 

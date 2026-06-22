@@ -51,8 +51,12 @@ export class DeepSeekClient {
       stream: false
     });
 
+    // The client is the single retry layer. Honor the caller's --retry-attempts
+    // so the pipeline's retry setting controls real provider retries instead of
+    // a redundant outer wrapper.
+    const maxRetries = options.retryAttempts ?? this.maxRetries;
     let lastError: unknown;
-    for (let attempt = 0; attempt <= this.maxRetries; attempt += 1) {
+    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 60_000);
 
@@ -70,7 +74,7 @@ export class DeepSeekClient {
 
         if (!response.ok) {
           const error = await createHttpError(response);
-          if (attempt < this.maxRetries && isRetryableStatus(response.status)) {
+          if (attempt < maxRetries && isRetryableStatus(response.status)) {
             lastError = error;
             await sleep(this.retryDelayMs * (attempt + 1));
             continue;
@@ -89,7 +93,7 @@ export class DeepSeekClient {
       } catch (error: unknown) {
         clearTimeout(timeout);
         lastError = error;
-        if (attempt < this.maxRetries && isRetryableError(error)) {
+        if (attempt < maxRetries && isRetryableError(error)) {
           await sleep(this.retryDelayMs * (attempt + 1));
           continue;
         }
