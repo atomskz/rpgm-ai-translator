@@ -39,10 +39,18 @@ export class MvMzEngineDetector implements EngineDetector {
       engine = "rpgmaker-mv";
       confidence = "high";
       reasons.push("Found RPG Maker MV runtime marker rpg_*.js");
-    } else if (await looksLikeJsonData(dataPath)) {
-      reasons.push("No MV/MZ runtime marker found; JSON data alone is not enough to distinguish the engine");
     } else {
-      reasons.push("No MV/MZ runtime marker found");
+      // No JS runtime to read the engine from (data-only export). Infer it from
+      // System.json so a data/ folder still translates, with medium confidence
+      // since the guess relies on a data marker rather than the runtime files.
+      const dataEngine = await detectEngineFromData(dataPath);
+      if (dataEngine) {
+        engine = dataEngine.engine;
+        confidence = "medium";
+        reasons.push(`No MV/MZ runtime marker found; inferred ${engine} from data (${dataEngine.reason})`);
+      } else {
+        reasons.push("No MV/MZ runtime marker found");
+      }
     }
 
     if (await pathExists(pluginsPath)) {
@@ -80,11 +88,24 @@ async function hasAnyFile(directory: string, fileNames: string[]): Promise<boole
   return false;
 }
 
-async function looksLikeJsonData(dataPath: string): Promise<boolean> {
+// Infer the engine from data/System.json when no JS runtime marker is present.
+// RPG Maker MZ added the "advanced" section to System.json; MV has no such key,
+// which makes it a reliable data-only discriminator. A readable System.json that
+// is not an MZ project is treated as MV.
+async function detectEngineFromData(
+  dataPath: string
+): Promise<{ engine: DetectedEngineId; reason: string } | undefined> {
+  let system: Record<string, unknown>;
   try {
-    const system = await readJsonFile<Record<string, unknown>>(path.join(dataPath, "System.json"));
-    return typeof system === "object" && system != null;
+    system = await readJsonFile<Record<string, unknown>>(path.join(dataPath, "System.json"));
   } catch {
-    return false;
+    return undefined;
   }
+  if (typeof system !== "object" || system == null) {
+    return undefined;
+  }
+  if (typeof system.advanced === "object" && system.advanced != null) {
+    return { engine: "rpgmaker-mz", reason: "System.json has the MZ-only 'advanced' section" };
+  }
+  return { engine: "rpgmaker-mv", reason: "System.json lacks the MZ-only 'advanced' section" };
 }

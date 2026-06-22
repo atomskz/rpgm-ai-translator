@@ -37,6 +37,26 @@ describe("MvMzEngineDetector", () => {
     expect(detected.dataPath).toBe(path.join(root, "www", "data"));
   });
 
+  it("infers MZ from a data-only export with the advanced section", async () => {
+    const root = await makeDataOnlyProject({ gameTitle: "Demo", advanced: { screenWidth: 816 } });
+
+    const detected = await new MvMzEngineDetector().detect(root);
+
+    expect(detected.engine).toBe("rpgmaker-mz");
+    expect(detected.confidence).toBe("medium");
+    expect(detected.dataPath).toBe(path.join(root, "data"));
+    expect(detected.reasons.some((reason) => reason.includes("No MV/MZ runtime marker"))).toBe(true);
+  });
+
+  it("infers MV from a data-only export without the advanced section", async () => {
+    const root = await makeDataOnlyProject({ gameTitle: "Demo" });
+
+    const detected = await new MvMzEngineDetector().detect(root);
+
+    expect(detected.engine).toBe("rpgmaker-mv");
+    expect(detected.confidence).toBe("medium");
+  });
+
   it("returns unknown for unrelated folders", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-unknown-"));
 
@@ -72,5 +92,13 @@ async function makeProject(engine: "mv" | "mz", useWww = false): Promise<string>
   await mkdir(jsDir, { recursive: true });
   await writeFile(path.join(dataDir, "System.json"), "{}", "utf8");
   await writeFile(path.join(jsDir, engine === "mv" ? "rpg_core.js" : "rmmz_core.js"), "", "utf8");
+  return root;
+}
+
+async function makeDataOnlyProject(system: Record<string, unknown>): Promise<string> {
+  const root = await mkdtemp(path.join(tmpdir(), "rpgm-data-only-"));
+  const dataDir = path.join(root, "data");
+  await mkdir(dataDir, { recursive: true });
+  await writeFile(path.join(dataDir, "System.json"), JSON.stringify(system), "utf8");
   return root;
 }
