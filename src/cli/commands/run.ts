@@ -25,7 +25,6 @@ import { createProvider } from "../../providers/index.js";
 import {
   assertProviderReady,
   hasFlag,
-  readApplyOptions,
   readExtractOptions,
   readFontOptions,
   readIssueCodesOption,
@@ -49,6 +48,9 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
   const projectPath = requireArg(args[0], "project path");
   const outDir = requireOption(args, "--out");
   assertPatchOutputOutsideGame(projectPath, outDir);
+  if (readOption(args, "--mode") != null || readOption(args, "--backup") != null) {
+    io.stderr("Warning: run always writes a patch; --mode and --backup are ignored.\n");
+  }
   const dryRun = hasFlag(args, "--dry-run");
   const providerName = readProviderName(args);
   if (!dryRun) {
@@ -196,7 +198,6 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
   const safeTranslations = filterTranslationsWithoutValidationErrors(translations, validationIssues);
   io.stdout(`Applying patch with ${safeTranslations.length}/${translations.length} validation-safe translations...\n`);
   await new RpgMakerMvMzExtractor(detector).applyTranslations(projectPath, safeTranslations, {
-    ...readApplyOptions(args),
     mode: "patch",
     outDir,
     includePlugins: extractOptions.includePlugins,

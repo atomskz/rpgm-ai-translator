@@ -153,9 +153,22 @@ export function readExtractOptions(args: string[]): ExtractOptions {
   };
 }
 
+const APPLY_MODES = ["patch", "in-place"] as const;
+
+export function readApplyMode(args: string[]): ApplyOptions["mode"] {
+  const value = readOption(args, "--mode");
+  if (value == null) {
+    return "patch";
+  }
+  if (!(APPLY_MODES as readonly string[]).includes(value)) {
+    throw new UsageError(`--mode must be one of ${APPLY_MODES.join(", ")}, got '${value}'`);
+  }
+  return value as ApplyOptions["mode"];
+}
+
 export function readApplyOptions(args: string[]): ApplyOptions {
   return {
-    mode: (readOption(args, "--mode") ?? "patch") as ApplyOptions["mode"],
+    mode: readApplyMode(args),
     outDir: readOption(args, "--out"),
     backupDir: readOption(args, "--backup"),
     includePlugins: hasFlag(args, "--include-plugins"),

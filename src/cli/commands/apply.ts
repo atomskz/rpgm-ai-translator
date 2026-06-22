@@ -28,6 +28,16 @@ export async function applyCommand(args: string[], io: CliIO): Promise<number> {
   const result = unitsPath
     ? await writePatch(projectPath, await readTranslationUnitsFile(unitsPath), translationsToApply, applyOptions)
     : await new RpgMakerMvMzExtractor().applyTranslations(projectPath, translationsToApply, applyOptions);
+  // Without --units, apply re-extracts the game and matches by id. If the saved
+  // translations came from a different extraction (e.g. --include-plugins), most
+  // ids will not match and get silently skipped. Warn loudly instead.
+  const considered = result.unitsApplied + result.skipped;
+  if (!unitsPath && considered > 0 && result.skipped >= considered / 2) {
+    io.stderr(
+      `Warning: skipped ${result.skipped}/${considered} translations because their ids did not match the re-extracted units. ` +
+        "If you extracted with different flags (for example --include-plugins or --include-speaker-names), pass --units <units.json> so ids match exactly.\n"
+    );
+  }
   if (applyOptions.mode === "patch" && applyOptions.outDir && fontPath && !applyOptions.dryRun) {
     io.stdout("Applying font patch...\n");
     await applyFontPatch(projectPath, applyOptions.outDir, { fontPath, numberFontPath });

@@ -53,6 +53,43 @@ describe("CLI apply and patch-font", () => {
     expect(sourceActors[1].name).toBe("Aria");
   });
 
+  it("rejects an invalid --mode value", async () => {
+    const errors: string[] = [];
+    const exitCode = await runCli(
+      ["apply", "./game", "./translations.json", "--mode", "banana", "--out", "./out"],
+      {
+        stdout: () => undefined,
+        stderr: (text) => errors.push(text)
+      }
+    );
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("")).toContain("--mode must be one of patch, in-place");
+  });
+
+  it("warns when most translations are skipped without --units", async () => {
+    const root = await createCliTempDir("rpgm-cli-apply-mismatch-");
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "patch");
+    const translationsPath = path.join(root, "translations.json");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await writeJsonFixture(path.join(gamePath, "data", "System.json"), {});
+    await writeJsonFixture(path.join(gamePath, "data", "Actors.json"), [null, { name: "Aria" }]);
+    await writeJsonFixture(translationsPath, [
+      translatedResult({ id: "Unknown.1.name", source: "Ghost", translation: "Призрак" })
+    ]);
+
+    const errors: string[] = [];
+    const exitCode = await runCli(["apply", gamePath, translationsPath, "--out", outDir], {
+      stdout: () => undefined,
+      stderr: (text) => errors.push(text)
+    });
+
+    expect(exitCode).toBe(0);
+    expect(errors.join("")).toContain("did not match the re-extracted units");
+    expect(errors.join("")).toContain("--units");
+  });
+
   it("previews an apply with --dry-run without writing any files", async () => {
     const root = await createCliTempDir("rpgm-cli-apply-dry-");
     const gamePath = path.join(root, "game");

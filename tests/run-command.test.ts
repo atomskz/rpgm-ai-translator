@@ -129,6 +129,28 @@ describe("run command", () => {
     await expect(readFile(path.join(outDir, "units.json"), "utf8")).rejects.toThrow();
   });
 
+  it("warns that run ignores --mode and --backup", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-mode-"));
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "out");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await mkdir(path.join(gamePath, "js"), { recursive: true });
+    await writeFile(path.join(gamePath, "js", "rpg_core.js"), "", "utf8");
+    await writeJson(path.join(gamePath, "data", "Actors.json"), [null, { id: 1, name: "Aria" }]);
+
+    const errors: string[] = [];
+    const exitCode = await runCli(
+      ["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--mode", "in-place", "--dry-run"],
+      {
+        stdout: () => undefined,
+        stderr: (text) => errors.push(text)
+      }
+    );
+
+    expect(exitCode).toBe(0);
+    expect(errors.join("")).toContain("run always writes a patch; --mode and --backup are ignored.");
+  });
+
   it("stops before calling the provider when the estimate exceeds --max-tokens-budget", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-budget-"));
     const gamePath = path.join(root, "game");
