@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import { RpgMakerMvMzExtractor } from "../src/core/extractors";
 import { writePatch } from "../src/core/patch-writer/index";
+import { parsePluginsJs } from "../src/core/plugins/index";
 import type { TranslationResult, TranslationUnit } from "../src/core/types";
 
 describe("patch writer", () => {
@@ -513,6 +514,54 @@ describe("patch writer", () => {
     expect(result.unitsApplied).toBe(1);
     expect(patchedRaw).toContain("Журнал заданий");
     expect(patchedRaw).toContain("quest");
+  });
+
+  it("round-trips encoded JSON whose intermediate key contains a dot", async () => {
+    const root = path.join(tmpdir(), `rpgm-dotted-json-${Date.now()}`);
+    const outDir = path.join(tmpdir(), `rpgm-dotted-json-out-${Date.now()}`);
+    await mkdir(path.join(root, "data"), { recursive: true });
+    await mkdir(path.join(root, "js"), { recursive: true });
+    await writeFile(path.join(root, "js", "rmmz_core.js"), "", "utf8");
+    await writeFile(
+      path.join(root, "js", "plugins.js"),
+      `var $plugins = ${JSON.stringify([
+        {
+          name: "MenuPlugin",
+          status: true,
+          parameters: {
+            Data: JSON.stringify({ "menu.title": { label: "Quest Log" } })
+          }
+        }
+      ])};\n`,
+      "utf8"
+    );
+
+    const extractor = new RpgMakerMvMzExtractor();
+    const units = await extractor.extract(root, { includePlugins: true });
+    const dottedUnit = units.find((unit) => unit.source === "Quest Log");
+    expect(dottedUnit?.constraints).toMatchObject({
+      sourceEncoding: "json-stringified-json",
+      encodedJsonSegments: ["menu.title", "label"]
+    });
+
+    const result = await extractor.applyTranslations(
+      root,
+      [
+        {
+          id: dottedUnit?.id ?? "",
+          source: "Quest Log",
+          translation: "Журнал заданий",
+          provider: "manual",
+          model: "manual",
+          status: "translated"
+        }
+      ],
+      { mode: "patch", outDir, includePlugins: true }
+    );
+
+    const patched = parsePluginsJs(await readFile(path.join(outDir, "js", "plugins.js"), "utf8"));
+    expect(result.unitsApplied).toBe(1);
+    expect(JSON.parse(patched[0].parameters?.Data as string)).toEqual({ "menu.title": { label: "Журнал заданий" } });
   });
 });
 

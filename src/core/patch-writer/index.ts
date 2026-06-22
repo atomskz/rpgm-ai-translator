@@ -8,7 +8,7 @@ import {
   serializePluginsJs,
   setPluginParameter
 } from "../plugins/index.js";
-import { getJsonPath, setJsonPath } from "../utils/json-path.js";
+import { getJsonPath, getJsonPathSegments, parseJsonPath, setJsonPath, setJsonPathSegments } from "../utils/json-path.js";
 import { pathExists, readJsonFile, writeJsonFile } from "../utils/fs.js";
 
 type PreparedFile = {
@@ -379,15 +379,25 @@ function currentSourceValue(currentValue: unknown, unit: TranslationUnit): strin
   }
 
   if (unit.constraints?.sourceEncoding === "json-stringified-json") {
-    if (typeof currentValue !== "string" || !unit.constraints.encodedJsonPath) {
+    const segments = encodedJsonSegments(unit);
+    if (typeof currentValue !== "string" || !segments) {
       return undefined;
     }
     const parsed = parseEncodedJson(currentValue);
-    const nestedValue = parsed == null ? undefined : getJsonPath(parsed, unit.constraints.encodedJsonPath);
+    const nestedValue = parsed == null ? undefined : getJsonPathSegments(parsed, segments);
     return typeof nestedValue === "string" ? nestedValue : undefined;
   }
 
   return typeof currentValue === "string" ? currentValue : undefined;
+}
+
+// Prefer the explicit segments (dot-safe); fall back to splitting the legacy
+// dotted path for units read from older units.json files.
+function encodedJsonSegments(unit: TranslationUnit): string[] | undefined {
+  if (unit.constraints?.encodedJsonSegments) {
+    return unit.constraints.encodedJsonSegments;
+  }
+  return unit.constraints?.encodedJsonPath ? parseJsonPath(unit.constraints.encodedJsonPath) : undefined;
 }
 
 function encodeTranslation(unit: TranslationUnit, currentValue: unknown, translation: string): string {
@@ -396,14 +406,15 @@ function encodeTranslation(unit: TranslationUnit, currentValue: unknown, transla
   }
 
   if (unit.constraints?.sourceEncoding === "json-stringified-json") {
-    if (typeof currentValue !== "string" || !unit.constraints.encodedJsonPath) {
+    const segments = encodedJsonSegments(unit);
+    if (typeof currentValue !== "string" || !segments) {
       throw new Error(`Cannot encode JSON-stringified translation for '${unit.id}'`);
     }
     const parsed = parseEncodedJson(currentValue);
     if (parsed == null) {
       throw new Error(`Invalid JSON-stringified source for '${unit.id}'`);
     }
-    setJsonPath(parsed, unit.constraints.encodedJsonPath, translation);
+    setJsonPathSegments(parsed, segments, translation);
     return JSON.stringify(parsed);
   }
 

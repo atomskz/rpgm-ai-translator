@@ -22,7 +22,7 @@ export function extractEncodedJsonStrings(
   }
 
   const units: UnitDraft[] = [];
-  visitEncodedJsonStrings(parsed, "", (encodedJsonPath, key, source) => {
+  visitEncodedJsonStrings(parsed, [], (segments, key, source) => {
     if (!isSafeEncodedJsonTextKey(key) || !isSafeRuntimeText(source)) {
       return;
     }
@@ -30,7 +30,8 @@ export function extractEncodedJsonStrings(
       makeDraft(base, outerJsonPath, source, category, base.context, {
         ...constraints,
         sourceEncoding: "json-stringified-json",
-        encodedJsonPath
+        encodedJsonPath: segments.join("."),
+        encodedJsonSegments: segments
       })
     );
   });
@@ -39,11 +40,11 @@ export function extractEncodedJsonStrings(
 
 function visitEncodedJsonStrings(
   value: unknown,
-  pathPrefix: string,
-  visit: (jsonPath: string, key: string, value: string) => void
+  pathSegments: string[],
+  visit: (segments: string[], key: string, value: string) => void
 ): void {
   if (Array.isArray(value)) {
-    value.forEach((item, index) => visitEncodedJsonStrings(item, joinJsonPath(pathPrefix, String(index)), visit));
+    value.forEach((item, index) => visitEncodedJsonStrings(item, [...pathSegments, String(index)], visit));
     return;
   }
 
@@ -52,11 +53,11 @@ function visitEncodedJsonStrings(
   }
 
   for (const [key, item] of Object.entries(value)) {
-    const jsonPath = joinJsonPath(pathPrefix, key);
+    const segments = [...pathSegments, key];
     if (typeof item === "string") {
-      visit(jsonPath, key, item);
+      visit(segments, key, item);
     } else {
-      visitEncodedJsonStrings(item, jsonPath, visit);
+      visitEncodedJsonStrings(item, segments, visit);
     }
   }
 }
@@ -72,10 +73,6 @@ function parseJsonString(raw: string): unknown | undefined {
   } catch {
     return undefined;
   }
-}
-
-function joinJsonPath(prefix: string, segment: string): string {
-  return prefix ? `${prefix}.${segment}` : segment;
 }
 
 function isSafeEncodedJsonTextKey(key: string): boolean {

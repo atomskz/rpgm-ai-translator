@@ -40,6 +40,10 @@ export type TranslationUnit = {
     maxLength?: number;
     sourceEncoding?: "json-string-literal" | "json-stringified-json";
     encodedJsonPath?: string;
+    // Path inside the stringified JSON as discrete segments. Used for traversal
+    // so an object key that contains a literal `.` is not mis-split. The dotted
+    // `encodedJsonPath` is retained for the unit id and backward compatibility.
+    encodedJsonSegments?: string[];
   };
   placeholders?: Placeholder[];
   hash: string;
