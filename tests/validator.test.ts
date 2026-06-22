@@ -59,6 +59,34 @@ describe("DefaultValidator", () => {
     expect(codes(issues)).toContain("UNCHANGED_TRANSLATION");
   });
 
+  it("does not report unchanged translations for keep-mode glossary terms", () => {
+    const glossary: Glossary = { Aria: { mode: "keep" } };
+    const issues = validate(
+      unit({ source: "Aria", normalizedSource: "Aria" }),
+      result({ translation: "Aria" }),
+      glossary
+    );
+
+    expect(codes(issues)).not.toContain("UNCHANGED_TRANSLATION");
+  });
+
+  it("does not report unchanged translations with no translatable letters", () => {
+    const issues = validate(unit({ source: "?!?", normalizedSource: "?!?" }), result({ translation: "?!?" }));
+
+    expect(codes(issues)).not.toContain("UNCHANGED_TRANSLATION");
+  });
+
+  it("still reports unchanged when only part of the source is a keep term", () => {
+    const glossary: Glossary = { Aria: { mode: "keep" } };
+    const issues = validate(
+      unit({ source: "Aria the Brave", normalizedSource: "Aria the Brave" }),
+      result({ translation: "Aria the Brave" }),
+      glossary
+    );
+
+    expect(codes(issues)).toContain("UNCHANGED_TRANSLATION");
+  });
+
   it("reports missing, extra, and duplicate placeholders", () => {
     const protectedText = protectPlaceholders(String.raw`Hello \N[1], take \I[64].`);
     const unitWithPlaceholders = unit({

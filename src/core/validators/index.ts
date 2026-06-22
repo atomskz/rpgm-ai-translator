@@ -30,7 +30,7 @@ export class DefaultValidator implements Validator {
     }
 
     issues.push(...validateTextPresence(unit, result));
-    issues.push(...validateUnchanged(unit, result));
+    issues.push(...validateUnchanged(unit, result, this.glossary));
     issues.push(...validatePlaceholders(unit, result));
     issues.push(...validateNumbers(unit, result));
     issues.push(...validateVariables(unit, result));

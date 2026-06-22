@@ -1,4 +1,5 @@
-import type { TranslationResult, TranslationUnit, ValidationIssue } from "../../types.js";
+import type { Glossary, TranslationResult, TranslationUnit, ValidationIssue } from "../../types.js";
+import { containsTranslatableLetter } from "../../utils/text.js";
 import { issue } from "./shared.js";
 
 export function validateId(unit: TranslationUnit, result: TranslationResult): ValidationIssue[] {
@@ -45,10 +46,36 @@ export function validateTextPresence(unit: TranslationUnit, result: TranslationR
   ];
 }
 
-export function validateUnchanged(unit: TranslationUnit, result: TranslationResult): ValidationIssue[] {
+export function validateUnchanged(
+  unit: TranslationUnit,
+  result: TranslationResult,
+  glossary?: Glossary
+): ValidationIssue[] {
   if (result.translation !== unit.source && result.translation !== unit.normalizedSource) {
     return [];
   }
 
+  // An identical translation is expected when the whole source is a keep-mode
+  // glossary term or has nothing translatable (e.g. a proper noun in symbols or
+  // digits only). Flagging those produces noise and feeds the repair pass with
+  // work it cannot meaningfully do.
+  if (isUnchangedExpected(unit, glossary)) {
+    return [];
+  }
+
   return [issue(unit.id, "warning", "UNCHANGED_TRANSLATION", "Translation is unchanged")];
+}
+
+function isUnchangedExpected(unit: TranslationUnit, glossary?: Glossary): boolean {
+  const source = unit.source.trim();
+  if (source.length > 0 && !containsTranslatableLetter(source)) {
+    return true;
+  }
+  if (!glossary) {
+    return false;
+  }
+  const normalizedSource = unit.normalizedSource?.trim();
+  return Object.entries(glossary).some(
+    ([term, entry]) => entry.mode === "keep" && (term === source || term === normalizedSource)
+  );
 }
