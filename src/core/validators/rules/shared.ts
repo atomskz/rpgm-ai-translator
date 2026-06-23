@@ -30,7 +30,41 @@ export function issue(
 }
 
 export function extractNumbers(text: string): string[] {
-  return text.match(/\d+(?:[.,]\d+)?%?/g) ?? [];
+  // Fold full-width digits and separators (５００ -> 500, ， -> ,, ％ -> %) so a
+  // locale's formatting is not mistaken for a changed number, then reduce each
+  // match to a canonical value.
+  const normalized = text.normalize("NFKC");
+  const matches = normalized.match(/\d+(?:[.,\u00A0\u202F]\d+)*%?/g) ?? [];
+  return matches.map(canonicalizeNumber);
+}
+
+// Reduce a formatted number to a locale-independent canonical form so grouping and
+// decimal-separator differences (1,000 vs 1000, 3.5 vs 3,5) compare equal while a
+// real value change (100 vs 200) does not. A single separator before exactly three
+// digits is read as grouping (the common 1,000 = 1000 case in game text) rather
+// than a three-decimal number.
+function canonicalizeNumber(token: string): string {
+  const percent = token.endsWith("%") ? "%" : "";
+  const body = (percent ? token.slice(0, -1) : token).replace(/[\u00A0\u202F]/g, "");
+  const lastDot = body.lastIndexOf(".");
+  const lastComma = body.lastIndexOf(",");
+  let decimalIndex = -1;
+  if (lastDot >= 0 && lastComma >= 0) {
+    decimalIndex = Math.max(lastDot, lastComma);
+  } else if (lastDot >= 0 || lastComma >= 0) {
+    const separatorIndex = Math.max(lastDot, lastComma);
+    const separator = body[separatorIndex];
+    const separatorCount = body.split(separator).length - 1;
+    const trailingDigits = body.length - separatorIndex - 1;
+    if (separatorCount === 1 && trailingDigits !== 3) {
+      decimalIndex = separatorIndex;
+    }
+  }
+  const intRaw = (decimalIndex >= 0 ? body.slice(0, decimalIndex) : body).replace(/[.,]/g, "");
+  const fracRaw = decimalIndex >= 0 ? body.slice(decimalIndex + 1).replace(/[.,]/g, "") : "";
+  const intPart = intRaw.replace(/^0+(?=\d)/, "") || "0";
+  const fracPart = fracRaw.replace(/0+$/, "");
+  return `${intPart}${fracPart ? `.${fracPart}` : ""}${percent}`;
 }
 
 // In-game numbers are the ones shown to the player as prose. Digits that belong

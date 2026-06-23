@@ -226,6 +226,34 @@ describe("DefaultValidator", () => {
     expect(codes(issues)).toContain("NUMBER_CHANGED");
   });
 
+  it("ignores full-width and locale number formatting", () => {
+    const fullWidth = validate(
+      unit({ source: "Deal 500 damage.", normalizedSource: "Deal 500 damage." }),
+      result({ translation: "Нанеси ５００ урона." })
+    );
+    const grouping = validate(
+      unit({ source: "Gain 1,000 gold.", normalizedSource: "Gain 1,000 gold." }),
+      result({ translation: "Получи 1000 золота." })
+    );
+    const decimalComma = validate(
+      unit({ source: "Boost x1.5.", normalizedSource: "Boost x1.5." }),
+      result({ translation: "Ускорение x1,5." })
+    );
+
+    expect(codes(fullWidth)).not.toContain("NUMBER_CHANGED");
+    expect(codes(grouping)).not.toContain("NUMBER_CHANGED");
+    expect(codes(decimalComma)).not.toContain("NUMBER_CHANGED");
+  });
+
+  it("still flags a real number change across number formats", () => {
+    const issues = validate(
+      unit({ source: "Gain 1,000 gold.", normalizedSource: "Gain 1,000 gold." }),
+      result({ translation: "Получи 2000 золота." })
+    );
+
+    expect(codes(issues)).toContain("NUMBER_CHANGED");
+  });
+
   it("reports changed variables", () => {
     const protectedText = protectPlaceholders("Hello {playerName}.");
     const issues = validate(
