@@ -32,6 +32,7 @@ import { reviewTranslations } from "../../core/review/index.js";
 import {
   appendTranslationResultsJsonlFile,
   readTranslationResultsJsonlFile,
+  resetTranslationResultsJsonlFile,
   writeTranslationResultsFile,
   writeTranslationUnitsFile
 } from "../../core/translation-units/index.js";
@@ -57,8 +58,12 @@ import {
 } from "../options.js";
 import {
   checkpointedTranslationsById,
+  checkpointSignature,
+  checkpointSignaturesEqual,
   mergeCheckpointTranslations,
-  missingCheckpointResult
+  missingCheckpointResult,
+  readCheckpointSignatureFile,
+  writeCheckpointSignatureFile
 } from "../checkpoints.js";
 import { createProgressLogger } from "../progress.js";
 import type { CliIO } from "../types.js";
@@ -124,6 +129,26 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
   // Persist a JSONL checkpoint per batch and resume from it, so a crash mid-run
   // does not discard completed translate/review/repair work on the next run.
   const rawCheckpointPath = path.join(workDir, "translations.raw.jsonl");
+  const reviewCheckpointPath = path.join(workDir, "translations.reviewed.jsonl");
+  const repairCheckpointPath = path.join(workDir, "translations.repaired.jsonl");
+  // Discard checkpoints from a run with different parameters (target language,
+  // model, provider or glossary); resuming them would ship stale output such as
+  // the previous language. A missing signature (an older work dir) is treated as
+  // compatible to preserve resume, then stamped for next time.
+  const checkpointMeta = path.join(workDir, "checkpoint.meta.json");
+  const signature = checkpointSignature(providerName, providerOptions, glossary, characterGlossary);
+  const previousSignature = await readCheckpointSignatureFile(checkpointMeta);
+  if (previousSignature && !checkpointSignaturesEqual(previousSignature, signature)) {
+    io.stderr(
+      "Warning: run parameters (language/model/glossary) changed since the last run; discarding stale checkpoints and starting fresh.\n"
+    );
+    await Promise.all([
+      resetTranslationResultsJsonlFile(rawCheckpointPath),
+      resetTranslationResultsJsonlFile(reviewCheckpointPath),
+      resetTranslationResultsJsonlFile(repairCheckpointPath)
+    ]);
+  }
+  await writeCheckpointSignatureFile(checkpointMeta, signature);
   const rawCheckpointById = checkpointedTranslationsById(units, await readTranslationResultsJsonlFile(rawCheckpointPath));
   if (rawCheckpointById.size > 0) {
     io.stdout(`Resuming translation: ${rawCheckpointById.size}/${units.length} units already in checkpoint.\n`);
@@ -160,7 +185,6 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
   }
   await writeTranslationResultsFile(path.join(workDir, "translations.raw.json"), translations);
   if (hasFlag(args, "--review")) {
-    const reviewCheckpointPath = path.join(workDir, "translations.reviewed.jsonl");
     const reviewCheckpointById = checkpointedTranslationsById(units, await readTranslationResultsJsonlFile(reviewCheckpointPath));
     if (reviewCheckpointById.size > 0) {
       io.stdout(`Resuming review: ${reviewCheckpointById.size}/${units.length} units already in checkpoint.\n`);
@@ -189,7 +213,6 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
   io.stdout("Validating translations...\n");
   let validationIssues = validateTranslationResults(units, translations, new DefaultValidator(glossary));
   if (repairEnabled) {
-    const repairCheckpointPath = path.join(workDir, "translations.repaired.jsonl");
     const repairCheckpointById = checkpointedTranslationsById(units, await readTranslationResultsJsonlFile(repairCheckpointPath));
     if (repairCheckpointById.size > 0) {
       translations = mergeCheckpointTranslations(units, translations, repairCheckpointById);

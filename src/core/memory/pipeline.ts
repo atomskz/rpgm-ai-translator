@@ -214,11 +214,12 @@ function keyForResult(result: TranslationResult, keyByRepresentativeId: Map<stri
 
 /**
  * Builds the memory/dedup key for a unit. It deliberately folds the target and
- * source languages, the unit's layout constraints, the surrounding context and
- * the active glossary into the digest so that a cached translation is only
- * reused when every input that shaped it is identical. Keying on the source
- * text alone reused translations across languages and collapsed units that
- * happened to share a source string but had different constraints/context.
+ * source languages, the model, the unit's layout constraints, the surrounding
+ * context and the active glossary into the digest so that a cached translation
+ * is only reused when every input that shaped it is identical. Keying on the
+ * source text alone reused translations across languages and collapsed units
+ * that happened to share a source string but had different constraints/context;
+ * omitting the model replayed a weaker model's output after an upgrade.
  */
 export function translationCacheKey(unit: TranslationUnit, options: TranslateOptions): string {
   return hashCacheKey({
@@ -226,6 +227,7 @@ export function translationCacheKey(unit: TranslationUnit, options: TranslateOpt
     category: unit.category,
     targetLanguage: options.targetLanguage ?? "",
     sourceLanguage: options.sourceLanguage ?? "",
+    model: options.model ?? "",
     constraints: unit.constraints ?? {},
     context: unit.context ?? {},
     glossary: options.glossary ?? null

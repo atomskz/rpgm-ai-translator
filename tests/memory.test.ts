@@ -210,6 +210,19 @@ describe("translation memory", () => {
     expect(fr[0].metadata?.fromMemory).not.toBe(true);
   });
 
+  it("does not reuse memory across models", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-memory-model-"));
+    const memory = new JsonlTranslationMemory(path.join(root, "memory.jsonl"));
+    const provider = new CountingProvider();
+    const units = [unit("Actors.1.name", "Aria")];
+
+    await translateWithMemory(units, provider, { targetLanguage: "ru", model: "deepseek-v4-flash" }, memory);
+    const upgraded = await translateWithMemory(units, provider, { targetLanguage: "ru", model: "deepseek-v4-pro" }, memory);
+
+    expect(provider.calls).toEqual([["Actors.1.name"], ["Actors.1.name"]]);
+    expect(upgraded[0].metadata?.fromMemory).not.toBe(true);
+  });
+
   it("translates equal source strings with different constraints separately", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-memory-constraints-"));
     const memory = new JsonlTranslationMemory(path.join(root, "memory.jsonl"));

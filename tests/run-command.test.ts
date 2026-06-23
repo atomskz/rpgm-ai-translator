@@ -245,6 +245,38 @@ describe("run command", () => {
     expect(report.validationIssues).toEqual([]);
   });
 
+  it("discards checkpoints when the target language changes between runs", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-relang-"));
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "out");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await mkdir(path.join(gamePath, "js"), { recursive: true });
+    await writeFile(path.join(gamePath, "js", "rpg_core.js"), "", "utf8");
+    await writeJson(path.join(gamePath, "data", "Map001.json"), {
+      displayName: "Town",
+      events: [null, { id: 1, name: "NPC", pages: [{ list: [{ code: 401, parameters: ["Hello."] }] }] }]
+    });
+
+    // First run translates into Russian and stamps the checkpoint with its signature.
+    await runCli(["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir], {
+      stdout: () => undefined,
+      stderr: () => undefined
+    });
+
+    // A second run into French must not resume the Russian checkpoint.
+    const stderr: string[] = [];
+    const exitCode = await runCli(["run", gamePath, "--provider", "mock", "--target", "fr", "--out", outDir], {
+      stdout: () => undefined,
+      stderr: (text) => stderr.push(text)
+    });
+
+    const patched = JSON.parse(await readFile(path.join(outDir, "data", "Map001.json"), "utf8"));
+    expect(exitCode).toBe(0);
+    expect(stderr.join("")).toContain("discarding stale checkpoints");
+    expect(patched.displayName).toBe("[fr] Town");
+    expect(patched.events[1].pages[0].list[0].parameters[0]).toBe("[fr] Hello.");
+  });
+
   it("resumes translation and review from existing checkpoints without re-calling the provider", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-resume-"));
     const gamePath = path.join(root, "game");
