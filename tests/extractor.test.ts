@@ -411,6 +411,45 @@ describe("RpgMakerMvMzExtractor", () => {
     expect(patched.events[1].pages[0].list[0].parameters[1]).toBe("Ария");
     expect(patched.events[1].pages[0].list[1].parameters[0]).toBe("GabText Привет");
   });
+
+  it("overrides the dialogue line max length when dialogueMaxLength is set", async () => {
+    const root = await makeProject("mz");
+    await writeJson(path.join(root, "data", "Map001.json"), {
+      displayName: "Town",
+      events: [null, { id: 1, name: "NPC", pages: [{ list: [{ code: 401, parameters: ["Hello there."] }] }] }]
+    });
+    const dialogueId = "Map001.events.1.pages.0.list.0.parameters.0";
+
+    const withDefault = await new RpgMakerMvMzExtractor().extract(root);
+    const withOverride = await new RpgMakerMvMzExtractor().extract(root, { dialogueMaxLength: 30 });
+
+    expect(withDefault.find((unit) => unit.id === dialogueId)?.constraints).toMatchObject({
+      maxLines: 1,
+      maxLength: 52
+    });
+    expect(withOverride.find((unit) => unit.id === dialogueId)?.constraints).toMatchObject({
+      maxLines: 1,
+      maxLength: 30
+    });
+  });
+
+  it("reads --dialogue-max-length from the extract command", async () => {
+    const root = await makeProject("mz");
+    await writeJson(path.join(root, "data", "Map001.json"), {
+      events: [null, { id: 1, name: "NPC", pages: [{ list: [{ code: 401, parameters: ["Hello there."] }] }] }]
+    });
+
+    const output: string[] = [];
+    const exitCode = await runCli(["extract", root, "--dialogue-max-length", "40"], {
+      stdout: (text) => output.push(text),
+      stderr: () => undefined
+    });
+    const units = JSON.parse(output.join(""));
+    const dialogue = units.find((unit: { category: string }) => unit.category === "dialogue");
+
+    expect(exitCode).toBe(0);
+    expect(dialogue.constraints).toMatchObject({ maxLines: 1, maxLength: 40 });
+  });
 });
 
 async function makeProject(engine: "mv" | "mz"): Promise<string> {

@@ -149,7 +149,8 @@ export function readExtractOptions(args: string[]): ExtractOptions {
   return {
     includeEventComments: hasFlag(args, "--include-comments"),
     includePlugins: hasFlag(args, "--include-plugins"),
-    includeSpeakerNames: hasFlag(args, "--include-speaker-names")
+    includeSpeakerNames: hasFlag(args, "--include-speaker-names"),
+    dialogueMaxLength: readPositiveIntegerOption(args, "--dialogue-max-length")
   };
 }
 
@@ -196,7 +197,7 @@ export type CommandOptionSpec = {
 export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   detect: { valueOptions: [], booleanFlags: [] },
   extract: {
-    valueOptions: ["--out", "--report"],
+    valueOptions: ["--out", "--report", "--dialogue-max-length"],
     booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names"]
   },
   translate: {
@@ -239,7 +240,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
     valueOptions: [
       "--out", "--work-dir", "--provider", "--base-url", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
       "--max-tokens", "--max-tokens-budget", "--retry-attempts", "--memory", "--glossary", "--characters", "--repair-attempts",
-      "--repair-codes", "--font", "--number-font", "--mode", "--backup"
+      "--repair-codes", "--font", "--number-font", "--mode", "--backup", "--dialogue-max-length"
     ],
     booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--review", "--repair", "--dry-run"]
   },

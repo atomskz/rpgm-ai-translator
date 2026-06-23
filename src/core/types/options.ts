@@ -100,6 +100,11 @@ export type ExtractOptions = {
   includeEventComments?: boolean;
   includePlugins?: boolean;
   includeSpeakerNames?: boolean;
+  // Max display width (in cells) allowed for a single Show Text dialogue line,
+  // baked into each dialogue unit's maxLength constraint. The fitting width
+  // depends on the game's font, so it is overridable; when unset the built-in
+  // DEFAULT_DIALOGUE_MAX_LENGTH is used.
+  dialogueMaxLength?: number;
   // Called for each data or plugin file that could not be read or parsed and was
   // skipped, so one corrupt file does not abort extraction of the whole project.
   onWarning?: (warning: string) => void;

@@ -74,6 +74,7 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--include-comments": "Extract event comments.",
   "--include-plugins": "Extract cautious plugin parameters and selected plugin command text.",
   "--include-speaker-names": "Translate Show Text speaker name fields.",
+  "--dialogue-max-length": "Max display width (cells) for a dialogue line constraint. Default: 52.",
   "--draft-only": "Build a heuristic character glossary without calling a provider.",
   "--include-mentions": "Include dialogue name mentions as character candidates.",
   "--review": "Run a second-pass review of dialogue and choices.",
@@ -194,6 +195,11 @@ Extraction options:
   --include-speaker-names
       Translate Show Text speaker name fields. Disabled by default because
       many portrait plugins use speaker names as technical lookup keys.
+
+  --dialogue-max-length <n>
+      Max display width in cells for a single Show Text dialogue line. Baked
+      into each dialogue unit's maxLength constraint at extraction. Defaults to
+      52; raise or lower it to match the game's message font.
 
 Translation options:
   --memory <file>

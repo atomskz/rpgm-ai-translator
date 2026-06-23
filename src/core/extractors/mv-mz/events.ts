@@ -1,5 +1,11 @@
 import type { ExtractOptions, TranslationUnit } from "../../types.js";
 import { extractPluginCommandText } from "./plugins.js";
+
+// Default max display width (in cells) for a single Show Text dialogue line,
+// used when ExtractOptions.dialogueMaxLength (CLI --dialogue-max-length) is not
+// set. Overridable because how many characters fit on a line depends on the
+// game's message font.
+export const DEFAULT_DIALOGUE_MAX_LENGTH = 52;
 import {
   type DraftBase,
   type JsonObject,
@@ -119,7 +125,7 @@ export function extractEventCommandList(
             speaker: currentSpeaker,
             ...neighborContext(list, commandIndex)
           },
-          { maxLines: 1, maxLength: 52 }
+          { maxLines: 1, maxLength: options.extractOptions.dialogueMaxLength ?? DEFAULT_DIALOGUE_MAX_LENGTH }
         )
       );
     }
