@@ -27,6 +27,18 @@ describe("validateCommandArgs", () => {
     );
   });
 
+  it("rejects an empty option value", () => {
+    expect(() => validateCommandArgs("translate", ["units.json", "--target", ""])).toThrow(
+      "--target requires a value"
+    );
+  });
+
+  it("rejects a whitespace-only option value", () => {
+    expect(() => validateCommandArgs("translate", ["units.json", "--out", "   "])).toThrow(
+      "--out requires a value"
+    );
+  });
+
   it("rejects a duplicated value option", () => {
     expect(() => validateCommandArgs("translate", ["units.json", "--target", "ja", "--target", "ru"])).toThrow(
       "Option --target was provided more than once"

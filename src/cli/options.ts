@@ -348,7 +348,10 @@ export function validateCommandArgs(command: string, args: string[]): void {
       }
       seenValueOptions.add(token);
       const value = args[index + 1];
-      if (value === undefined || value.startsWith("--")) {
+      // Reject a missing value, the next flag standing in for one, and an
+      // empty/whitespace value (e.g. --target "") that would otherwise slip past
+      // `readOption(...) ?? default` as a non-nullish empty string.
+      if (value === undefined || value.startsWith("--") || value.trim().length === 0) {
         throw new UsageError(`${token} requires a value`);
       }
       index += 1;
