@@ -151,6 +151,13 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
       rawCheckpointById.get(unit.id) ??
       missingCheckpointResult(unit, providerName, providerOptions.model)
   );
+  // Stop before applying when nothing translated (e.g. a total provider outage),
+  // so the run fails loudly instead of writing an empty patch and exiting 0.
+  const translatedCount = translations.filter((result) => result.status === "translated").length;
+  if (units.length > 0 && translatedCount === 0) {
+    io.stderr(`All ${units.length} translation units failed; no translations were produced. Aborting before writing a patch.\n`);
+    return 1;
+  }
   await writeTranslationResultsFile(path.join(workDir, "translations.raw.json"), translations);
   if (hasFlag(args, "--review")) {
     const reviewCheckpointPath = path.join(workDir, "translations.reviewed.jsonl");

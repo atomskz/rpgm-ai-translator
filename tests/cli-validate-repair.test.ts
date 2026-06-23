@@ -20,12 +20,31 @@ describe("CLI validate and repair", () => {
     });
 
     const report = JSON.parse(await readFile(reportPath, "utf8"));
-    expect(exitCode).toBe(0);
+    // Both issues are error severity, so validate gates with a non-zero code.
+    expect(exitCode).toBe(2);
     expect(output.join("")).toContain("Validation issues: 2");
     expect(report.validationIssues.map((issue: { code: string }) => issue.code)).toEqual([
       "UNKNOWN_TRANSLATION_ID",
       "MISSING_TRANSLATION"
     ]);
+  });
+
+  it("exits 0 when no apply-blocking errors are found", async () => {
+    const root = await createCliTempDir("rpgm-cli-validate-clean-");
+    const unitsPath = path.join(root, "units.json");
+    const translationsPath = path.join(root, "translations.json");
+    const reportPath = path.join(root, "report.json");
+    await writeJsonFixture(unitsPath, [actorNameUnit()]);
+    await writeJsonFixture(translationsPath, [{ id: "Actors.1.name", source: "Aria", translation: "Ария" }]);
+
+    const exitCode = await runCli(["validate", unitsPath, translationsPath, "--out", reportPath], {
+      stdout: () => undefined,
+      stderr: () => undefined
+    });
+
+    const report = JSON.parse(await readFile(reportPath, "utf8"));
+    expect(exitCode).toBe(0);
+    expect(report.validationIssues).toEqual([]);
   });
 
   it("uses glossary during validation", async () => {

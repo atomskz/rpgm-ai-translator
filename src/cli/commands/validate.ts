@@ -43,5 +43,13 @@ export async function validateCommand(args: string[], io: CliIO): Promise<number
   } else {
     io.stdout(`${JSON.stringify(report, null, 2)}\n`);
   }
+  // Exit non-zero when the report contains apply-blocking errors so `validate`
+  // can gate a CI pipeline or a `validate && apply` shell chain. Warnings alone
+  // (e.g. glossary advisories) keep the success code.
+  const errorCount = validationIssues.filter((item) => item.severity === "error").length;
+  if (errorCount > 0) {
+    io.stderr(`Validation found ${errorCount} blocking error${errorCount === 1 ? "" : "s"}.\n`);
+    return 2;
+  }
   return 0;
 }

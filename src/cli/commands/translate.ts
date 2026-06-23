@@ -110,5 +110,13 @@ export async function translateCommand(args: string[], io: CliIO): Promise<numbe
     io.stdout(payload);
   }
   await maybeWriteReport(reportPath, createReport({ units, translations: results }), io);
+  // A total provider outage (bad key, unreachable endpoint) records every unit as
+  // failed but still "completes" each batch. Exit non-zero so a script does not
+  // proceed to validate/apply on an empty translation set.
+  const translated = results.filter((result) => result.status === "translated").length;
+  if (results.length > 0 && translated === 0) {
+    io.stderr(`All ${results.length} translation units failed; no translations were produced.\n`);
+    return 1;
+  }
   return 0;
 }
