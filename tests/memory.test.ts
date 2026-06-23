@@ -279,6 +279,21 @@ describe("translation memory", () => {
       issues: [expect.objectContaining({ code: "MISSING_TRANSLATION" })]
     });
   });
+
+  it("does not retry a non-retryable provider error", async () => {
+    const provider = new AuthFailingProvider();
+
+    const results = await translateWithMemory([unit("Actors.1.name", "Aria")], provider, {
+      targetLanguage: "ru",
+      retryAttempts: 3,
+      retryDelayMs: 0
+    });
+
+    // A permanent error (bad key) is classified non-retryable, so it is tried
+    // once and degraded rather than retried three times.
+    expect(provider.calls).toHaveLength(1);
+    expect(results[0]).toMatchObject({ id: "Actors.1.name", status: "failed" });
+  });
 });
 
 class CountingProvider implements LLMProvider {
@@ -319,6 +334,13 @@ class AlwaysFailingProvider extends CountingProvider {
   override async translateBatch(batch: TranslationUnit[]): Promise<TranslationResult[]> {
     this.calls.push(batch.map((unit) => unit.id));
     throw new Error("permanent failure");
+  }
+}
+
+class AuthFailingProvider extends CountingProvider {
+  override async translateBatch(batch: TranslationUnit[]): Promise<TranslationResult[]> {
+    this.calls.push(batch.map((unit) => unit.id));
+    throw Object.assign(new Error("invalid api key"), { issueCode: "PROVIDER_AUTH_ERROR" });
   }
 }
 

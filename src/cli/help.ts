@@ -81,7 +81,7 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--temperature": "Provider sampling temperature (0..2).",
   "--max-tokens": "Provider output token limit (DeepSeek: 8192, or 32000 for reasoning review/repair).",
   "--max-tokens-budget": "Abort the run if estimated or used tokens exceed this budget.",
-  "--retry-attempts": "CLI-level retries for failed translate batches.",
+  "--retry-attempts": "Provider retry attempts for transient failures (timeout, network, rate limit, 5xx). Default: 2.",
   "--codes": "Comma-separated validation issue codes to repair.",
   "--attempts": "Number of repair passes.",
   "--repair-codes": "Comma-separated validation issue codes for run --repair.",
@@ -202,7 +202,9 @@ Common options:
       reasoning review/repair passes (chain-of-thought counts against this).
 
   --retry-attempts <n>
-      Number of CLI-level retries for failed translate batches. Default: 1.
+      Provider retry attempts for transient failures (timeouts, network errors,
+      rate limits, 5xx). Permanent errors (auth, billing, bad request) are not
+      retried. Handled by the provider client, the single retry layer. Default: 2.
 
 Extraction options:
   --include-comments

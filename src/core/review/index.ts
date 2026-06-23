@@ -27,7 +27,7 @@ import type {
   ValidationIssue
 } from "../types.js";
 import { normalizeBatchSize, splitBatch } from "../batching/index.js";
-import { withProviderRetry } from "../retry/index.js";
+import { isRetryableProviderError, withProviderRetry } from "../retry/index.js";
 import { DefaultValidator, introducedErrorCode } from "../validators/index.js";
 
 export type ReviewPassResult = {
@@ -72,7 +72,11 @@ export async function reviewTranslations(
 
     let reviewed: TranslationResult[];
     try {
-      reviewed = await withProviderRetry(() => provider.reviewBatch(batch, options), options);
+      reviewed = await withProviderRetry(() => provider.reviewBatch(batch, options), {
+        retryAttempts: options.retryAttempts,
+        retryDelayMs: options.retryDelayMs,
+        isRetryable: isRetryableProviderError
+      });
     } catch (error: unknown) {
       reviewed = failedReviewBatch(batch, provider, options, error);
     }

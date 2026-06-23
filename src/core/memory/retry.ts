@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { withRetry } from "../retry/index.js";
+import { isRetryableProviderError, withRetry } from "../retry/index.js";
 import type { LLMProvider, TranslateOptions, TranslationResult, TranslationUnit } from "../types.js";
 
 export async function translateBatchWithRetry(
@@ -31,6 +31,7 @@ export async function translateBatchWithRetry(
     return await withRetry(() => provider.translateBatch(batch, options), {
       retryAttempts: options.retryAttempts,
       retryDelayMs: options.retryDelayMs,
+      isRetryable: isRetryableProviderError,
       onRetry: ({ error, retryIndex, maxAttempts }) => {
         options.onProgress?.({
           type: "batch-retry",

@@ -26,7 +26,7 @@ import type {
   ValidationIssue
 } from "../types.js";
 import { normalizeBatchSize, splitBatch } from "../batching/index.js";
-import { withProviderRetry } from "../retry/index.js";
+import { isRetryableProviderError, withProviderRetry } from "../retry/index.js";
 import { DefaultValidator, introducedErrorCode } from "../validators/index.js";
 
 export type RepairOptions = ReviewOptions & {
@@ -127,7 +127,11 @@ export async function repairTranslations(
   for (const batch of splitBatch(toTranslate, normalizeBatchSize(options.batchSize))) {
     let results: TranslationResult[];
     try {
-      results = await withProviderRetry(() => provider.translateBatch(batch, options), options);
+      results = await withProviderRetry(() => provider.translateBatch(batch, options), {
+        retryAttempts: options.retryAttempts,
+        retryDelayMs: options.retryDelayMs,
+        isRetryable: isRetryableProviderError
+      });
     } catch (error: unknown) {
       results = failedRepairTranslateBatch(batch, provider, options, error);
     }
@@ -169,7 +173,11 @@ export async function repairTranslations(
 
     let results: TranslationResult[];
     try {
-      results = await withProviderRetry(() => provider.reviewBatch(batch, options), options);
+      results = await withProviderRetry(() => provider.reviewBatch(batch, options), {
+        retryAttempts: options.retryAttempts,
+        retryDelayMs: options.retryDelayMs,
+        isRetryable: isRetryableProviderError
+      });
     } catch (error: unknown) {
       results = failedRepairReviewBatch(batch, provider, options, error);
     }
