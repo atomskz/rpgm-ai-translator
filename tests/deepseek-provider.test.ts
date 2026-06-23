@@ -127,6 +127,39 @@ describe("DeepSeekProvider", () => {
     expect(results[0].issues?.[0].message).toContain("Actors.1.name");
   });
 
+  it("attaches a response-id anomaly to a delivered translation, not a dropped unit", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      fetchFn: async () =>
+        response(200, {
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  translations: [{ id: "Actors.2.name", translation: "Луна" }]
+                })
+              }
+            }
+          ]
+        })
+    });
+
+    const second: TranslationUnit = { ...unit(), id: "Actors.2.name", source: "Luna", jsonPath: "2.name", hash: "hash2" };
+    const results = await provider.translateBatch([unit(), second], { targetLanguage: "ru" });
+
+    const dropped = results.find((result) => result.id === "Actors.1.name");
+    const delivered = results.find((result) => result.id === "Actors.2.name");
+    // The dropped id fails per-unit; the batch-level coverage warning rides on the
+    // delivered translation so it is not filtered out together with the failed unit.
+    expect(dropped?.status).toBe("failed");
+    expect(delivered?.status).toBe("translated");
+    expect(delivered?.issues).toContainEqual(
+      expect.objectContaining({ code: "PROVIDER_RESPONSE_SCHEMA_ERROR", severity: "warning" })
+    );
+    expect(delivered?.issues?.find((issue) => issue.severity === "warning")?.message).toContain("missing ids");
+    expect(dropped?.issues?.some((issue) => issue.severity === "warning")).toBeFalsy();
+  });
+
   it("retries temporary API failures", async () => {
     let calls = 0;
     const provider = new DeepSeekProvider({

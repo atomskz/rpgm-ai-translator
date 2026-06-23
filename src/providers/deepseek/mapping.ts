@@ -70,10 +70,11 @@ function indexTranslationsById(items: ModelTranslation[]): Map<string, string> {
 }
 
 /**
- * Detects ids the model returned that were not requested, and ids it returned
- * more than once. Either signals an unreliable response (the matched
- * translations may be misattributed), so it is surfaced as a warning attached
- * to the batch's first result rather than being silently ignored.
+ * Reconciles the model's returned ids against the requested ones: ids that were
+ * missing (a unit the model dropped), returned but not requested, or returned
+ * more than once. Any of these signals an unreliable response whose matched
+ * translations may be misattributed, so it is surfaced as a warning. (Missing
+ * ids also fail per-unit; this gives the batch a single coverage summary.)
  */
 function responseIdAnomalyIssue(
   ownerId: string,
@@ -93,10 +94,14 @@ function responseIdAnomalyIssue(
       seen.add(item.id);
     }
   }
-  if (unexpected.size === 0 && duplicate.size === 0) {
+  const missing = [...requestedIds].filter((id) => !seen.has(id));
+  if (missing.length === 0 && unexpected.size === 0 && duplicate.size === 0) {
     return undefined;
   }
   const parts: string[] = [];
+  if (missing.length > 0) {
+    parts.push(`missing ids [${missing.join(", ")}]`);
+  }
   if (unexpected.size > 0) {
     parts.push(`unexpected ids [${[...unexpected].join(", ")}]`);
   }
@@ -107,7 +112,7 @@ function responseIdAnomalyIssue(
     id: ownerId,
     severity: "warning",
     code: "PROVIDER_RESPONSE_SCHEMA_ERROR",
-    message: `DeepSeek response contained ${parts.join(" and ")}`
+    message: `DeepSeek response did not match the requested ids (requested ${requestedIds.size}, returned ${items.length}): ${parts.join("; ")}`
   };
 }
 
@@ -119,12 +124,19 @@ function withResponseIdAnomalies(
   if (results.length === 0) {
     return results;
   }
-  const anomaly = responseIdAnomalyIssue(results[0].id, requestedIds, payload.translations);
+  // Attach the anomaly to the first delivered (translated) result so the signal
+  // survives downstream filtering: a warning riding on a failed unit (e.g. the one
+  // whose id the model dropped) is discarded with that unit. Fall back to the first
+  // result only when every unit failed.
+  const translatedIndex = results.findIndex((result) => result.status === "translated");
+  const ownerIndex = translatedIndex >= 0 ? translatedIndex : 0;
+  const anomaly = responseIdAnomalyIssue(results[ownerIndex].id, requestedIds, payload.translations);
   if (!anomaly) {
     return results;
   }
-  const [first, ...rest] = results;
-  return [{ ...first, issues: [...(first.issues ?? []), anomaly] }, ...rest];
+  return results.map((result, index) =>
+    index === ownerIndex ? { ...result, issues: [...(result.issues ?? []), anomaly] } : result
+  );
 }
 
 export function missingApiKeyTranslationResults(
