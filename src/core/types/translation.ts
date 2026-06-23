@@ -87,12 +87,10 @@ export type ProviderUsage = {
   completion_tokens_details?: ProviderUsageDetails;
   prompt_cache_hit_tokens?: number;
   prompt_cache_miss_tokens?: number;
-  [key: string]: unknown;
 };
 
 export type ProviderUsageDetails = {
   cached_tokens?: number;
-  [key: string]: unknown;
 };
 
 // Provider-neutral token usage. Each provider maps its own usage payload into
@@ -112,7 +110,6 @@ export type TranslationMetadata = {
   repairMode?: "translate" | "review";
   fromMemory?: boolean;
   fromCheckpoint?: boolean;
-  [key: string]: unknown;
 };
 
 export type ReviewUnit = {

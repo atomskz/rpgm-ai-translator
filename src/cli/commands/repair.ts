@@ -18,7 +18,7 @@
  */
 
 import { repairTranslations } from "../../core/repair/index.js";
-import { readReportFile } from "../../core/reports/index.js";
+import { readReportFile, reportUnitsFingerprint } from "../../core/reports/index.js";
 import {
   appendTranslationResultsJsonlFile,
   readTranslationResultsJsonlFile,
@@ -66,6 +66,14 @@ export async function repairCommand(args: string[], io: CliIO): Promise<number> 
   const units = await readTranslationUnitsFile(unitsPath);
   let translations = await readTranslationResultsFile(translationsPath);
   const report = await readReportFile(reportPath);
+  // A report built from a different extraction targets unit ids that may no longer
+  // exist here, so repair would silently fix nothing. Warn rather than fail quietly.
+  if (report.unitsFingerprint && report.unitsFingerprint !== reportUnitsFingerprint(units)) {
+    io.stderr(
+      "Warning: the report was generated from a different units file (id/hash fingerprint mismatch); " +
+        "repair may target stale issues or skip units. Re-run validate against these units first.\n"
+    );
+  }
   const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
   const characterGlossary = charactersPath ? await loadCharacterGlossary(charactersPath) : undefined;
   const checkpointPath = checkpointOption ?? defaultCheckpointPath(out);

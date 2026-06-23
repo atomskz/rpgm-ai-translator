@@ -26,6 +26,8 @@ describe("reports", () => {
     });
 
     expect(report).toEqual({
+      schemaVersion: 1,
+      unitsFingerprint: expect.any(String),
       engine: "rpgmaker-mv",
       filesScanned: 1,
       unitsExtracted: 2,
@@ -101,6 +103,35 @@ describe("reports", () => {
         issuesByCategory: {}
       })
     );
+  });
+
+  it("reads a legacy report without a schema version as version 0", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-report-legacy-"));
+    const reportPath = path.join(root, "report.json");
+    await writeReportFile(reportPath, createReport({ units: [unit("Actors.1.name")] }));
+    const parsed = JSON.parse(await readFile(reportPath, "utf8"));
+    delete parsed.schemaVersion;
+    await writeFile(reportPath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+
+    await expect(readReportFile(reportPath)).resolves.toEqual(expect.objectContaining({ schemaVersion: 0 }));
+  });
+
+  it("refuses a report with a newer schema version", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-report-newer-"));
+    const reportPath = path.join(root, "report.json");
+    await writeReportFile(reportPath, createReport({ units: [unit("Actors.1.name")] }));
+    const parsed = JSON.parse(await readFile(reportPath, "utf8"));
+    parsed.schemaVersion = 999;
+    await writeFile(reportPath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+
+    await expect(readReportFile(reportPath)).rejects.toThrow("newer than this build supports");
+  });
+
+  it("derives a units fingerprint that changes with the units", () => {
+    const a = createReport({ units: [unit("Actors.1.name")] });
+    const b = createReport({ units: [unit("Actors.2.name")] });
+    expect(a.unitsFingerprint).toEqual(expect.any(String));
+    expect(a.unitsFingerprint).not.toBe(b.unitsFingerprint);
   });
 });
 

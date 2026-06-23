@@ -21,6 +21,22 @@ import { readFile } from "node:fs/promises";
 import type { EngineId, TranslationReport, TranslationResult, TranslationUnit, ValidationIssue } from "../types.js";
 import { aggregateTokenUsage } from "../cost/index.js";
 import { writeFileAtomic } from "../utils/fs.js";
+import { hashCacheKey } from "../utils/hash.js";
+
+// Bumped when TranslationReport changes incompatibly; readReportFile refuses a
+// report stamped with a higher version than this build understands.
+export const REPORT_SCHEMA_VERSION = 1;
+
+// Stable digest of the units a report/translation set was built from, used to
+// detect a report paired with a different units file. Order-independent (sorted)
+// and based on each unit's id + content hash.
+export function reportUnitsFingerprint(units: Pick<TranslationUnit, "id" | "hash">[]): string {
+  const material = units
+    .map((unit) => `${unit.id}:${unit.hash}`)
+    .sort()
+    .join("\n");
+  return hashCacheKey(material);
+}
 
 export type ReportInput = {
   units: TranslationUnit[];
@@ -38,6 +54,8 @@ export function createReport(input: ReportInput): TranslationReport {
   const issueSummary = summarizeIssues(input.units, validationIssues);
 
   const report: TranslationReport = {
+    schemaVersion: REPORT_SCHEMA_VERSION,
+    unitsFingerprint: reportUnitsFingerprint(input.units),
     engine,
     filesScanned: new Set(input.units.map((unit) => unit.filePath)).size,
     unitsExtracted: input.units.length,
@@ -82,6 +100,12 @@ export async function readReportFile(filePath: string): Promise<TranslationRepor
 
   if (!isTranslationReport(parsed)) {
     throw new Error("Report file must contain a translation report object");
+  }
+  const version = (parsed as { schemaVersion?: unknown }).schemaVersion;
+  if (typeof version === "number" && version > REPORT_SCHEMA_VERSION) {
+    throw new Error(
+      `Report '${filePath}' has schema version ${version}, newer than this build supports (${REPORT_SCHEMA_VERSION}). Regenerate it with a matching version.`
+    );
   }
   return normalizeReport(parsed);
 }
@@ -140,6 +164,8 @@ function normalizeReport(report: TranslationReport): TranslationReport {
 
   return {
     ...report,
+    // A report written before schemaVersion existed reads as legacy (0).
+    schemaVersion: typeof report.schemaVersion === "number" ? report.schemaVersion : 0,
     issuesByCode: isCountMap(report.issuesByCode) ? report.issuesByCode : fallbackByCode,
     issuesByFile: isCountMap(report.issuesByFile) ? report.issuesByFile : {},
     issuesByCategory: isCountMap(report.issuesByCategory) ? report.issuesByCategory : {}
@@ -170,6 +196,8 @@ function isTranslationReport(value: unknown): value is TranslationReport {
   }
   const candidate = value as Partial<TranslationReport>;
   return (
+    (candidate.schemaVersion == null || typeof candidate.schemaVersion === "number") &&
+    (candidate.unitsFingerprint == null || typeof candidate.unitsFingerprint === "string") &&
     (candidate.engine === "rpgmaker-mv" || candidate.engine === "rpgmaker-mz") &&
     typeof candidate.filesScanned === "number" &&
     typeof candidate.unitsExtracted === "number" &&

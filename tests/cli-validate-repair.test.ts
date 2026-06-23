@@ -131,4 +131,37 @@ describe("CLI validate and repair", () => {
       })
     ]);
   });
+
+  it("warns when the report was built from a different units file", async () => {
+    const root = await createCliTempDir("rpgm-cli-repair-mismatch-");
+    const unitsPath = path.join(root, "units.json");
+    const translationsPath = path.join(root, "translations.json");
+    const reportPath = path.join(root, "report.json");
+    const outPath = path.join(root, "translations.repaired.json");
+    await writeJsonFixture(unitsPath, [actorNameUnit()]);
+    await writeJsonFixture(translationsPath, []);
+    await writeJsonFixture(reportPath, {
+      schemaVersion: 1,
+      // A fingerprint that does not match these units' id/hash digest.
+      unitsFingerprint: "0000000000000000000000000000000000000000000000000000000000000000",
+      engine: "rpgmaker-mv",
+      filesScanned: 1,
+      unitsExtracted: 1,
+      unitsTranslated: 0,
+      fromMemory: 0,
+      failed: 0,
+      validationIssues: [
+        { id: "Actors.1.name", severity: "error", code: "MISSING_TRANSLATION", message: "Missing translation" }
+      ]
+    });
+
+    const errors: string[] = [];
+    const exitCode = await runCli(
+      ["repair", unitsPath, translationsPath, "--report", reportPath, "--provider", "mock", "--target", "ru", "--out", outPath],
+      { stdout: () => undefined, stderr: (text) => errors.push(text) }
+    );
+
+    expect(exitCode).toBe(0);
+    expect(errors.join("")).toContain("different units file");
+  });
 });

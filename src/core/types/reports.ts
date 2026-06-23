@@ -22,6 +22,13 @@ import type { TokenUsage } from "./translation.js";
 import type { ValidationIssue } from "./validation.js";
 
 export type TranslationReport = {
+  // Bumped when the report shape changes incompatibly. A reader refuses a report
+  // whose version is newer than it understands; legacy reports without it read as 0.
+  schemaVersion: number;
+  // Digest of the units the report was built from (sorted id:hash), so repair and
+  // apply can detect a report paired with a different units file. Omitted by
+  // legacy reports written before this field existed.
+  unitsFingerprint?: string;
   engine: EngineId;
   filesScanned: number;
   unitsExtracted: number;
