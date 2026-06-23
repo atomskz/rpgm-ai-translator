@@ -167,7 +167,8 @@ Commands:
       Patch RPG Maker MZ font settings in an output folder.
 
   run <game>
-      Run the full pipeline: detect, extract, translate, validate, apply.
+      Run the full pipeline: detect, extract, translate, optional review,
+      validate, optional repair, apply, optional font patch.
 
 Common options:
   --out <path>

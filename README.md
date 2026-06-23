@@ -185,10 +185,12 @@ Use `--base-url <url>` to target any OpenAI-compatible endpoint (including a
 local one), and `--max-tokens-budget <n>` to abort the run before it exceeds a
 token budget.
 When `--out` is provided, `translate` also writes a JSONL checkpoint after each
-completed batch. Without `--checkpoint`, the checkpoint path is derived from
-`--out`, for example `translations.raw.json` becomes `translations.raw.jsonl`.
-When `--checkpoint` is provided, existing translated entries in that JSONL file
-are reused and only missing units are sent to the provider.
+completed batch. Without `--checkpoint`, the path is derived from `--out` (for
+example `translations.raw.json` becomes `translations.raw.jsonl`) and written
+fresh each run — a standalone `translate` does not resume from it. To resume,
+pass `--checkpoint <file>`: existing translated entries in that JSONL file are
+reused and only missing units are sent to the provider. (The `run` pipeline
+manages and resumes its own per-stage checkpoints in the work directory.)
 
 ### Generate Character Glossary
 
@@ -287,10 +289,9 @@ node dist/cli/index.js run ./game \
   --timeout-ms 30000 \
   --temperature 0.3 \
   --max-tokens 8192 \
-  --memory ./out/deepseek-memory.jsonl \
   --include-plugins \
   --review \
-  --characters ./out/characters.json \
+  --characters ./work/characters.json \
   --repair \
   --repair-attempts 1 \
   --repair-codes MAX_LENGTH_EXCEEDED,MISSING_TRANSLATION \
@@ -322,11 +323,12 @@ directory; pass `--config <file>` to use another path.
 }
 ```
 
-Precedence is **command-line flag > config file > built-in default**. Recognized
-keys mirror the flag names (`provider`, `baseUrl`, `model`, `target`,
-`batchSize`, `maxTokens`, `out`, `workDir`, `glossary`, `characters`,
-`includePlugins`, `review`, `repair`, ...). See
-[docs/configuration.md](docs/configuration.md) for the full key list.
+Precedence is **command-line flag > config file > built-in default**. Keys mirror
+the flag names; for example `provider`, `baseUrl`, `model`, `target`, `batchSize`,
+`maxTokens`, `out`, `workDir`, `glossary`, `characters`, `includePlugins`,
+`review`, `repair`. This is only a sample — see
+[docs/configuration.md](docs/configuration.md) for the complete, authoritative
+key list (an unknown key is reported with a warning).
 
 ## Getting Help And Debugging
 
