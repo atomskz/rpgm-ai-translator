@@ -29,9 +29,12 @@ Supported:
 - selected JSON-encoded plugin text fields such as `label`, `text`, and `messageText`;
 - cautious plugin parameter extraction with `--include-plugins`;
 - speaker names are kept as context by default to avoid breaking portrait plugins;
-- DeepSeek through the OpenAI-compatible Chat Completions API;
+- DeepSeek and any OpenAI-compatible Chat Completions endpoint (`--base-url`);
 - mock provider for tests and dry runs;
 - JSONL translation memory;
+- resumable `run` with per-stage JSONL checkpoints and a separate work directory;
+- project config file to set defaults instead of repeating flags;
+- token/cost estimation, provider-neutral usage reporting, and a token budget cap;
 - character glossary generation and review pass;
 - glossary validation;
 - targeted repair for validation issues with repeated attempts and checkpointing;
@@ -107,13 +110,19 @@ node dist/cli/index.js run ./examples/mz-sample \
   --out ./out/mz-sample-patch
 ```
 
-The output folder contains:
+The patch folder (`--out`) contains only patched RPG Maker game files. All
+intermediate artifacts are written to a separate work directory next to it
+(`<out>-work` by default, override with `--work-dir`):
 
-- patched RPG Maker files;
 - `units.json`;
-- `translations.json`;
+- `translations.raw.json`, `translations.reviewed.json`, `translations.json`;
+- per-stage JSONL checkpoints (`translations.raw.jsonl`, ...) used to resume an
+  interrupted run;
 - `translation-memory.jsonl`;
 - `report.json`.
+
+Keeping intermediates out of the patch folder means a shipped patch never
+includes your translation memory or reports.
 
 ## Usage
 
@@ -140,7 +149,10 @@ Use `--include-comments` if event comments should be included. Use
 Speaker names from RPG Maker MZ/MV `Show Text` commands are not translated by
 default because many games and plugins use them as portrait lookup keys. Use
 `--include-speaker-names` only if the game does not depend on speaker names as
-technical identifiers.
+technical identifiers. Use `--dialogue-max-length <n>` to override the per-line
+dialogue width limit (default `52` display cells) when the game's message font
+fits more or fewer characters; the limit is baked into each dialogue unit's
+`maxLength` constraint.
 
 ### Translate With DeepSeek
 
@@ -166,7 +178,12 @@ node dist/cli/index.js translate ./work/units.json \
 `--batch-size` is the number of translation units sent to the provider in one
 request. Smaller batches are slower but safer for large or context-heavy strings.
 For DeepSeek, `--temperature` controls sampling randomness and `--max-tokens`
-sets the response token limit. The defaults are `0.3` and `8192`.
+sets the response token limit. The defaults are `0.3` and `8192` (the translate
+pass disables thinking; the reasoning review/repair passes default to `32000` —
+see [Reasoning passes and `max_tokens`](#reasoning-passes-and-max_tokens)).
+Use `--base-url <url>` to target any OpenAI-compatible endpoint (including a
+local one), and `--max-tokens-budget <n>` to abort the run before it exceeds a
+token budget.
 When `--out` is provided, `translate` also writes a JSONL checkpoint after each
 completed batch. Without `--checkpoint`, the checkpoint path is derived from
 `--out`, for example `translations.raw.json` becomes `translations.raw.jsonl`.
@@ -203,6 +220,17 @@ The review pass focuses on dialogue and choices grouped by map/event context.
 It writes a JSONL checkpoint after each completed review batch. When
 `--checkpoint` points to an existing JSONL file, already reviewed entries are
 reused.
+
+#### Reasoning passes and `max_tokens`
+
+`review` and `repair` enable the provider's reasoning mode. A reasoning model
+spends `max_tokens` on its chain-of-thought before emitting the answer, so these
+passes default to a larger `--max-tokens` (`32000`) than `translate` (`8192`).
+If you set `--max-tokens` too low for a reasoning pass, the provider can return
+an empty or truncated response; the CLI reports this as a clear error asking you
+to raise `--max-tokens`. Packing many long lines into one batch makes this more
+likely, so lowering `--batch-size` also helps. See
+[docs/troubleshooting.md](docs/troubleshooting.md).
 
 ### Validate And Repair
 
@@ -243,7 +271,9 @@ node dist/cli/index.js apply ./game ./work/translations.repaired.json \
 When `--report` is provided, translations with validation errors are skipped.
 Warnings are reported but still applied. `--units` makes apply use the exact
 extracted units from the manual pipeline instead of re-extracting with possibly
-different extraction flags.
+different extraction flags; without `--units`, apply re-extracts the game and
+warns loudly if most translations are skipped because their ids no longer match.
+Add `--dry-run` to preview the file/unit/skip counts without writing anything.
 
 ### One-Command Pipeline
 
@@ -268,7 +298,50 @@ node dist/cli/index.js run ./game \
 ```
 
 The `run` command validates before applying and writes only translations without
-validation errors to the patch folder.
+validation errors to the patch folder. It checkpoints each stage (translate,
+review, repair) to the work directory, so re-running after a crash resumes from
+the last completed work instead of re-calling the provider. Intermediates and
+memory go to the work directory (`--work-dir`, default `<out>-work`), never the
+patch folder. `run` always writes a patch, so `--mode` and `--backup` are
+ignored. Add `--dry-run` to stop after extraction and print an estimate (units,
+files, approximate input tokens) without calling the provider or writing a patch.
+
+## Configuration File
+
+To avoid repeating the same flags on every command, put defaults in a project
+config file. By default the CLI loads `rpgm-ai-translator.json` from the current
+directory; pass `--config <file>` to use another path.
+
+```json
+{
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "target": "ru",
+  "includePlugins": true,
+  "review": true
+}
+```
+
+Precedence is **command-line flag > config file > built-in default**. Recognized
+keys mirror the flag names (`provider`, `baseUrl`, `model`, `target`,
+`batchSize`, `maxTokens`, `out`, `workDir`, `glossary`, `characters`,
+`includePlugins`, `review`, `repair`, ...). See
+[docs/configuration.md](docs/configuration.md) for the full key list.
+
+## Getting Help And Debugging
+
+Every command prints its own usage and flags:
+
+```bash
+node dist/cli/index.js --help          # global help and command list
+node dist/cli/index.js run --help      # flags for a single command
+```
+
+On a usage error the CLI prints the command usage and a `--help` hint. Add
+`--verbose` to any command to print the full error stack and cause chain when a
+run fails. The full per-command flag reference lives in
+[docs/cli-reference.md](docs/cli-reference.md), and common failures are covered
+in [docs/troubleshooting.md](docs/troubleshooting.md).
 
 ## Fonts
 
@@ -305,12 +378,17 @@ Glossaries are JSON files:
 
 Modes:
 
-- `keep`: keep the original term;
-- `translate`: allow translation;
-- `transliterate`: transliterate;
-- `custom`: require the supplied translation.
+- `keep`: keep the original term unchanged (enforced in validation);
+- `custom`: require the supplied `translation` (enforced in validation);
+- `translate`: translate the term normally for meaning (advisory; sent to the
+  model in the prompt but not mechanically checked);
+- `transliterate`: render the term phonetically (advisory).
 
-Pass a glossary with `--glossary ./glossary.json`.
+All modes are described to the model in the system prompt. `keep` and `custom`
+are checked by the validator and raise `GLOSSARY_VIOLATION` when broken;
+alphabetic terms are matched on word boundaries (so `Ko` does not match
+`Kobold`), while CJK terms are matched as substrings. Pass a glossary with
+`--glossary ./glossary.json`. See [examples/glossary.json](examples/glossary.json).
 
 ## Safety
 
@@ -341,5 +419,10 @@ npm run build
 npm run pack:check
 ```
 
-See [docs/architecture.md](docs/architecture.md) for module boundaries and pipeline
-details.
+## Documentation
+
+- [docs/cli-reference.md](docs/cli-reference.md) — every command and flag.
+- [docs/configuration.md](docs/configuration.md) — project config file, environment, and precedence.
+- [docs/troubleshooting.md](docs/troubleshooting.md) — common errors and validation issue codes.
+- [docs/architecture.md](docs/architecture.md) — module boundaries and pipeline details.
+- [CHANGELOG.md](CHANGELOG.md) — release notes.
