@@ -121,7 +121,7 @@ describe("DeepSeekProvider", () => {
     expect(results[0].translation).toBe("Ария");
     expect(results[0].status).toBe("translated");
     expect(results[0].issues).toContainEqual(
-      expect.objectContaining({ code: "PROVIDER_RESPONSE_SCHEMA_ERROR", severity: "warning" })
+      expect.objectContaining({ code: "PROVIDER_RESPONSE_ID_ANOMALY", severity: "warning" })
     );
     expect(results[0].issues?.[0].message).toContain("Ghost.9.name");
     expect(results[0].issues?.[0].message).toContain("Actors.1.name");
@@ -154,10 +154,15 @@ describe("DeepSeekProvider", () => {
     expect(dropped?.status).toBe("failed");
     expect(delivered?.status).toBe("translated");
     expect(delivered?.issues).toContainEqual(
-      expect.objectContaining({ code: "PROVIDER_RESPONSE_SCHEMA_ERROR", severity: "warning" })
+      expect.objectContaining({ code: "PROVIDER_RESPONSE_ID_ANOMALY", severity: "warning" })
     );
     expect(delivered?.issues?.find((issue) => issue.severity === "warning")?.message).toContain("missing ids");
     expect(dropped?.issues?.some((issue) => issue.severity === "warning")).toBeFalsy();
+    // The dropped unit's own failure keeps the error-severity schema code, distinct
+    // from the warning-severity id-anomaly riding on the delivered translation.
+    expect(dropped?.issues).toContainEqual(
+      expect.objectContaining({ code: "PROVIDER_RESPONSE_SCHEMA_ERROR", severity: "error" })
+    );
   });
 
   it("retries temporary API failures", async () => {

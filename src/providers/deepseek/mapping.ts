@@ -73,8 +73,10 @@ function indexTranslationsById(items: ModelTranslation[]): Map<string, string> {
  * Reconciles the model's returned ids against the requested ones: ids that were
  * missing (a unit the model dropped), returned but not requested, or returned
  * more than once. Any of these signals an unreliable response whose matched
- * translations may be misattributed, so it is surfaced as a warning. (Missing
- * ids also fail per-unit; this gives the batch a single coverage summary.)
+ * translations may be misattributed, so it is surfaced as a warning under its own
+ * code (PROVIDER_RESPONSE_ID_ANOMALY), distinct from the error-severity
+ * PROVIDER_RESPONSE_SCHEMA_ERROR raised when the response cannot be parsed at all.
+ * (Missing ids also fail per-unit; this gives the batch a single coverage summary.)
  */
 function responseIdAnomalyIssue(
   ownerId: string,
@@ -111,7 +113,7 @@ function responseIdAnomalyIssue(
   return {
     id: ownerId,
     severity: "warning",
-    code: "PROVIDER_RESPONSE_SCHEMA_ERROR",
+    code: "PROVIDER_RESPONSE_ID_ANOMALY",
     message: `DeepSeek response did not match the requested ids (requested ${requestedIds.size}, returned ${items.length}): ${parts.join("; ")}`
   };
 }

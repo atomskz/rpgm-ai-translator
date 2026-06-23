@@ -48,6 +48,7 @@ Provider failures are reported per unit with an issue code and message:
 | `PROVIDER_REQUEST_ERROR` | HTTP 400/422 (bad request, e.g. unknown model). | No |
 | `PROVIDER_RESPONSE_ERROR` | Unparseable/truncated content. | No |
 | `PROVIDER_RESPONSE_SCHEMA_ERROR` | Response did not match the expected shape. | No |
+| `PROVIDER_RESPONSE_ID_ANOMALY` | Response was parsed but its ids did not cover the request (missing/extra/duplicate); a warning, not a blocking error. | No |
 
 `DEEPSEEK_API_KEY` must be set for `--provider deepseek`. A `PROVIDER_REQUEST_ERROR`
 on every call usually means the `--model` name is wrong for your account.
