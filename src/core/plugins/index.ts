@@ -17,6 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { detectEol } from "../utils/fs.js";
 import { containsTranslatableLetter } from "../utils/text.js";
 
 export type RpgMakerPlugin = {
@@ -54,7 +55,11 @@ export function replacePluginsArray(raw: string, plugins: RpgMakerPlugin[]): str
   }
   const [, prefix, arrayText] = match;
   const indent = arrayText.includes("\n") ? 2 : undefined;
-  const serialized = JSON.stringify(plugins, null, indent);
+  // JSON.stringify emits LF; match the file's dominant EOL so the rewritten
+  // array does not introduce mixed line endings into a CRLF plugins.js.
+  const eol = detectEol(raw);
+  const serializedLf = JSON.stringify(plugins, null, indent);
+  const serialized = eol === "\r\n" ? serializedLf.replace(/\n/g, "\r\n") : serializedLf;
   const arrayStart = match.index + prefix.length;
   return `${raw.slice(0, arrayStart)}${serialized}${raw.slice(arrayStart + arrayText.length)}`;
 }

@@ -427,7 +427,7 @@ async function writeBackupFile(filePath: string, file: PreparedFile): Promise<vo
   await writeFile(filePath, await readFile(file.sourcePath, "utf8"), "utf8");
 }
 
-const DEFAULT_JSON_STYLE: JsonStyle = { indent: "  ", bom: false, trailingNewline: true };
+const DEFAULT_JSON_STYLE: JsonStyle = { indent: "  ", bom: false, trailingNewline: true, eol: "\n" };
 
 function timestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, "-");

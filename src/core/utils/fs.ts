@@ -71,11 +71,22 @@ export type JsonStyle = {
   indent: string | null;
   bom: boolean;
   trailingNewline: boolean;
+  // Dominant line ending of the original file, reapplied on write so a CRLF
+  // (Windows) file does not flip to LF and balloon the diff.
+  eol: "\n" | "\r\n";
 };
 
+// Pick the file's dominant line ending. CRLF wins only when it strictly
+// outnumbers bare LFs, so a stray "\r\n" in an otherwise-LF file stays LF.
+export function detectEol(raw: string): "\n" | "\r\n" {
+  const crlf = (raw.match(/\r\n/g) ?? []).length;
+  const lfOnly = (raw.match(/\n/g) ?? []).length - crlf;
+  return crlf > lfOnly ? "\r\n" : "\n";
+}
+
 // Best-effort detection of how a JSON file was serialized, so a patch can be
-// written back in the same shape (minified stays minified, the original indent
-// and trailing newline are kept) instead of being reformatted wholesale.
+// written back in the same shape (minified stays minified, the original indent,
+// trailing newline and line ending are kept) instead of being reformatted wholesale.
 export function detectJsonStyle(raw: string): JsonStyle {
   const bom = raw.charCodeAt(0) === 0xfeff;
   const body = bom ? raw.slice(1) : raw;
@@ -83,14 +94,17 @@ export function detectJsonStyle(raw: string): JsonStyle {
   const hasStructuralNewline = body.trim().includes("\n");
   const indentMatch = body.match(/\n([ \t]+)\S/);
   const indent = hasStructuralNewline ? indentMatch?.[1] ?? "  " : null;
-  return { indent, bom, trailingNewline };
+  return { indent, bom, trailingNewline, eol: detectEol(raw) };
 }
 
 const BOM = String.fromCharCode(0xfeff);
 
 export function serializeJson(value: unknown, style: JsonStyle): string {
   const core = style.indent == null ? JSON.stringify(value) : JSON.stringify(value, null, style.indent);
-  return `${style.bom ? BOM : ""}${core}${style.trailingNewline ? "\n" : ""}`;
+  const text = `${style.bom ? BOM : ""}${core}${style.trailingNewline ? "\n" : ""}`;
+  // JSON.stringify only ever emits "\n" structurally (newlines inside strings are
+  // escaped), so converting every "\n" to CRLF is safe and never doubles up.
+  return style.eol === "\r\n" ? text.replace(/\n/g, "\r\n") : text;
 }
 
 export function toPosixPath(filePath: string): string {
