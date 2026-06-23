@@ -1,6 +1,6 @@
 {
   "name": "rpgm-ai-translator",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "AI-assisted translation pipeline for RPG Maker MV/MZ games.",
   "type": "module",
   "engines": {
