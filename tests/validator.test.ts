@@ -342,21 +342,32 @@ describe("DefaultValidator", () => {
     expect(codes(over)).toContain("MAX_LENGTH_EXCEEDED");
   });
 
-  it("measures maxLength against restored control codes, not placeholder tokens", () => {
-    const protectedText = protectPlaceholders(String.raw`\C[1]X\C[0]`);
-    const issues = validate(
+  it("measures maxLength against visible text, treating control codes as zero-width", () => {
+    const protectedText = protectPlaceholders(String.raw`\C[1]Hi\C[0]`);
+    // The window draws only "Да" (2 cells); the color codes render nothing. The
+    // old check restored them and counted 12 cells, wrongly flagging the line.
+    const within = validate(
       unit({
-        source: String.raw`\C[1]X\C[0]`,
+        source: String.raw`\C[1]Hi\C[0]`,
         normalizedSource: protectedText.text,
         placeholders: protectedText.placeholders,
-        constraints: { maxLength: 13 }
+        constraints: { maxLength: 3 }
       }),
-      // Restored length is 12 (`\C[1]Да\C[0]`); the masked `<PH_1>Да<PH_2>`
-      // form is 14, which the old check wrongly flagged.
-      result({ source: String.raw`\C[1]X\C[0]`, translation: "<PH_1>Да<PH_2>" })
+      result({ source: String.raw`\C[1]Hi\C[0]`, translation: "<PH_1>Да<PH_2>" })
+    );
+    // Visible text over the budget is still flagged.
+    const over = validate(
+      unit({
+        source: String.raw`\C[1]Hi\C[0]`,
+        normalizedSource: protectedText.text,
+        placeholders: protectedText.placeholders,
+        constraints: { maxLength: 1 }
+      }),
+      result({ source: String.raw`\C[1]Hi\C[0]`, translation: "<PH_1>Да<PH_2>" })
     );
 
-    expect(codes(issues)).not.toContain("MAX_LENGTH_EXCEEDED");
+    expect(codes(within)).not.toContain("MAX_LENGTH_EXCEEDED");
+    expect(codes(over)).toContain("MAX_LENGTH_EXCEEDED");
   });
 
   it("treats number drift and extra lines as apply-blocking errors", () => {

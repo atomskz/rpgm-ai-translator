@@ -87,6 +87,29 @@ export function restorePlaceholders(text: string, placeholders: Placeholder[] = 
   return text.replace(TOKEN_PATTERN, (token) => valueByToken.get(token) ?? token);
 }
 
+/**
+ * Restores placeholders to the text the message window actually draws. Control
+ * codes (`\C[n]`, `\I[n]`, `\{`, `\.`, ...) are directives that render no glyphs,
+ * so they are dropped rather than restored, while visible substitutions (format
+ * and template tokens, tags) keep their value. Used to measure display width;
+ * counting a control code's literal characters wrongly inflated the width of
+ * every dialogue line. `\N[n]`/`\V[n]` expand to runtime values of unknown width
+ * and are dropped too, so the measurement is a lower bound rather than a large
+ * over-count.
+ */
+export function visibleText(text: string, placeholders: Placeholder[] = []): string {
+  if (placeholders.length === 0) {
+    return text;
+  }
+  const valueByToken = new Map(
+    placeholders.map((placeholder) => [
+      placeholder.token,
+      placeholder.kind === "control-code" ? "" : placeholder.value
+    ])
+  );
+  return text.replace(TOKEN_PATTERN, (token) => valueByToken.get(token) ?? token);
+}
+
 export function countToken(text: string, token: string): number {
   if (token.length === 0) {
     return 0;

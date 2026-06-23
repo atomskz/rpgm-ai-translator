@@ -18,25 +18,26 @@
  */
 
 import type { TranslationResult, TranslationUnit, ValidationIssue } from "../../types.js";
-import { restorePlaceholders } from "../../placeholders/index.js";
+import { visibleText } from "../../placeholders/index.js";
 import { displayWidth, issue } from "./shared.js";
 
 export function validateConstraints(unit: TranslationUnit, result: TranslationResult): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const { maxLength, maxLines } = unit.constraints ?? {};
-  // Measure the real text the engine would render, not the placeholder tokens.
-  // A protected `<PH_1>` token is a different length from the control code it
-  // stands in for, so measuring before restoring mis-counts every constrained
-  // line.
-  const translation = restorePlaceholders(result.translation, unit.placeholders);
+  // Measure the glyphs the engine would actually draw, not the placeholder
+  // tokens nor the control codes they stand for. Control codes (`\C[n]`, `\I[n]`,
+  // ...) are directives that render nothing, so counting their literal characters
+  // inflated the width of every line containing one and produced spurious
+  // MAX_LENGTH_EXCEEDED warnings (which then fed wasted repair work).
+  const rendered = visibleText(result.translation, unit.placeholders);
 
   // `maxLength` is a message-box cell budget, so measure display width: a
   // full-width CJK glyph occupies two cells while `String.length` counts it as one.
-  if (maxLength != null && displayWidth(translation) > maxLength) {
+  if (maxLength != null && displayWidth(rendered) > maxLength) {
     issues.push(issue(unit.id, "warning", "MAX_LENGTH_EXCEEDED", `Translation exceeds maxLength ${maxLength}`));
   }
 
-  if (maxLines != null && translation.split(/\r?\n/).length > maxLines) {
+  if (maxLines != null && rendered.split(/\r?\n/).length > maxLines) {
     issues.push(issue(unit.id, "error", "MAX_LINES_EXCEEDED", `Translation exceeds maxLines ${maxLines}`));
   }
 
