@@ -3,24 +3,7 @@ import { DeepSeekProviderError } from "./errors.js";
 import type { ChatCompletionResponse, ModelCharactersPayload, ModelTranslationPayload } from "./types.js";
 
 export function parseModelPayload(response: ChatCompletionResponse): ModelTranslationPayload {
-  const content = response.choices[0]?.message?.content;
-  if (!content) {
-    throw new DeepSeekProviderError(
-      "DeepSeek API response did not include message content",
-      "PROVIDER_RESPONSE_SCHEMA_ERROR"
-    );
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch (error: unknown) {
-    throw new DeepSeekProviderError(
-      `DeepSeek API returned invalid JSON content: ${error instanceof Error ? error.message : String(error)}`,
-      "PROVIDER_RESPONSE_ERROR",
-      { cause: error }
-    );
-  }
+  const parsed = parseJsonContent(response);
 
   if (!isModelTranslationPayload(parsed)) {
     throw new DeepSeekProviderError(
@@ -33,24 +16,7 @@ export function parseModelPayload(response: ChatCompletionResponse): ModelTransl
 }
 
 export function parseCharactersPayload(response: ChatCompletionResponse): ModelCharactersPayload {
-  const content = response.choices[0]?.message?.content;
-  if (!content) {
-    throw new DeepSeekProviderError(
-      "DeepSeek API response did not include message content",
-      "PROVIDER_RESPONSE_SCHEMA_ERROR"
-    );
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch (error: unknown) {
-    throw new DeepSeekProviderError(
-      `DeepSeek API returned invalid JSON content: ${error instanceof Error ? error.message : String(error)}`,
-      "PROVIDER_RESPONSE_ERROR",
-      { cause: error }
-    );
-  }
+  const parsed = parseJsonContent(response);
 
   if (!isModelCharactersPayload(parsed)) {
     throw new DeepSeekProviderError(
@@ -60,6 +26,47 @@ export function parseCharactersPayload(response: ChatCompletionResponse): ModelC
   }
 
   return parsed;
+}
+
+// Extracts and parses the JSON content of a chat completion, distinguishing a
+// response truncated at max_tokens (finish_reason "length") from a genuinely
+// empty or malformed one. Truncation is the common failure for reasoning models
+// whose chain-of-thought consumes the whole max_tokens budget, so it gets an
+// actionable message instead of a generic "no content" / "invalid JSON".
+function parseJsonContent(response: ChatCompletionResponse): unknown {
+  const choice = response.choices[0];
+  const content = choice?.message?.content;
+  const truncated = choice?.finish_reason === "length";
+
+  if (!content) {
+    if (truncated) {
+      throw new DeepSeekProviderError(
+        "DeepSeek response was truncated at the max_tokens limit before any content was produced; increase --max-tokens (a reasoning model spends max_tokens on its chain-of-thought).",
+        "PROVIDER_RESPONSE_ERROR"
+      );
+    }
+    throw new DeepSeekProviderError(
+      "DeepSeek API response did not include message content",
+      "PROVIDER_RESPONSE_SCHEMA_ERROR"
+    );
+  }
+
+  try {
+    return JSON.parse(content);
+  } catch (error: unknown) {
+    if (truncated) {
+      throw new DeepSeekProviderError(
+        "DeepSeek response was truncated at the max_tokens limit (incomplete JSON); increase --max-tokens (a reasoning model spends max_tokens on its chain-of-thought).",
+        "PROVIDER_RESPONSE_ERROR",
+        { cause: error }
+      );
+    }
+    throw new DeepSeekProviderError(
+      `DeepSeek API returned invalid JSON content: ${error instanceof Error ? error.message : String(error)}`,
+      "PROVIDER_RESPONSE_ERROR",
+      { cause: error }
+    );
+  }
 }
 
 export function isChatCompletionResponse(value: unknown): value is ChatCompletionResponse {

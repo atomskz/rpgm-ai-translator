@@ -60,7 +60,7 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--batch-size": "Translation units per provider request.",
   "--timeout-ms": "Provider request timeout in milliseconds.",
   "--temperature": "Provider sampling temperature (0..2).",
-  "--max-tokens": "Provider output token limit.",
+  "--max-tokens": "Provider output token limit (DeepSeek: 8192, or 32000 for reasoning review/repair).",
   "--max-tokens-budget": "Abort the run if estimated or used tokens exceed this budget.",
   "--retry-attempts": "CLI-level retries for failed translate batches.",
   "--codes": "Comma-separated validation issue codes to repair.",
@@ -178,7 +178,8 @@ Common options:
       Provider sampling temperature. DeepSeek default: 0.3. Range: 0..2.
 
   --max-tokens <n>
-      Provider output token limit. DeepSeek default: 8192.
+      Provider output token limit. DeepSeek default: 8192, or 32000 for the
+      reasoning review/repair passes (chain-of-thought counts against this).
 
   --retry-attempts <n>
       Number of CLI-level retries for failed translate batches. Default: 1.

@@ -33,6 +33,9 @@ export type ChatCompletionResponse = {
     message?: {
       content?: string | null;
     };
+    // "length" means the model hit max_tokens; used to distinguish a truncated
+    // response from a genuinely empty/malformed one.
+    finish_reason?: string | null;
   }>;
   usage?: ProviderUsage;
 };

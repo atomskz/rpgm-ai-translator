@@ -261,6 +261,92 @@ describe("DeepSeekProvider", () => {
     expect(results[0].issues?.[0].message).toContain("ENOTFOUND");
   });
 
+  it("reports an actionable error when the response is truncated at max_tokens", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      fetchFn: async () => response(200, { choices: [{ message: { content: "" }, finish_reason: "length" }] })
+    });
+
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    expect(results[0].status).toBe("failed");
+    expect(results[0].issues?.[0].code).toBe("PROVIDER_RESPONSE_ERROR");
+    expect(results[0].issues?.[0].message).toContain("truncated at the max_tokens limit");
+    expect(results[0].issues?.[0].message).toContain("--max-tokens");
+  });
+
+  it("reports truncation when the truncated content is incomplete JSON", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      fetchFn: async () =>
+        response(200, { choices: [{ message: { content: '{"translations": [' }, finish_reason: "length" }] })
+    });
+
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    expect(results[0].issues?.[0].code).toBe("PROVIDER_RESPONSE_ERROR");
+    expect(results[0].issues?.[0].message).toContain("truncated at the max_tokens limit");
+  });
+
+  it("still reports a plain empty response (no finish_reason) as a schema error", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      fetchFn: async () => response(200, { choices: [{ message: { content: "" } }] })
+    });
+
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    expect(results[0].issues?.[0]).toMatchObject({
+      code: "PROVIDER_RESPONSE_SCHEMA_ERROR",
+      message: "DeepSeek API response did not include message content"
+    });
+  });
+
+  it("uses a larger default max_tokens for reasoning (thinking) passes", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      fetchFn: async (_url, init) => {
+        bodies.push(JSON.parse(init.body));
+        return response(200, {
+          choices: [{ message: { content: JSON.stringify({ translations: [{ id: "Actors.1.name", translation: "Ария" }] }) } }]
+        });
+      }
+    });
+
+    await provider.translateBatch([unit()], { targetLanguage: "ru" });
+    await provider.reviewBatch(
+      [{ id: "Actors.1.name", source: "Aria", currentTranslation: "Ария", category: "name" }],
+      { targetLanguage: "ru" }
+    );
+
+    // translate (thinking disabled) keeps the small default; review (thinking enabled) gets the large one.
+    expect(bodies[0].thinking).toEqual({ type: "disabled" });
+    expect(bodies[0].max_tokens).toBe(8192);
+    expect(bodies[1].thinking).toEqual({ type: "enabled" });
+    expect(bodies[1].max_tokens).toBe(32000);
+  });
+
+  it("lets an explicit --max-tokens override the reasoning default", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      fetchFn: async (_url, init) => {
+        bodies.push(JSON.parse(init.body));
+        return response(200, {
+          choices: [{ message: { content: JSON.stringify({ translations: [{ id: "Actors.1.name", translation: "Ария" }] }) } }]
+        });
+      }
+    });
+
+    await provider.reviewBatch(
+      [{ id: "Actors.1.name", source: "Aria", currentTranslation: "Ария", category: "name" }],
+      { targetLanguage: "ru", maxTokens: 5000 }
+    );
+
+    expect(bodies[0].max_tokens).toBe(5000);
+  });
+
   it("returns per-unit failures when the API key is missing", async () => {
     const provider = new DeepSeekProvider({ apiKey: "" });
 

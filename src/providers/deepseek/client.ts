@@ -3,6 +3,7 @@ import type { ChatMessage } from "../prompt-builder.js";
 import {
   DEFAULT_BASE_URL,
   DEFAULT_MAX_TOKENS,
+  DEFAULT_THINKING_MAX_TOKENS,
   DEFAULT_TEMPERATURE
 } from "./defaults.js";
 import { createHttpError, DeepSeekProviderError, isNetworkError, isTimeoutError } from "./errors.js";
@@ -45,12 +46,15 @@ export class DeepSeekClient {
     thinkingMode: DeepSeekThinkingMode
   ): Promise<ChatCompletionResponse> {
     const url = `${this.baseUrl}/chat/completions`;
+    // When thinking is enabled the chain-of-thought is billed against max_tokens,
+    // so use a larger default; an explicit --max-tokens still takes precedence.
+    const defaultMaxTokens = thinkingMode === "enabled" ? DEFAULT_THINKING_MAX_TOKENS : DEFAULT_MAX_TOKENS;
     const body = JSON.stringify({
       model,
       messages,
       thinking: { type: thinkingMode },
       temperature: options.temperature ?? DEFAULT_TEMPERATURE,
-      max_tokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
+      max_tokens: options.maxTokens ?? defaultMaxTokens,
       response_format: { type: "json_object" },
       stream: false
     });
