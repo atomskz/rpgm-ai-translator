@@ -17,8 +17,28 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { TranslateOptions } from "../core/types.js";
+import type { BatchFailureSummary, TranslateOptions } from "../core/types.js";
 import type { CliIO } from "./types.js";
+
+// Trim long provider messages so a failure summary stays a single tidy line.
+const MAX_REASON_MESSAGE = 160;
+
+// Append a per-cause breakdown beneath a batch line when units failed, so the
+// user sees why (auth, network, schema...) without opening the report JSON.
+function failureReasonLines(failures: BatchFailureSummary[] | undefined): string {
+  if (!failures || failures.length === 0) {
+    return "";
+  }
+  return failures
+    .map((failure) => {
+      const message =
+        failure.message.length > MAX_REASON_MESSAGE
+          ? `${failure.message.slice(0, MAX_REASON_MESSAGE - 1)}…`
+          : failure.message;
+      return `  - ${failure.code} (${failure.count}): ${message}\n`;
+    })
+    .join("");
+}
 
 export function createProgressLogger(io: CliIO): NonNullable<TranslateOptions["onProgress"]> {
   let memoryHits = 0;
@@ -47,7 +67,8 @@ export function createProgressLogger(io: CliIO): NonNullable<TranslateOptions["o
 
     if (event.type === "review-batch-complete") {
       io.stdout(
-        `Completed review batch ${event.batchIndex}/${event.batchCount}: reviewed ${event.reviewed}, failed ${event.failed}, completed ${event.completed}/${event.total}\n`
+        `Completed review batch ${event.batchIndex}/${event.batchCount}: reviewed ${event.reviewed}, failed ${event.failed}, completed ${event.completed}/${event.total}\n` +
+          (event.failed > 0 ? failureReasonLines(event.failures) : "")
       );
       return;
     }
@@ -60,7 +81,8 @@ export function createProgressLogger(io: CliIO): NonNullable<TranslateOptions["o
     }
 
     io.stdout(
-      `Completed batch ${event.batchIndex}/${event.batchCount}: translated ${event.translated}, failed ${event.failed}, completed ${event.completed}/${event.total}\n`
+      `Completed batch ${event.batchIndex}/${event.batchCount}: translated ${event.translated}, failed ${event.failed}, completed ${event.completed}/${event.total}\n` +
+        (event.failed > 0 ? failureReasonLines(event.failures) : "")
     );
   };
 }

@@ -87,6 +87,7 @@ export type TranslationProgressEvent =
       failed: number;
       completed: number;
       total: number;
+      failures?: BatchFailureSummary[];
     }
   | {
       type: "batch-retry";
@@ -113,7 +114,17 @@ export type TranslationProgressEvent =
       failed: number;
       completed: number;
       total: number;
+      failures?: BatchFailureSummary[];
     };
+
+// A distinct provider/validation failure reason aggregated across a batch, so
+// the CLI can show why units failed (e.g. PROVIDER_NETWORK_ERROR) instead of a
+// bare count. `count` is the number of failed-unit issues carrying this code.
+export type BatchFailureSummary = {
+  code: string;
+  message: string;
+  count: number;
+};
 
 export type ExtractOptions = {
   includeEventComments?: boolean;

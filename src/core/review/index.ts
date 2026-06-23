@@ -27,6 +27,7 @@ import type {
   ValidationIssue
 } from "../types.js";
 import { normalizeBatchSize, splitBatch } from "../batching/index.js";
+import { summarizeBatchFailures } from "../reports/failures.js";
 import { isRetryableProviderError, withProviderRetry } from "../retry/index.js";
 import { DefaultValidator, introducedErrorCode } from "../validators/index.js";
 
@@ -120,7 +121,8 @@ export async function reviewTranslations(
       reviewed: reviewed.filter((result) => result.status === "translated").length,
       failed: reviewed.filter((result) => result.status === "failed").length,
       completed,
-      total: candidates.length
+      total: candidates.length,
+      failures: summarizeBatchFailures(reviewed)
     });
   }
 

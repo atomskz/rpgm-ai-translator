@@ -18,6 +18,7 @@
  */
 
 import { normalizeBatchSize } from "../batching/index.js";
+import { summarizeBatchFailures } from "../reports/failures.js";
 import type { LLMProvider, TranslateOptions, TranslationResult, TranslationUnit } from "../types.js";
 import { hashCacheKey } from "../utils/hash.js";
 import { translateBatchWithRetry } from "./retry.js";
@@ -160,7 +161,8 @@ async function translateUniqueBatches(
       translated: batchResults.filter((result) => result.status === "translated").length,
       failed: batchResults.filter((result) => result.status === "failed").length,
       completed,
-      total: units.length
+      total: units.length,
+      failures: summarizeBatchFailures(batchResults)
     });
   }
 
