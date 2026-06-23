@@ -19,7 +19,16 @@
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { ProviderUsage, ProviderUsageDetails, TranslationMetadata, TranslationResult, TranslationUnit, ValidationIssue } from "../types.js";
+import type {
+  Placeholder,
+  ProviderUsage,
+  ProviderUsageDetails,
+  TranslationCategory,
+  TranslationMetadata,
+  TranslationResult,
+  TranslationUnit,
+  ValidationIssue
+} from "../types.js";
 import { writeFileAtomic } from "../utils/fs.js";
 
 export type ImportedTranslation = {
@@ -109,7 +118,11 @@ export async function readTranslationUnitsFile(filePath: string): Promise<Transl
 
   parsed.forEach((item, index) => {
     if (!isTranslationUnit(item)) {
-      throw new Error(`Invalid translation unit at index ${index}: expected id, source, filePath, jsonPath, engine, category and hash`);
+      throw new Error(
+        `Invalid translation unit at index ${index}: expected string id/source/filePath/jsonPath/hash, ` +
+          "engine of rpgmaker-mv|rpgmaker-mz, a known category, and well-formed placeholders/constraints " +
+          "(e.g. maxLength must be a number, not a string)"
+      );
     }
   });
 
@@ -242,8 +255,25 @@ function optionalNumber(value: unknown): boolean {
   return value == null || typeof value === "number";
 }
 
+const TRANSLATION_CATEGORIES: ReadonlySet<TranslationCategory> = new Set<TranslationCategory>([
+  "dialogue",
+  "choice",
+  "name",
+  "description",
+  "system",
+  "plugin-parameter",
+  "unknown"
+]);
+
+const PLACEHOLDER_KINDS: ReadonlySet<Placeholder["kind"]> = new Set<Placeholder["kind"]>([
+  "control-code",
+  "format-token",
+  "template-token",
+  "tag"
+]);
+
 function isTranslationUnit(value: unknown): value is TranslationUnit {
-  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+  if (!isPlainObject(value)) {
     return false;
   }
 
@@ -251,10 +281,58 @@ function isTranslationUnit(value: unknown): value is TranslationUnit {
   return (
     typeof candidate.id === "string" &&
     typeof candidate.source === "string" &&
+    (candidate.normalizedSource == null || typeof candidate.normalizedSource === "string") &&
     typeof candidate.filePath === "string" &&
     typeof candidate.jsonPath === "string" &&
     (candidate.engine === "rpgmaker-mv" || candidate.engine === "rpgmaker-mz") &&
     typeof candidate.category === "string" &&
-    typeof candidate.hash === "string"
+    TRANSLATION_CATEGORIES.has(candidate.category as TranslationCategory) &&
+    typeof candidate.hash === "string" &&
+    (candidate.context == null || isPlainObject(candidate.context)) &&
+    (candidate.placeholders == null || isPlaceholderArray(candidate.placeholders)) &&
+    (candidate.constraints == null || isUnitConstraints(candidate.constraints))
   );
+}
+
+function isPlaceholderArray(value: unknown): boolean {
+  return Array.isArray(value) && value.every(isPlaceholder);
+}
+
+function isPlaceholder(value: unknown): value is Placeholder {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+  const candidate = value as Partial<Record<keyof Placeholder, unknown>>;
+  return (
+    typeof candidate.token === "string" &&
+    typeof candidate.value === "string" &&
+    typeof candidate.required === "boolean" &&
+    typeof candidate.kind === "string" &&
+    PLACEHOLDER_KINDS.has(candidate.kind as Placeholder["kind"])
+  );
+}
+
+function isUnitConstraints(value: unknown): boolean {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+  return (
+    optionalBoolean(value.preserveNewlines) &&
+    optionalBoolean(value.preserveControlCodes) &&
+    optionalNumber(value.maxLines) &&
+    optionalNumber(value.maxLength) &&
+    (value.sourceEncoding == null ||
+      value.sourceEncoding === "json-string-literal" ||
+      value.sourceEncoding === "json-stringified-json") &&
+    (value.encodedJsonPath == null || typeof value.encodedJsonPath === "string") &&
+    (value.encodedJsonSegments == null || isStringArray(value.encodedJsonSegments))
+  );
+}
+
+function isStringArray(value: unknown): boolean {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function optionalBoolean(value: unknown): boolean {
+  return value == null || typeof value === "boolean";
 }

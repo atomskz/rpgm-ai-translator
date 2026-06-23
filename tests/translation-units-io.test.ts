@@ -7,6 +7,7 @@ import {
   normalizeTranslationResults,
   readTranslationResultsJsonlFile,
   readTranslationResultsFile,
+  readTranslationUnitsFile,
   resetTranslationResultsJsonlFile,
   writeTranslationUnitsFile
 } from "../src/core/translation-units/index.js";
@@ -31,6 +32,88 @@ describe("translation unit import/export", () => {
     await writeTranslationUnitsFile(filePath, units);
 
     expect(JSON.parse(await readFile(filePath, "utf8"))).toEqual(units);
+  });
+
+  it("loads a well-formed units file including placeholders and constraints", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-tu-load-"));
+    const filePath = path.join(root, "units.json");
+    const units = [
+      {
+        id: "Map001.events.1.pages.0.list.1.parameters.0",
+        source: "Hello \\C[2]hero\\C[0]",
+        normalizedSource: "Hello <PH_0>hero<PH_1>",
+        filePath: "data/Map001.json",
+        jsonPath: "events.1.pages.0.list.1.parameters.0",
+        engine: "rpgmaker-mz",
+        category: "dialogue",
+        constraints: { maxLength: 52, maxLines: 1, preserveControlCodes: true },
+        placeholders: [{ token: "<PH_0>", value: "\\C[2]", required: true, kind: "control-code" }],
+        hash: "hash"
+      }
+    ];
+    await writeFile(filePath, JSON.stringify(units), "utf8");
+
+    await expect(readTranslationUnitsFile(filePath)).resolves.toEqual(units);
+  });
+
+  it("rejects a unit with an unknown category", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-tu-cat-"));
+    const filePath = path.join(root, "units.json");
+    await writeFile(
+      filePath,
+      JSON.stringify([
+        { id: "a", source: "s", filePath: "f", jsonPath: "j", engine: "rpgmaker-mz", category: "garbage", hash: "h" }
+      ]),
+      "utf8"
+    );
+
+    await expect(readTranslationUnitsFile(filePath)).rejects.toThrow("Invalid translation unit at index 0");
+  });
+
+  it("rejects a unit whose maxLength constraint is a string", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-tu-maxlen-"));
+    const filePath = path.join(root, "units.json");
+    await writeFile(
+      filePath,
+      JSON.stringify([
+        {
+          id: "a",
+          source: "s",
+          filePath: "f",
+          jsonPath: "j",
+          engine: "rpgmaker-mz",
+          category: "dialogue",
+          constraints: { maxLength: "5" },
+          hash: "h"
+        }
+      ]),
+      "utf8"
+    );
+
+    await expect(readTranslationUnitsFile(filePath)).rejects.toThrow("Invalid translation unit at index 0");
+  });
+
+  it("rejects a unit with a malformed placeholder entry", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-tu-ph-"));
+    const filePath = path.join(root, "units.json");
+    await writeFile(
+      filePath,
+      JSON.stringify([
+        {
+          id: "a",
+          source: "s",
+          filePath: "f",
+          jsonPath: "j",
+          engine: "rpgmaker-mz",
+          category: "dialogue",
+          placeholders: [{ token: "<PH_0>", value: "x", required: true, kind: "made-up-kind" }],
+          hash: "h"
+        }
+      ]),
+      "utf8"
+    );
+
+    await expect(readTranslationUnitsFile(filePath)).rejects.toThrow("Invalid translation unit at index 0");
   });
 
   it("imports manual translation JSON into full TranslationResult objects", async () => {
