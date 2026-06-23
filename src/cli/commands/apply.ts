@@ -26,12 +26,12 @@ import {
 } from "../../core/translation-units/index.js";
 import { filterTranslationsWithoutValidationErrors } from "../../core/validators/index.js";
 import { RpgMakerMvMzExtractor } from "../../core/extractors/index.js";
-import { readApplyOptions, readFontOptions, readOption, requireArg } from "../options.js";
+import { readApplyOptions, readFontOptions, readOption, requirePositional } from "../options.js";
 import type { CliIO } from "../types.js";
 
 export async function applyCommand(args: string[], io: CliIO): Promise<number> {
-  const projectPath = requireArg(args[0], "project path");
-  const translationsPath = requireArg(args[1], "translations path");
+  const projectPath = requirePositional(args, 0, "project path");
+  const translationsPath = requirePositional(args, 1, "translations path");
   const applyOptions = readApplyOptions(args);
   const { fontPath, numberFontPath } = readFontOptions(args);
   const reportPath = readOption(args, "--report");

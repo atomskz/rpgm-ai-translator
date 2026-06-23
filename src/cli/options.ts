@@ -289,6 +289,38 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
 export const GLOBAL_VALUE_OPTIONS: readonly string[] = ["--config"];
 export const GLOBAL_BOOLEAN_FLAGS: readonly string[] = ["--verbose"];
 
+// Every value-taking option across all commands, so a flag's value can be skipped
+// when collecting positionals. No flag is a value option in one command and a
+// boolean in another, so a single shared set is unambiguous.
+const ALL_VALUE_OPTIONS = new Set<string>([
+  ...Object.values(COMMAND_OPTION_SPECS).flatMap((spec) => [...spec.valueOptions]),
+  ...GLOBAL_VALUE_OPTIONS
+]);
+
+// Collect positional arguments regardless of where they sit relative to options,
+// so `translate --provider mock units.json` works as well as
+// `translate units.json --provider mock`. Unknown flags are already rejected by
+// validateCommandArgs before a handler runs, so any remaining `--` token is a
+// known flag (and its value, for value options, is skipped here).
+export function readPositionals(args: string[]): string[] {
+  const positionals: string[] = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const token = args[index];
+    if (token.startsWith("--")) {
+      if (ALL_VALUE_OPTIONS.has(token)) {
+        index += 1;
+      }
+      continue;
+    }
+    positionals.push(token);
+  }
+  return positionals;
+}
+
+export function requirePositional(args: string[], index: number, label: string): string {
+  return requireArg(readPositionals(args)[index], label);
+}
+
 export function validateCommandArgs(command: string, args: string[]): void {
   const spec = COMMAND_OPTION_SPECS[command];
   if (!spec) {

@@ -45,6 +45,22 @@ describe("CLI translate", () => {
     await expect(readFile(checkpointPath, "utf8")).rejects.toThrow();
   });
 
+  it("reads the units path when it follows options", async () => {
+    const root = await createCliTempDir("rpgm-cli-translate-order-");
+    const unitsPath = path.join(root, "units.json");
+    const outPath = path.join(root, "translations.json");
+    await writeJsonFixture(unitsPath, [actorNameUnit()]);
+
+    const exitCode = await runCli(["translate", "--provider", "mock", "--target", "ru", unitsPath, "--out", outPath], {
+      stdout: () => undefined,
+      stderr: () => undefined
+    });
+
+    const results = JSON.parse(await readFile(outPath, "utf8"));
+    expect(exitCode).toBe(0);
+    expect(results[0]).toMatchObject({ id: "Actors.1.name", translation: "[ru] Aria" });
+  });
+
   it("writes a default JSONL checkpoint while translating", async () => {
     const root = await createCliTempDir("rpgm-cli-translate-checkpoint-");
     const unitsPath = path.join(root, "units.json");

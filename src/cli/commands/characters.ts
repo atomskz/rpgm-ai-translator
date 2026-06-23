@@ -35,13 +35,13 @@ import {
   readProviderCliOptions,
   readProviderConfig,
   readProviderName,
-  requireArg,
+  requirePositional,
   requireOption
 } from "../options.js";
 import type { CliIO } from "../types.js";
 
 export async function charactersCommand(args: string[], io: CliIO): Promise<number> {
-  const unitsPath = requireArg(args[0], "units path");
+  const unitsPath = requirePositional(args, 0, "units path");
   const out = requireOption(args, "--out");
   const translationsPath = readOption(args, "--translations");
   const providerName = readProviderName(args);

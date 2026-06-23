@@ -43,16 +43,16 @@ import {
   readProviderConfig,
   readProviderName,
   readPositiveIntegerOption,
-  requireArg,
-  requireOption
+  requireOption,
+  requirePositional
 } from "../options.js";
 import { createProgressLogger } from "../progress.js";
 import type { TranslationResult, ValidationIssue } from "../../core/types.js";
 import type { CliIO } from "../types.js";
 
 export async function repairCommand(args: string[], io: CliIO): Promise<number> {
-  const unitsPath = requireArg(args[0], "units path");
-  const translationsPath = requireArg(args[1], "translations path");
+  const unitsPath = requirePositional(args, 0, "units path");
+  const translationsPath = requirePositional(args, 1, "translations path");
   const reportPath = requireOption(args, "--report");
   const out = requireOption(args, "--out");
   const providerName = readProviderName(args);

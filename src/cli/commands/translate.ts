@@ -47,13 +47,13 @@ import {
   readProviderConfig,
   readProviderName,
   readTranslateCliOptions,
-  requireArg
+  requirePositional
 } from "../options.js";
 import { createProgressLogger } from "../progress.js";
 import type { CliIO } from "../types.js";
 
 export async function translateCommand(args: string[], io: CliIO): Promise<number> {
-  const unitsPath = requireArg(args[0], "units path");
+  const unitsPath = requirePositional(args, 0, "units path");
   const providerName = readProviderName(args);
   assertProviderReady(providerName);
   const providerOptions = readTranslateCliOptions(args);

@@ -18,11 +18,11 @@
  */
 
 import { applyFontPatch } from "../../core/font-patch/index.js";
-import { readFontOptions, requireArg, requireOption } from "../options.js";
+import { readFontOptions, requireOption, requirePositional } from "../options.js";
 import type { CliIO } from "../types.js";
 
 export async function patchFontCommand(args: string[], io: CliIO): Promise<number> {
-  const projectPath = requireArg(args[0], "project path");
+  const projectPath = requirePositional(args, 0, "project path");
   const outDir = requireOption(args, "--out");
   const fontPath = requireOption(args, "--font");
   const { numberFontPath } = readFontOptions(args);

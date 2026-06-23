@@ -21,11 +21,11 @@ import { RpgMakerMvMzExtractor } from "../../core/extractors/index.js";
 import { createReport } from "../../core/reports/index.js";
 import { writeTranslationUnitsFile } from "../../core/translation-units/index.js";
 import { maybeWriteReport } from "../file-utils.js";
-import { readExtractOptions, readOption, requireArg } from "../options.js";
+import { readExtractOptions, readOption, requirePositional } from "../options.js";
 import type { CliIO } from "../types.js";
 
 export async function extractCommand(args: string[], io: CliIO): Promise<number> {
-  const projectPath = requireArg(args[0], "project path");
+  const projectPath = requirePositional(args, 0, "project path");
   const out = readOption(args, "--out");
   const reportPath = readOption(args, "--report");
   const warnings: string[] = [];

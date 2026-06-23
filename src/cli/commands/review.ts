@@ -39,15 +39,15 @@ import {
   readProviderCliOptions,
   readProviderConfig,
   readProviderName,
-  requireArg,
-  requireOption
+  requireOption,
+  requirePositional
 } from "../options.js";
 import { createProgressLogger } from "../progress.js";
 import type { CliIO } from "../types.js";
 
 export async function reviewCommand(args: string[], io: CliIO): Promise<number> {
-  const unitsPath = requireArg(args[0], "units path");
-  const translationsPath = requireArg(args[1], "translations path");
+  const unitsPath = requirePositional(args, 0, "units path");
+  const translationsPath = requirePositional(args, 1, "translations path");
   const providerName = readProviderName(args);
   assertProviderReady(providerName);
   const providerOptions = readProviderCliOptions(args);

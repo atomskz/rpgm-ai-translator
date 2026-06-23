@@ -53,7 +53,7 @@ import {
   readProviderName,
   readPositiveIntegerOption,
   readTranslateCliOptions,
-  requireArg,
+  requirePositional,
   requireOption
 } from "../options.js";
 import {
@@ -69,7 +69,7 @@ import { createProgressLogger } from "../progress.js";
 import type { CliIO } from "../types.js";
 
 export async function runCommand(args: string[], io: CliIO): Promise<number> {
-  const projectPath = requireArg(args[0], "project path");
+  const projectPath = requirePositional(args, 0, "project path");
   const outDir = requireOption(args, "--out");
   assertPatchOutputOutsideGame(projectPath, outDir);
   if (readOption(args, "--mode") != null || readOption(args, "--backup") != null) {
