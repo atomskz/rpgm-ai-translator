@@ -4,6 +4,69 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- Load defaults from a project config file (`rpgm-ai-translator.json` in the
+  working directory, or `--config <file>`). Command-line flags override config
+  values, which override built-in defaults. Recognized keys mirror the flag names
+  (`provider`, `model`, `target`, `out`, `includePlugins`, `review`, ...).
+- Per-command help: `<command> --help` now prints the usage and the flags for
+  that specific command, generated from the option schema, instead of a single
+  global help block.
+- Validate command-line options before running: an unknown flag is rejected with
+  a "did you mean" suggestion, a flag missing its value is reported instead of
+  swallowing the next token, and a duplicated value option is rejected.
+- Print the command usage and a `--help` hint on a usage error, and add
+  `--verbose` to additionally print the error stack and full `cause` chain.
+- Add `--dry-run` to `apply` and `run` to preview what would be written (files,
+  units applied, skipped) without creating or modifying anything.
+- Checkpoint each `run` stage (translate, review, repair) as JSONL and resume
+  from existing checkpoints, so a crash mid-run no longer discards completed work
+  or re-calls the provider for it.
+- Write `run` intermediates (units, raw/reviewed/repaired translations, memory,
+  report) to a separate work directory (`--work-dir`, default `<out>-work`) so
+  the patch folder holds only game files and proprietary memory is not shipped
+  with the patch.
+- Inject provider configuration and add `--base-url`, so any OpenAI-compatible
+  endpoint (including a local one) can be used. Token usage is recorded in a
+  provider-neutral `TokenUsage` shape in result metadata and reports.
+- Estimate input tokens before calling the provider, aggregate token usage across
+  batches into the report, and add `--max-tokens-budget` to stop a run that would
+  exceed a token budget.
+- Extract MV-style plugin command text (event code 356, gated behind
+  `--include-plugins` and the runtime-text safety filter) and Change Name /
+  Nickname / Profile operands (codes 320/324/325).
+- Add `--dialogue-max-length` to `extract` and `run` to override the per-line
+  display-width limit baked into dialogue `maxLength` constraints (default 52),
+  since how much text fits on a line depends on the game's message font.
+
+### Changed
+
+- Promote `NUMBER_CHANGED` and `MAX_LINES_EXCEEDED` from warnings to errors so
+  the `run`/`apply` validation filter no longer ships translations with altered
+  in-game numbers or text that overflows its line budget. `MAX_LENGTH_EXCEEDED`
+  remains a warning because horizontal text fitting is still best-effort.
+- Apply the shared batch retry to the review, repair and character-inference
+  passes, not just the bulk translate pass, so transient provider failures are
+  retried consistently. An exhausted review or repair batch now degrades to
+  per-unit failures instead of aborting the whole pipeline.
+- Make the DeepSeek client the single retry layer, honoring `--retry-attempts`;
+  providers retry transient failures internally and return failed results instead
+  of throwing, removing the double backoff between the client and the core retry
+  wrapper. Authentication and billing errors are never retried.
+- Explain all four glossary modes (`keep`, `custom`, `translate`,
+  `transliterate`) to the model in the system prompt, and enforce `keep`/`custom`
+  in validation while documenting `translate`/`transliterate` as advisory.
+- Preserve the original JSON and `plugins.js` serialization when writing patches
+  (minified vs pretty, BOM, and the `plugins.js` header/comments), changing only
+  the translated strings so a patch diff is limited to the lines that changed.
+- Store translation memory as an append-only JSONL log with periodic compaction
+  instead of rewriting the whole file on every upsert, and index in-run misses by
+  id for O(1) lookup.
+- Use a larger default `max_tokens` (32000) for the reasoning review/repair
+  passes, since a reasoning model spends `max_tokens` on its chain-of-thought
+  before producing an answer; an explicit `--max-tokens` still takes precedence.
+
 ### Fixed
 
 - Key translation memory and in-run deduplication on a composite cache key that
@@ -31,17 +94,52 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
   and skip corrupt lines when reading the memory file or a JSONL checkpoint (for
   example a truncated line left by a crash mid-write) so a partially written file
   can still be resumed.
-
-### Changed
-
-- Promote `NUMBER_CHANGED` and `MAX_LINES_EXCEEDED` from warnings to errors so
-  the `run`/`apply` validation filter no longer ships translations with altered
-  in-game numbers or text that overflows its line budget. `MAX_LENGTH_EXCEEDED`
-  remains a warning because horizontal text fitting is still best-effort.
-- Apply the shared batch retry to the review, repair and character-inference
-  passes, not just the bulk translate pass, so transient provider failures are
-  retried consistently. An exhausted review or repair batch now degrades to
-  per-unit failures instead of aborting the whole pipeline.
+- Refuse a patch `--out` directory that is the game folder, is inside it, or
+  contains it, so `apply`/`run` can no longer overwrite the original game without
+  a backup.
+- Extract Japanese, Chinese and Korean (and fullwidth) database names and
+  descriptions and plugin fields; the runtime-text safety filter previously
+  required a Latin or Cyrillic letter and silently dropped CJK-only source text.
+- Compare in-game numbers on the visible prose only, ignoring digits inside
+  control codes and variables (`\C[4]`, `\V[3]`, ...), so reordering or recoloring
+  no longer triggers a false `NUMBER_CHANGED`.
+- Measure `maxLength` as East Asian display width (full-width CJK counts as two
+  cells, a surrogate pair as one glyph of width two) instead of code units, so
+  overflowing CJK text is detected.
+- Revalidate repaired and reviewed translations and reject a result that
+  introduces a validation error which was not already present, keeping the
+  previous translation instead of shipping a freshly broken one.
+- Harden control-code placeholder protection: tokenize nested codes such as
+  `\N[\V[1]]` correctly, tighten the tag pattern so literal `<...>` text and
+  comparisons are not mistaken for tags, and restore placeholders in a single
+  pass so restore order no longer matters.
+- Skip a corrupt or non-standard data file (or an unparseable `plugins.js`) with
+  a warning instead of aborting the whole extract or apply, and report the skipped
+  files in the result and report.
+- Carry JSON paths as structured segment arrays from extraction through apply, so
+  plugin and encoded-JSON keys that contain a dot (for example `a.b`) round-trip
+  correctly instead of being split and skipped.
+- Detect and translate a data-only project (a `data/` folder with no JS runtime)
+  by inferring the engine from `System.json` at medium confidence, instead of
+  failing as an unknown engine.
+- Validate `--mode` against `patch`/`in-place`, warn loudly when `apply` without
+  `--units` skips most translations because of an extraction-flag mismatch
+  (suggesting `--units`), and warn that `run` ignores `--mode`/`--backup`.
+- Stop reporting `UNCHANGED_TRANSLATION` for a translation that is correctly
+  identical to its source: a whole-string `keep`-mode glossary term, or text with
+  no translatable letters (symbols or digits only).
+- Match alphabetic glossary terms on word boundaries so a short term such as `Ko`
+  no longer matches inside `Kobold`, while keeping substring matching for CJK
+  terms that have no word boundaries.
+- Use exponential backoff with jitter and honor a `Retry-After` header on
+  rate-limit and unavailable responses, and classify network failures by the
+  underlying error code (`ECONNRESET`, `ENOTFOUND`, undici `UND_ERR_*`, ...)
+  rather than by matching the error message string.
+- Report a clear, actionable error when a provider response is truncated at
+  `max_tokens` (`finish_reason: length` with empty or incomplete content),
+  telling the user to raise `--max-tokens`, instead of the generic "did not
+  include message content". This previously failed the reasoning review/repair
+  passes silently when the chain-of-thought consumed the whole token budget.
 
 ## 0.1.4 - 2026-06-21
 
