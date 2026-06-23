@@ -42,6 +42,42 @@ describe("loadProjectConfig", () => {
     await writeFile(configPath, "[1,2,3]", "utf8");
     await expect(loadProjectConfig(dir, configPath)).rejects.toThrow("must be a JSON object");
   });
+
+  it("rejects a value of the wrong type, naming the file and key", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "rpgm-config-type-"));
+    const configPath = path.join(dir, "bad-type.json");
+    await writeFile(configPath, JSON.stringify({ batchSize: "x" }), "utf8");
+    await expect(loadProjectConfig(dir, configPath)).rejects.toThrow(
+      /config key 'batchSize' in '.*bad-type\.json': expected a finite number/
+    );
+  });
+
+  it("rejects an unknown validation issue code in repairCodes", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "rpgm-config-codes-"));
+    const configPath = path.join(dir, "bad-codes.json");
+    await writeFile(configPath, JSON.stringify({ repairCodes: ["MAX_LENGTH_EXCEEDED", "NOPE"] }), "utf8");
+    await expect(loadProjectConfig(dir, configPath)).rejects.toThrow(/unknown validation issue code 'NOPE'/);
+  });
+
+  it("warns about an unknown top-level key but still loads the rest", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "rpgm-config-unknown-"));
+    const configPath = path.join(dir, "typo.json");
+    await writeFile(configPath, JSON.stringify({ temprature: 0.3, target: "ru" }), "utf8");
+    const warnings: string[] = [];
+    await expect(loadProjectConfig(dir, configPath, (message) => warnings.push(message))).resolves.toEqual({
+      temprature: 0.3,
+      target: "ru"
+    });
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("Unknown config key 'temprature'");
+  });
+
+  it("treats a null value as absent rather than a type error", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "rpgm-config-null-"));
+    const configPath = path.join(dir, "null.json");
+    await writeFile(configPath, JSON.stringify({ batchSize: null, target: "en" }), "utf8");
+    await expect(loadProjectConfig(dir, configPath)).resolves.toEqual({ batchSize: null, target: "en" });
+  });
 });
 
 describe("mergeConfigIntoArgs", () => {
@@ -74,6 +110,17 @@ describe("mergeConfigIntoArgs", () => {
   it("never injects a false boolean and has no --no- form", () => {
     const merged = mergeConfigIntoArgs("run", ["./game", "--out", "./out"], { review: false });
     expect(merged).not.toContain("--review");
+  });
+
+  it("injects a numeric config default that an explicit flag still overrides", () => {
+    const fromConfig = mergeConfigIntoArgs("run", ["./game", "--out", "./out"], { batchSize: 10 });
+    expect(fromConfig[fromConfig.indexOf("--batch-size") + 1]).toBe("10");
+
+    const overridden = mergeConfigIntoArgs("run", ["./game", "--out", "./out", "--batch-size", "4"], {
+      batchSize: 10
+    });
+    expect(overridden.filter((token) => token === "--batch-size")).toHaveLength(1);
+    expect(overridden[overridden.indexOf("--batch-size") + 1]).toBe("4");
   });
 
   it("joins array values such as repairCodes", () => {

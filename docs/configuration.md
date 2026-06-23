@@ -23,6 +23,15 @@ accept the corresponding flag (for example, `provider` is ignored by `detect`).
 Boolean options can be enabled from config (`"review": true`) but there is no
 `--no-*` form, so config cannot turn a boolean off — omit it or set `false`.
 
+## Validation
+
+Each key is checked against the type in the table below; a wrong value (for
+example `"batchSize": "x"`) fails with an error naming the file and key rather
+than surfacing later as an opaque flag error. `repairCodes` entries are checked
+against the known validation issue codes. Unknown top-level keys (a likely typo,
+such as `temprature`) are ignored with a warning on stderr. A `null` value is
+treated as absent.
+
 ## Keys
 
 Keys mirror the CLI flag names (camelCase). All are optional.

@@ -70,7 +70,9 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
 
     // Project config fills in flags the user did not pass; explicit CLI flags
     // still take precedence because mergeConfigIntoArgs only adds absent ones.
-    const config = await loadProjectConfig(process.cwd(), readOption(args, "--config"));
+    const config = await loadProjectConfig(process.cwd(), readOption(args, "--config"), (warning) =>
+      io.stderr(`Warning: ${warning}\n`)
+    );
     const effectiveArgs = mergeConfigIntoArgs(command, args, config);
 
     validateCommandArgs(command, effectiveArgs);

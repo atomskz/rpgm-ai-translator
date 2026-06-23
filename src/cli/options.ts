@@ -393,7 +393,7 @@ function levenshteinDistance(a: string, b: string): number {
   return matrix[a.length][b.length];
 }
 
-function isValidationIssueCode(value: string): value is ValidationIssue["code"] {
+export function isValidationIssueCode(value: string): value is ValidationIssue["code"] {
   return VALIDATION_ISSUE_CODES.has(value as ValidationIssue["code"]);
 }
 
