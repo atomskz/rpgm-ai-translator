@@ -277,6 +277,42 @@ describe("run command", () => {
     expect(patched.events[1].pages[0].list[0].parameters[0]).toBe("[fr] Hello.");
   });
 
+  it("estimates the token budget over unresumed units only", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-budget-"));
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "out");
+    const workDir = `${outDir}-work`;
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await mkdir(path.join(gamePath, "js"), { recursive: true });
+    await mkdir(workDir, { recursive: true });
+    await writeFile(path.join(gamePath, "js", "rpg_core.js"), "", "utf8");
+    const longLine = "The hero travels a very long and winding road through the dark forest at night.";
+    await writeJson(path.join(gamePath, "data", "Map001.json"), {
+      displayName: "Town",
+      events: [null, { id: 1, name: "NPC", pages: [{ list: [{ code: 401, parameters: [longLine] }] }] }]
+    });
+
+    // Resume the long dialogue from the checkpoint, leaving only the short
+    // displayName to translate. The full extraction would exceed the budget, but
+    // the unresumed work fits, so the run must not be falsely blocked.
+    const dialogueId = "Map001.events.1.pages.0.list.0.parameters.0";
+    await writeFile(
+      path.join(workDir, "translations.raw.jsonl"),
+      `${JSON.stringify({ id: dialogueId, source: longLine, translation: "Длинная строка.", provider: "manual", model: "manual", status: "translated" })}\n`,
+      "utf8"
+    );
+
+    const exitCode = await runCli(
+      ["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--max-tokens-budget", "25"],
+      { stdout: () => undefined, stderr: () => undefined }
+    );
+
+    const patched = JSON.parse(await readFile(path.join(outDir, "data", "Map001.json"), "utf8"));
+    expect(exitCode).toBe(0);
+    expect(patched.displayName).toBe("[ru] Town");
+    expect(patched.events[1].pages[0].list[0].parameters[0]).toBe("Длинная строка.");
+  });
+
   it("resumes translation and review from existing checkpoints without re-calling the provider", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-resume-"));
     const gamePath = path.join(root, "game");

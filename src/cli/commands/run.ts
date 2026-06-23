@@ -66,6 +66,7 @@ import {
   writeCheckpointSignatureFile
 } from "../checkpoints.js";
 import { createProgressLogger } from "../progress.js";
+import type { TranslationResult } from "../../core/types.js";
 import type { CliIO } from "../types.js";
 
 export async function runCommand(args: string[], io: CliIO): Promise<number> {
@@ -115,16 +116,8 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
     );
     return 0;
   }
-  budget?.assertEstimateWithin(estimateInputTokens(units));
-  await mkdir(workDir, { recursive: true });
-  await mkdir(outDir, { recursive: true });
-  await writeTranslationUnitsFile(path.join(workDir, "units.json"), units);
-  io.stdout(
-    `Detected ${detected.engine}. Extracted ${units.length} units from ${new Set(units.map((unit) => unit.filePath)).size} files. Work directory: ${workDir}\n`
-  );
   const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
   const characterGlossary = charactersPath ? await loadCharacterGlossary(charactersPath) : undefined;
-  const provider = createProvider(providerName, readProviderConfig(args));
 
   // Persist a JSONL checkpoint per batch and resume from it, so a crash mid-run
   // does not discard completed translate/review/repair work on the next run.
@@ -138,7 +131,23 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
   const checkpointMeta = path.join(workDir, "checkpoint.meta.json");
   const signature = checkpointSignature(providerName, providerOptions, glossary, characterGlossary);
   const previousSignature = await readCheckpointSignatureFile(checkpointMeta);
-  if (previousSignature && !checkpointSignaturesEqual(previousSignature, signature)) {
+  const resume = !previousSignature || checkpointSignaturesEqual(previousSignature, signature);
+  const rawCheckpointById: Map<string, TranslationResult> = resume
+    ? checkpointedTranslationsById(units, await readTranslationResultsJsonlFile(rawCheckpointPath))
+    : new Map();
+  const unitsToTranslate = units.filter((unit) => !rawCheckpointById.has(unit.id));
+  // Estimate over the units actually being sent (after checkpoint resume), not the
+  // full extraction, and before any files are written, so a resumed run is not
+  // falsely blocked and an over-budget run leaves nothing behind.
+  budget?.assertEstimateWithin(estimateInputTokens(unitsToTranslate));
+
+  await mkdir(workDir, { recursive: true });
+  await mkdir(outDir, { recursive: true });
+  await writeTranslationUnitsFile(path.join(workDir, "units.json"), units);
+  io.stdout(
+    `Detected ${detected.engine}. Extracted ${units.length} units from ${new Set(units.map((unit) => unit.filePath)).size} files. Work directory: ${workDir}\n`
+  );
+  if (!resume) {
     io.stderr(
       "Warning: run parameters (language/model/glossary) changed since the last run; discarding stale checkpoints and starting fresh.\n"
     );
@@ -149,11 +158,10 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
     ]);
   }
   await writeCheckpointSignatureFile(checkpointMeta, signature);
-  const rawCheckpointById = checkpointedTranslationsById(units, await readTranslationResultsJsonlFile(rawCheckpointPath));
+  const provider = createProvider(providerName, readProviderConfig(args));
   if (rawCheckpointById.size > 0) {
     io.stdout(`Resuming translation: ${rawCheckpointById.size}/${units.length} units already in checkpoint.\n`);
   }
-  const unitsToTranslate = units.filter((unit) => !rawCheckpointById.has(unit.id));
   const translatedResults = await translateWithMemory(
     unitsToTranslate,
     provider,
