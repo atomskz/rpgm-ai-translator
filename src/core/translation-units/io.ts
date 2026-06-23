@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type {
   Placeholder,
@@ -65,7 +65,24 @@ export async function appendTranslationResultsJsonlFile(
 
   await mkdir(path.dirname(filePath), { recursive: true });
   const payload = results.map((result) => JSON.stringify(result)).join("\n");
-  await writeFile(filePath, `${payload}\n`, { encoding: "utf8", flag: "a" });
+  // Open for append+read so we can inspect the final byte: a previous crash may
+  // have left a record without a trailing newline, and appending blindly would
+  // glue our first record onto it, corrupting both lines.
+  const handle = await open(filePath, "a+");
+  try {
+    const { size } = await handle.stat();
+    let prefix = "";
+    if (size > 0) {
+      const lastByte = Buffer.alloc(1);
+      await handle.read(lastByte, 0, 1, size - 1);
+      if (lastByte[0] !== 0x0a) {
+        prefix = "\n";
+      }
+    }
+    await handle.appendFile(`${prefix}${payload}\n`, "utf8");
+  } finally {
+    await handle.close();
+  }
 }
 
 export async function readTranslationResultsJsonlFile(filePath: string): Promise<TranslationResult[]> {

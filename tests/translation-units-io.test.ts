@@ -250,6 +250,28 @@ describe("translation unit import/export", () => {
     ]);
   });
 
+  it("does not glue a new record onto a truncated last line", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-tu-glue-"));
+    const filePath = path.join(root, "translations.jsonl");
+
+    await appendTranslationResultsJsonlFile(filePath, [
+      { id: "Actors.1.name", source: "Aria", translation: "Ария", provider: "mock", model: "mock", status: "translated" }
+    ]);
+    // Simulate a crash mid-append leaving a final line without a newline.
+    await writeFile(filePath, '{"id":"Actors.2.name","source":"Bel"', { encoding: "utf8", flag: "a" });
+
+    await appendTranslationResultsJsonlFile(filePath, [
+      { id: "Actors.3.name", source: "Cid", translation: "Сид", provider: "mock", model: "mock", status: "translated" }
+    ]);
+
+    const lines = (await readFile(filePath, "utf8")).split("\n").filter((line) => line.length > 0);
+    // The truncated line stays its own (still-corrupt) line; the new record is not
+    // concatenated onto it. Readers then recover the two intact records.
+    expect(lines).toContain('{"id":"Actors.2.name","source":"Bel"');
+    const recovered = await readTranslationResultsJsonlFile(filePath);
+    expect(recovered.map((result) => result.id)).toEqual(["Actors.1.name", "Actors.3.name"]);
+  });
+
   it("recovers readable checkpoint entries when the last line is truncated", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-tu-jsonl-recover-"));
     const filePath = path.join(root, "translations.jsonl");

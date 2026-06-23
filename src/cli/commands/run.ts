@@ -24,6 +24,7 @@ import { MvMzEngineDetector } from "../../core/engine-detector/index.js";
 import { RpgMakerMvMzExtractor } from "../../core/extractors/index.js";
 import { applyFontPatch } from "../../core/font-patch/index.js";
 import { estimateInputTokens, TokenBudget } from "../../core/cost/index.js";
+import { acquireDirectoryLock } from "../../core/locks/index.js";
 import { JsonlTranslationMemory, translateWithMemory } from "../../core/memory/index.js";
 import { assertPatchOutputOutsideGame } from "../../core/patch-writer/index.js";
 import { repairTranslations } from "../../core/repair/index.js";
@@ -70,6 +71,25 @@ import type { TranslationResult } from "../../core/types.js";
 import type { CliIO } from "../types.js";
 
 export async function runCommand(args: string[], io: CliIO): Promise<number> {
+  const projectPath = requirePositional(args, 0, "project path");
+  const outDir = requireOption(args, "--out");
+  assertPatchOutputOutsideGame(projectPath, outDir);
+  // A dry run writes nothing, so it does not need (and should not take) the lock.
+  if (hasFlag(args, "--dry-run")) {
+    return executeRun(args, io);
+  }
+  // Hold an exclusive lock on the work dir for the whole run so a second run
+  // sharing it cannot interleave checkpoint/memory appends and corrupt them.
+  const workDir = readOption(args, "--work-dir") ?? `${outDir}-work`;
+  const lock = await acquireDirectoryLock(workDir);
+  try {
+    return await executeRun(args, io);
+  } finally {
+    await lock.release();
+  }
+}
+
+async function executeRun(args: string[], io: CliIO): Promise<number> {
   const projectPath = requirePositional(args, 0, "project path");
   const outDir = requireOption(args, "--out");
   assertPatchOutputOutsideGame(projectPath, outDir);
