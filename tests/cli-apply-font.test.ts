@@ -67,6 +67,19 @@ describe("CLI apply and patch-font", () => {
     expect(errors.join("")).toContain("--mode must be one of patch, in-place");
   });
 
+  it("rejects apply in patch mode without --out as a usage error", async () => {
+    const errors: string[] = [];
+    const exitCode = await runCli(["apply", "./game", "./translations.json"], {
+      stdout: () => undefined,
+      stderr: (text) => errors.push(text)
+    });
+
+    expect(exitCode).toBe(1);
+    const text = errors.join("");
+    expect(text).toContain("patch mode requires --out");
+    expect(text).toContain("Usage: rpgm-ai-translator apply");
+  });
+
   it("warns when most translations are skipped without --units", async () => {
     const root = await createCliTempDir("rpgm-cli-apply-mismatch-");
     const gamePath = path.join(root, "game");

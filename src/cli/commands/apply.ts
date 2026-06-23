@@ -26,13 +26,18 @@ import {
 } from "../../core/translation-units/index.js";
 import { filterTranslationsWithoutValidationErrors } from "../../core/validators/index.js";
 import { RpgMakerMvMzExtractor } from "../../core/extractors/index.js";
-import { readApplyOptions, readFontOptions, readOption, requirePositional } from "../options.js";
+import { readApplyOptions, readFontOptions, readOption, requirePositional, UsageError } from "../options.js";
 import type { CliIO } from "../types.js";
 
 export async function applyCommand(args: string[], io: CliIO): Promise<number> {
   const projectPath = requirePositional(args, 0, "project path");
   const translationsPath = requirePositional(args, 1, "translations path");
   const applyOptions = readApplyOptions(args);
+  // Patch mode writes into --out; without it writePatch throws deep in the writer
+  // with no usage hint. Fail early as a UsageError, like patch-font and run do.
+  if (applyOptions.mode === "patch" && !applyOptions.outDir) {
+    throw new UsageError("apply in patch mode requires --out <dir>");
+  }
   const { fontPath, numberFontPath } = readFontOptions(args);
   const reportPath = readOption(args, "--report");
   const unitsPath = readOption(args, "--units");
