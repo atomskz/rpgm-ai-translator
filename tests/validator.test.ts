@@ -122,6 +122,19 @@ describe("DefaultValidator", () => {
     expect(codes(duplicate)).toContain("DUPLICATE_PLACEHOLDER");
   });
 
+  it("flags a hallucinated placeholder as EXTRA_PLACEHOLDER, not a technical-token change", () => {
+    const issues = validate(
+      unit({ source: "Hello", normalizedSource: "Hello" }),
+      result({ source: "Hello", translation: "Привет <PH_3>" })
+    );
+
+    // The stray sentinel must be reported as an extra placeholder (so it is
+    // filtered out of the patch) and must not be counted as a game technical
+    // token (which would mask it as a misleading TECHNICAL_TOKEN_CHANGED).
+    expect(codes(issues)).toContain("EXTRA_PLACEHOLDER");
+    expect(codes(issues)).not.toContain("TECHNICAL_TOKEN_CHANGED");
+  });
+
   it("reports changed control codes through missing placeholders", () => {
     const protectedText = protectPlaceholders(String.raw`Take \I[64].`);
     const issues = validate(

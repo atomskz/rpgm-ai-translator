@@ -82,7 +82,12 @@ export function extractVariables(text: string): string[] {
 }
 
 export function extractTechnicalTokens(text: string): string[] {
-  return text.match(/\\(?:[A-Za-z]+(?:\[[^\]\r\n]*\])?|\{|\}|\.|\||!|>)|%(?:\d+|(?:\.\d+)?[sdif])|\{[A-Za-z_][A-Za-z0-9_]*\}|<[^<>\n]+>/g) ?? [];
+  // `<PH_n>` is our internal placeholder sentinel, not a game token. A residual one
+  // (a model hallucination) is reported as EXTRA_PLACEHOLDER; strip it here so it
+  // does not also pollute the technical-token multiset and mask itself as a
+  // TECHNICAL_TOKEN_CHANGED. Source text never contains it, so this stays symmetric.
+  const withoutSentinels = text.replace(/<PH_\d+>/g, " ");
+  return withoutSentinels.match(/\\(?:[A-Za-z]+(?:\[[^\]\r\n]*\])?|\{|\}|\.|\||!|>)|%(?:\d+|(?:\.\d+)?[sdif])|\{[A-Za-z_][A-Za-z0-9_]*\}|<[^<>\n]+>/g) ?? [];
 }
 
 // Display width in message-box cells. RPG Maker renders full-width (CJK/kana,
