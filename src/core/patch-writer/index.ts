@@ -58,6 +58,18 @@ function isInsideDirectory(parent: string, candidate: string): boolean {
   return relative.length > 0 && !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
+// Reject a unit file path that is absolute or escapes the root via `..`. The same
+// relative path is joined to the game dir, the output/staging dir and the backup
+// dir, so validating it once at intake confines every read and write. A
+// units.json from an untrusted or shared source could otherwise read or overwrite
+// files outside the patch directory (and, in-place, anywhere on disk).
+function assertSafeRelativePath(relativeFilePath: string): void {
+  const normalized = path.normalize(relativeFilePath);
+  if (path.isAbsolute(normalized) || normalized === ".." || normalized.startsWith(`..${path.sep}`)) {
+    throw new Error(`Unsafe unit file path '${relativeFilePath}': must be a relative path inside the project`);
+  }
+}
+
 export async function writePatch(
   projectPath: string,
   units: TranslationUnit[],
@@ -130,6 +142,9 @@ async function prepareFiles(
 
   const files: PreparedFile[] = [];
   for (const [relativeFilePath, entries] of translatedByFile.entries()) {
+    // Validate before any join so a traversal attempt fails loudly instead of
+    // being swallowed by the unreadable-file skip below.
+    assertSafeRelativePath(relativeFilePath);
     const sourcePath = path.join(root, relativeFilePath);
     try {
       const preparedFile = relativeFilePath.endsWith("js/plugins.js")

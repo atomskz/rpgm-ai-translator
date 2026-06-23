@@ -43,6 +43,40 @@ describe("patch writer", () => {
     expect(patched[1].description).toBe(String.raw`Восстанавливает \V[1] ОЗ.`);
   });
 
+  it("rejects a unit file path that escapes the project root", async () => {
+    const root = path.join(tmpdir(), `rpgm-patch-traversal-${Date.now()}`);
+    const outDir = path.join(tmpdir(), `rpgm-patch-traversal-out-${Date.now()}`);
+    await mkdir(path.join(root, "data"), { recursive: true });
+
+    const translation = (id: string): TranslationResult => ({
+      id,
+      source: "Aria",
+      translation: "Ария",
+      provider: "manual",
+      model: "manual",
+      status: "translated"
+    });
+    const maliciousUnit = (filePath: string): TranslationUnit => ({
+      id: "evil",
+      source: "Aria",
+      filePath,
+      jsonPath: "0.name",
+      engine: "rpgmaker-mv",
+      category: "name",
+      hash: "hash-evil"
+    });
+
+    await expect(
+      writePatch(root, [maliciousUnit("../escape.json")], [translation("evil")], { mode: "patch", outDir })
+    ).rejects.toThrow(/Unsafe unit file path/);
+    await expect(
+      writePatch(root, [maliciousUnit(path.join(tmpdir(), "abs-escape.json"))], [translation("evil")], {
+        mode: "patch",
+        outDir
+      })
+    ).rejects.toThrow(/Unsafe unit file path/);
+  });
+
   it("preserves unrelated files already present in the patch directory", async () => {
     const root = path.join(tmpdir(), `rpgm-patch-preserve-${Date.now()}`);
     const outDir = path.join(tmpdir(), `rpgm-patch-preserve-out-${Date.now()}`);
