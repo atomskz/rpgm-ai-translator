@@ -72,7 +72,7 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--memory": "JSONL translation memory reused across runs.",
   "--glossary": "Glossary JSON for prompts and validation.",
   "--characters": "Character glossary JSON for review or repair.",
-  "--provider": "Translation provider: mock, deepseek, or none where supported.",
+  "--provider": "Translation provider: mock or deepseek (characters also accepts none for a heuristic glossary).",
   "--base-url": "Override the provider base URL (e.g. a local OpenAI-compatible endpoint).",
   "--target": "Target language code. Default: ru.",
   "--model": "Provider model name.",
@@ -174,7 +174,9 @@ Common options:
       Output file or output directory, depending on the command.
 
   --provider <name>
-      Translation provider: mock, deepseek, or none where supported.
+      Translation provider: mock or deepseek. The characters command also
+      accepts none to build a heuristic glossary without a provider (like
+      --draft-only); other commands reject none.
 
   --model <name>
       Provider model name, for example deepseek-v4-flash.

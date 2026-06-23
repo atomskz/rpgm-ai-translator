@@ -132,7 +132,20 @@ export function requireOption(args: string[], name: string): string {
   return value;
 }
 
+const SUPPORTED_PROVIDERS = ["mock", "deepseek"] as const;
+
+// Validate the provider name up front so an unknown value (or `none` on a command
+// that does not support it) fails before any side effects such as writing a
+// checkpoint, instead of throwing deep inside createProvider. `none` is only
+// meaningful to the characters command, which handles it before calling this.
 export function assertProviderReady(providerName: string): void {
+  if (!(SUPPORTED_PROVIDERS as readonly string[]).includes(providerName)) {
+    const hint =
+      providerName === "none"
+        ? " ('none' builds a heuristic glossary and is only valid for the characters command, like --draft-only)"
+        : "";
+    throw new UsageError(`Unknown provider '${providerName}'. Supported: ${SUPPORTED_PROVIDERS.join(", ")}${hint}.`);
+  }
   if (providerName === "deepseek" && !process.env.DEEPSEEK_API_KEY?.trim()) {
     throw new Error("DEEPSEEK_API_KEY is required when using --provider deepseek");
   }

@@ -36,7 +36,7 @@ its value, or a duplicated value option, is also rejected.
 | `--memory <file>` | JSONL translation memory reused across runs. |
 | `--glossary <file>` | Glossary JSON for prompts and validation. |
 | `--characters <file>` | Character glossary JSON for review/repair. |
-| `--provider <name>` | `mock`, `deepseek`, or `none` where supported. |
+| `--provider <name>` | `mock` or `deepseek`. `characters` also accepts `none` for a heuristic glossary (like `--draft-only`); other commands reject `none`. |
 | `--base-url <url>` | Override the provider base URL (OpenAI-compatible endpoints). |
 | `--target <lang>` | Target language code. Default `ru`. |
 | `--model <name>` | Provider model name. |

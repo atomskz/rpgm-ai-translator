@@ -26,6 +26,25 @@ describe("CLI translate", () => {
     });
   });
 
+  it("rejects --provider none before writing a checkpoint", async () => {
+    const root = await createCliTempDir("rpgm-cli-translate-none-");
+    const unitsPath = path.join(root, "units.json");
+    const outPath = path.join(root, "translations.json");
+    const checkpointPath = path.join(root, "translations.jsonl");
+    await writeJsonFixture(unitsPath, [actorNameUnit()]);
+
+    const stderr: string[] = [];
+    const exitCode = await runCli(["translate", unitsPath, "--provider", "none", "--out", outPath], {
+      stdout: () => undefined,
+      stderr: (text) => stderr.push(text)
+    });
+
+    expect(exitCode).toBe(1);
+    expect(stderr.join("")).toContain("characters command");
+    // The provider is validated before any checkpoint is written.
+    await expect(readFile(checkpointPath, "utf8")).rejects.toThrow();
+  });
+
   it("writes a default JSONL checkpoint while translating", async () => {
     const root = await createCliTempDir("rpgm-cli-translate-checkpoint-");
     const unitsPath = path.join(root, "units.json");

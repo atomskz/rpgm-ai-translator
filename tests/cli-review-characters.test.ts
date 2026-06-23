@@ -131,4 +131,20 @@ describe("CLI review and characters", () => {
       })
     });
   });
+
+  it("builds a draft glossary with --provider none", async () => {
+    const root = await createCliTempDir("rpgm-cli-characters-none-");
+    const unitsPath = path.join(root, "units.json");
+    const outPath = path.join(root, "characters.json");
+    await writeJsonFixture(unitsPath, [actorNameUnit({ normalizedSource: undefined, hash: "hash-aria" })]);
+
+    const exitCode = await runCli(["characters", unitsPath, "--provider", "none", "--out", outPath], {
+      stdout: () => undefined,
+      stderr: () => undefined
+    });
+
+    const characters = JSON.parse(await readFile(outPath, "utf8"));
+    expect(exitCode).toBe(0);
+    expect(characters.Aria).toMatchObject({ review: true });
+  });
 });
