@@ -598,6 +598,53 @@ describe("patch writer", () => {
     expect(patchedRaw).toContain("quest");
   });
 
+  it("keeps distinct ids for sibling encoded-JSON paths that would dot-collide", async () => {
+    const root = path.join(tmpdir(), `rpgm-json-collision-${Date.now()}`);
+    const outDir = path.join(tmpdir(), `rpgm-json-collision-out-${Date.now()}`);
+    await mkdir(path.join(root, "data"), { recursive: true });
+    await mkdir(path.join(root, "js"), { recursive: true });
+    await writeFile(path.join(root, "js", "rmmz_core.js"), "", "utf8");
+    // The key "a.b" and the nested path a -> b both join to "a.b.text".
+    await writeFile(
+      path.join(root, "js", "plugins.js"),
+      `var $plugins = ${JSON.stringify([
+        {
+          name: "P",
+          status: true,
+          parameters: {
+            Data: JSON.stringify({ "a.b": { text: "Dotted" }, a: { b: { text: "Nested" } } })
+          }
+        }
+      ])};\n`,
+      "utf8"
+    );
+
+    const extractor = new RpgMakerMvMzExtractor();
+    const units = await extractor.extract(root, { includePlugins: true });
+    const dotted = units.find((unit) => unit.source === "Dotted");
+    const nested = units.find((unit) => unit.source === "Nested");
+    expect(dotted).toBeDefined();
+    expect(nested).toBeDefined();
+    // The old dotted-join collapsed both to ...$json.a.b.text.
+    expect(dotted?.id).not.toBe(nested?.id);
+
+    const result = await extractor.applyTranslations(
+      root,
+      [
+        { id: dotted?.id ?? "", source: "Dotted", translation: "Точка", provider: "manual", model: "manual", status: "translated" },
+        { id: nested?.id ?? "", source: "Nested", translation: "Вложено", provider: "manual", model: "manual", status: "translated" }
+      ],
+      { mode: "patch", outDir, includePlugins: true }
+    );
+
+    const patched = parsePluginsJs(await readFile(path.join(outDir, "js", "plugins.js"), "utf8"));
+    expect(result.unitsApplied).toBe(2);
+    expect(JSON.parse(patched[0].parameters?.Data as string)).toEqual({
+      "a.b": { text: "Точка" },
+      a: { b: { text: "Вложено" } }
+    });
+  });
+
   it("round-trips encoded JSON whose intermediate key contains a dot", async () => {
     const root = path.join(tmpdir(), `rpgm-dotted-json-${Date.now()}`);
     const outDir = path.join(tmpdir(), `rpgm-dotted-json-out-${Date.now()}`);

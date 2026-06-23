@@ -63,12 +63,8 @@ export function makeDraft(
 
 export function toTranslationUnit(draft: UnitDraft): TranslationUnit {
   const protectedText = protectPlaceholders(draft.source);
-  const encodedJsonSuffix =
-    draft.constraints?.sourceEncoding === "json-stringified-json" && draft.constraints.encodedJsonPath
-      ? `.$json.${draft.constraints.encodedJsonPath}`
-      : "";
   return {
-    id: `${path.basename(draft.relativeFilePath, path.extname(draft.relativeFilePath))}.${draft.jsonPath}${encodedJsonSuffix}`,
+    id: `${path.basename(draft.relativeFilePath, path.extname(draft.relativeFilePath))}.${draft.jsonPath}${encodedJsonIdSuffix(draft.constraints)}`,
     source: draft.source,
     normalizedSource: protectedText.text,
     filePath: draft.relativeFilePath,
@@ -80,6 +76,27 @@ export function toTranslationUnit(draft: UnitDraft): TranslationUnit {
     placeholders: protectedText.placeholders,
     hash: hashSource(draft.source)
   };
+}
+
+// Suffix that disambiguates a value living inside a stringified-JSON parameter.
+// Segments are joined with `.`, so a literal `.` (or the escape char) inside an
+// object key is escaped JSON-Pointer style (`~` -> `~0`, `.` -> `~1`); otherwise
+// `["a.b","text"]` and `["a","b","text"]` would collapse to the same id and
+// silently drop or cross-wire one of the two translations. Keys without a `.`
+// (the common case) are unchanged, keeping ids stable.
+function encodedJsonIdSuffix(constraints: TranslationUnit["constraints"]): string {
+  if (constraints?.sourceEncoding !== "json-stringified-json") {
+    return "";
+  }
+  const segments = constraints.encodedJsonSegments;
+  if (segments) {
+    return `.$json.${segments.map(encodeIdSegment).join(".")}`;
+  }
+  return constraints.encodedJsonPath ? `.$json.${constraints.encodedJsonPath}` : "";
+}
+
+function encodeIdSegment(segment: string): string {
+  return segment.replace(/~/g, "~0").replace(/\./g, "~1");
 }
 
 export function isObject(value: unknown): value is JsonObject {
