@@ -88,21 +88,77 @@ export async function inferCharacterGlossary(
 
   for (let index = 0; index < candidates.length; index += batchSize) {
     const batch = candidates.slice(index, index + batchSize);
+    let response: CharacterGlossary;
     try {
-      Object.assign(
-        glossary,
-        await withProviderRetry(() => provider.inferCharacters(batch, options), {
-          retryAttempts: options.retryAttempts,
-          retryDelayMs: options.retryDelayMs,
-          isRetryable: isRetryableProviderError
-        })
-      );
+      response = await withProviderRetry(() => provider.inferCharacters(batch, options), {
+        retryAttempts: options.retryAttempts,
+        retryDelayMs: options.retryDelayMs,
+        isRetryable: isRetryableProviderError
+      });
     } catch (error: unknown) {
-      Object.assign(glossary, markBatchForManualReview(batch, error));
+      response = markBatchForManualReview(batch, error);
     }
+    mergePreferringConfidence(glossary, reconcileBatch(batch, response, options.onWarning));
   }
 
   return glossary;
+}
+
+// Reconcile a batch's response against the requested candidates: drop entries
+// the model invented for names we did not ask about, and turn names it dropped
+// into review drafts so a candidate is never silently lost. Mismatches are
+// surfaced as a single warning. The result is keyed exactly by the batch names.
+function reconcileBatch(
+  batch: CharacterCandidate[],
+  response: CharacterGlossary,
+  onWarning: ((message: string) => void) | undefined
+): CharacterGlossary {
+  const requested = new Set(batch.map((candidate) => candidate.name));
+  const reconciled: CharacterGlossary = {};
+  const unexpected: string[] = [];
+  for (const [name, entry] of Object.entries(response)) {
+    if (requested.has(name)) {
+      reconciled[name] = entry;
+    } else {
+      unexpected.push(name);
+    }
+  }
+  const missing = batch.filter((candidate) => !(candidate.name in response));
+  if (missing.length > 0) {
+    Object.assign(reconciled, markMissingForReview(missing));
+  }
+  if (onWarning && (missing.length > 0 || unexpected.length > 0)) {
+    const parts: string[] = [];
+    if (missing.length > 0) {
+      parts.push(`omitted ${missing.length} requested name(s): ${missing.map((candidate) => candidate.name).join(", ")}`);
+    }
+    if (unexpected.length > 0) {
+      parts.push(`returned ${unexpected.length} unrequested name(s): ${unexpected.join(", ")}`);
+    }
+    onWarning(`Character inference response did not match the requested candidates — ${parts.join("; ")}.`);
+  }
+  return reconciled;
+}
+
+// Accumulate batch results, keeping the higher-confidence entry when the same
+// name appears more than once so a later, less certain batch never clobbers an
+// earlier, more confident one.
+function mergePreferringConfidence(glossary: CharacterGlossary, additions: CharacterGlossary): void {
+  for (const [name, entry] of Object.entries(additions)) {
+    const existing = glossary[name];
+    if (!existing || (entry.confidence ?? 0) > (existing.confidence ?? 0)) {
+      glossary[name] = entry;
+    }
+  }
+}
+
+function markMissingForReview(candidates: CharacterCandidate[]): CharacterGlossary {
+  const draft = candidatesToDraftGlossary(candidates);
+  for (const entry of Object.values(draft)) {
+    entry.review = true;
+    entry.description = `${entry.description ?? ""} Model did not return this candidate; left for manual review.`.trim();
+  }
+  return draft;
 }
 
 function markBatchForManualReview(candidates: CharacterCandidate[], error: unknown): CharacterGlossary {

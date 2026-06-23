@@ -55,6 +55,9 @@ export type TranslateOptions = {
   retryDelayMs?: number;
   onProgress?: (event: TranslationProgressEvent) => void;
   onBatchResults?: (results: TranslationResult[]) => void | Promise<void>;
+  // Surface a non-fatal advisory (e.g. a provider response that did not cover
+  // every requested item) to the caller, typically routed to stderr.
+  onWarning?: (message: string) => void;
 };
 
 export type ReviewOptions = TranslateOptions & {

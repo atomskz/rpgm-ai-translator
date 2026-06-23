@@ -135,6 +135,78 @@ describe("character candidates", () => {
     });
     expect(result.Aria.description).toContain("bad JSON");
   });
+
+  it("warns and keeps a review draft when the model omits a requested candidate", async () => {
+    const provider: LLMProvider = {
+      name: "test",
+      translateBatch: async () => [],
+      reviewBatch: async () => [],
+      // Returns only the first requested name, dropping the rest.
+      inferCharacters: async (batch) => ({ [batch[0].name]: { gender: "unknown", type: "person" } })
+    };
+    const warnings: string[] = [];
+
+    const result = await inferCharacterGlossary(
+      [
+        { name: "Aria", sources: ["actor"], occurrences: 1, evidence: [] },
+        { name: "Borin", sources: ["actor"], occurrences: 1, evidence: [] }
+      ],
+      provider,
+      { targetLanguage: "ru", batchSize: 2, onWarning: (message) => warnings.push(message) }
+    );
+
+    expect(Object.keys(result).sort()).toEqual(["Aria", "Borin"]);
+    expect(result.Borin).toMatchObject({ review: true });
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("omitted 1 requested name(s): Borin");
+  });
+
+  it("drops and warns about an unrequested name returned by the model", async () => {
+    const provider: LLMProvider = {
+      name: "test",
+      translateBatch: async () => [],
+      reviewBatch: async () => [],
+      inferCharacters: async (batch) => ({
+        [batch[0].name]: { gender: "unknown", type: "person" },
+        Ghost: { gender: "unknown", type: "person" }
+      })
+    };
+    const warnings: string[] = [];
+
+    const result = await inferCharacterGlossary(
+      [{ name: "Aria", sources: ["actor"], occurrences: 1, evidence: [] }],
+      provider,
+      { targetLanguage: "ru", onWarning: (message) => warnings.push(message) }
+    );
+
+    expect(Object.keys(result)).toEqual(["Aria"]);
+    expect(warnings[0]).toContain("returned 1 unrequested name(s): Ghost");
+  });
+
+  it("keeps the higher-confidence entry when a name recurs across batches", async () => {
+    let call = 0;
+    const provider: LLMProvider = {
+      name: "test",
+      translateBatch: async () => [],
+      reviewBatch: async () => [],
+      inferCharacters: async (batch) => {
+        call += 1;
+        const confidence = call === 1 ? 0.9 : 0.3;
+        return Object.fromEntries(batch.map((candidate) => [candidate.name, { gender: "unknown", type: "person", confidence }]));
+      }
+    };
+
+    const result = await inferCharacterGlossary(
+      [
+        { name: "Aria", sources: ["actor"], occurrences: 1, evidence: [] },
+        { name: "Aria", sources: ["actor"], occurrences: 1, evidence: [] }
+      ],
+      provider,
+      { targetLanguage: "ru", batchSize: 1 }
+    );
+
+    expect(result.Aria.confidence).toBe(0.9);
+  });
 });
 
 function unit(overrides: Partial<TranslationUnit> = {}): TranslationUnit {
