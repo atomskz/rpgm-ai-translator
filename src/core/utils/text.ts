@@ -18,11 +18,36 @@
  */
 
 // Scripts that indicate human-readable prose worth translating. Besides Latin
-// and Cyrillic this covers Japanese kana, CJK unified ideographs, Korean Hangul,
-// and fullwidth Latin so that source games written only in those scripts (the
-// common RPG Maker case) are not discarded as non-translatable runtime tokens.
-const TRANSLATABLE_LETTER_PATTERN = /[A-Za-zА-Яа-яЁёぁ-ゟァ-ヿ一-鿿가-힣Ａ-Ｚａ-ｚ]/;
+// and Cyrillic this covers Japanese kana (full- and half-width), CJK unified
+// ideographs, Korean Hangul, and fullwidth Latin so that source games written
+// only in those scripts (the common RPG Maker case) are not discarded as
+// non-translatable runtime tokens.
+const TRANSLATABLE_LETTER_PATTERN = /[A-Za-zА-Яа-яЁёぁ-ゟァ-ヿ一-鿿가-힣Ａ-Ｚａ-ｚ｡-ﾟ]/;
 
 export function containsTranslatableLetter(value: string): boolean {
   return TRANSLATABLE_LETTER_PATTERN.test(value);
+}
+
+// Scripts written without word delimiters (kana incl. half-width katakana,
+// ideographs, hangul): substring matching is correct for them. Alphabetic terms
+// (Latin, Cyrillic, ...) must match on word boundaries, otherwise a short term
+// such as "Al" matches inside "Salt" and a glossary check fires a false positive.
+const CJK_TERM_PATTERN = /[぀-ヿ㐀-鿿가-힯豈-﫿｡-ﾟ]/;
+
+// Whether `term` occurs in `text` as a glossary match. Shared by the glossary
+// validator and the prompt-time glossary filter so both agree on what counts as
+// a hit (a term the validator would check must also reach the model).
+export function glossaryTermMatches(text: string, term: string): boolean {
+  if (term.length === 0) {
+    return false;
+  }
+  if (CJK_TERM_PATTERN.test(term)) {
+    return text.includes(term);
+  }
+  const pattern = new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(term)}(?![\\p{L}\\p{N}_])`, "u");
+  return pattern.test(text);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

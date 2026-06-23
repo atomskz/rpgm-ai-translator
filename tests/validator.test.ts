@@ -323,6 +323,18 @@ describe("DefaultValidator", () => {
     expect(codes(issues)).toContain("GLOSSARY_VIOLATION");
   });
 
+  it("enforces half-width katakana glossary terms (matched as substrings)", () => {
+    // Half-width katakana has no word boundary, so a kept term dropped from the
+    // translation must still be flagged (the word-boundary branch never matched it).
+    const issues = validate(
+      unit({ source: "ｱﾘｱが来た。", normalizedSource: "ｱﾘｱが来た。" }),
+      result({ source: "ｱﾘｱが来た。", translation: "Пришла Ария." }),
+      { "ｱﾘｱ": { mode: "keep" } }
+    );
+
+    expect(codes(issues)).toContain("GLOSSARY_VIOLATION");
+  });
+
   it("treats translate and transliterate glossary modes as advisory", () => {
     const transliterate = validate(
       unit({ source: "Aria", normalizedSource: "Aria" }),

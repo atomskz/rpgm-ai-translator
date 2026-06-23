@@ -76,6 +76,37 @@ describe("prompt builder", () => {
     ]);
   });
 
+  it("excludes a short alphabetic term that only appears inside another word", () => {
+    const saltUnit: TranslationUnit = {
+      ...unit(),
+      source: "Add Salt to the pot.",
+      normalizedSource: "Add Salt to the pot."
+    };
+    const payload = buildTranslationUserPayload([saltUnit], {
+      targetLanguage: "ru",
+      glossary: { Al: { mode: "keep" }, Salt: { mode: "keep" } }
+    });
+
+    // "Salt" is a whole word so it is sent; "Al" only sits inside "Salt", so the
+    // token-aware filter must not pull it into the prompt.
+    expect(payload.glossary).toHaveProperty("Salt");
+    expect(payload.glossary).not.toHaveProperty("Al");
+  });
+
+  it("includes a half-width katakana glossary term present in the source", () => {
+    const kanaUnit: TranslationUnit = {
+      ...unit(),
+      source: "ｱﾘｱが来た。",
+      normalizedSource: "ｱﾘｱが来た。"
+    };
+    const payload = buildTranslationUserPayload([kanaUnit], {
+      targetLanguage: "ru",
+      glossary: { "ｱﾘｱ": { mode: "keep" } }
+    });
+
+    expect(payload.glossary).toHaveProperty("ｱﾘｱ");
+  });
+
   it("explains all glossary modes in the system prompt when a glossary applies", () => {
     const messages = buildTranslationMessages([unit()], {
       targetLanguage: "ru",

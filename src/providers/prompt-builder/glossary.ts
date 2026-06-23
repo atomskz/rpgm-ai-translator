@@ -18,6 +18,7 @@
  */
 
 import type { Glossary, ReviewUnit, TranslationUnit } from "../../core/types.js";
+import { glossaryTermMatches } from "../../core/utils/text.js";
 
 export function filterGlossaryForBatch(glossary: Glossary | undefined, batch: TranslationUnit[]): Glossary {
   if (!glossary) {
@@ -26,7 +27,11 @@ export function filterGlossaryForBatch(glossary: Glossary | undefined, batch: Tr
 
   const relevant: Glossary = {};
   for (const [term, entry] of Object.entries(glossary)) {
-    if (batch.some((unit) => unit.source.includes(term) || unit.normalizedSource?.includes(term))) {
+    if (
+      batch.some(
+        (unit) => glossaryTermMatches(unit.source, term) || glossaryTermMatches(unit.normalizedSource ?? "", term)
+      )
+    ) {
       relevant[term] = entry;
     }
   }
@@ -43,9 +48,9 @@ export function filterGlossaryForReviewBatch(glossary: Glossary | undefined, bat
     if (
       batch.some(
         (unit) =>
-          unit.source.includes(term) ||
-          unit.normalizedSource?.includes(term) ||
-          unit.currentTranslation.includes(term)
+          glossaryTermMatches(unit.source, term) ||
+          glossaryTermMatches(unit.normalizedSource ?? "", term) ||
+          glossaryTermMatches(unit.currentTranslation, term)
       )
     ) {
       relevant[term] = entry;
