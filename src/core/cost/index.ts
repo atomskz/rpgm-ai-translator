@@ -90,4 +90,16 @@ export class TokenBudget {
       );
     }
   }
+
+  // Pre-flight check that accounts for tokens already spent. A review or repair
+  // pass runs after translate, so guard it against (spent + estimate) and fail
+  // before the pass starts rather than mid-batch once the budget is blown.
+  assertProjectedWithin(estimatedTokens: number): void {
+    const projected = this.spent + estimatedTokens;
+    if (projected > this.limit) {
+      throw new Error(
+        `Estimated ${projected} tokens (${this.spent} used + ${estimatedTokens} for the next pass) exceed the --max-tokens-budget of ${this.limit}. Raise the budget or reduce scope.`
+      );
+    }
+  }
 }

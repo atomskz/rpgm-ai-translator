@@ -232,6 +232,9 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
       io.stderr(`Resuming review: ${reviewCheckpointById.size}/${units.length} units already in checkpoint.\n`);
     }
     const unitsToReview = units.filter((unit) => !reviewCheckpointById.has(unit.id));
+    // Estimate the review pass against the budget already spent on translate, so a
+    // run that would overrun fails here instead of mid-review with tokens wasted.
+    budget?.assertProjectedWithin(estimateInputTokens(unitsToReview));
     const reviewResult = await reviewTranslations(
       unitsToReview,
       mergeCheckpointTranslations(units, translations, reviewCheckpointById),
@@ -262,6 +265,10 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
       io.stderr(`Resuming repair: ${repairCheckpointById.size} units already in checkpoint.\n`);
     }
     for (let attempt = 1; attempt <= repairAttempts && validationIssues.length > 0; attempt += 1) {
+      // Estimate this repair attempt (the units carrying the targeted issues)
+      // against tokens already spent, failing before the pass if it would overrun.
+      const repairUnitIds = new Set(validationIssues.map((issue) => issue.id));
+      budget?.assertProjectedWithin(estimateInputTokens(units.filter((unit) => repairUnitIds.has(unit.id))));
       io.stderr(`Repairing validation issues, attempt ${attempt}/${repairAttempts} (${validationIssues.length} issues)...\n`);
       const repairResult = await repairTranslations(units, translations, validationIssues, provider, {
         ...providerOptions,

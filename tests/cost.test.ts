@@ -86,4 +86,15 @@ describe("cost estimation", () => {
     budget.record([withUsage("b", 15, 5)]);
     expect(() => budget.assertWithin()).toThrow(/Token budget of 50 exceeded/);
   });
+
+  it("projects a later pass against tokens already spent", () => {
+    const budget = new TokenBudget(100);
+    budget.record([withUsage("a", 40, 20)]); // 60 tokens spent
+    expect(budget.spentTokens).toBe(60);
+
+    // 60 used + 30 estimated for the next pass = 90, within budget.
+    expect(() => budget.assertProjectedWithin(30)).not.toThrow();
+    // 60 used + 50 estimated = 110, so the pass is refused before it starts.
+    expect(() => budget.assertProjectedWithin(50)).toThrow(/exceed the --max-tokens-budget of 100/);
+  });
 });
