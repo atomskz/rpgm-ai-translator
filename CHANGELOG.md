@@ -10,10 +10,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
   `dist/index`), stop shipping source maps that pointed at the unpublished `src/`
   tree, and run `typecheck`/`lint`/`test` on `prepublishOnly`.
 - Exit non-zero on a partial result so a wrapping script or agent does not treat it
-  as a clean success: `run` and `repair` exit `2` when apply-blocking validation
-  errors remain unresolved (the patch is still written, without the affected
-  translations), `apply` without `--units` exits `1` when an id mismatch skipped
-  at least half of its translations, and `review` exits `1` when every batch failed
+  as a clean success: `run` and `repair` exit `2` when a translation they produced
+  still fails validation after repair (a unit the provider merely failed to deliver
+  does not, on its own, trigger this — that is reflected in the report and the
+  no-output exit `1`); `apply` without `--units` exits `1` when an id mismatch skipped
+  at least half of its translations; and `review` exits `1` when every batch failed
   and nothing was reviewed.
 
 ### Fixed

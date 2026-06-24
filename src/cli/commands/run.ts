@@ -318,13 +318,20 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   io.stderr("Writing report...\n");
   await writeReportFile(path.join(workDir, "report.json"), report);
   io.stderr(`${summarizeReport(report)}\n`);
-  // Mirror `validate`: when the patch ships without translations that still carry
-  // apply-blocking errors (filtered out of safeTranslations above), exit 2 so a CI
-  // chain or agent sees a partial result instead of treating it as a clean success.
-  const droppedForErrors = translations.length - safeTranslations.length;
-  if (droppedForErrors > 0) {
+  // Mirror `validate`: exit 2 when the patch ships without a translation we actually
+  // produced that still fails validation (a dropped placeholder, altered number, ...),
+  // so a CI chain or agent sees the broken output instead of a clean success. A unit
+  // the provider merely failed to deliver (status "failed"/"skipped") is a
+  // non-delivery — already in the report's failed count and the empty-output guard
+  // above — and should not, by itself, fail an otherwise good run over a provider
+  // hiccup.
+  const safeIds = new Set(safeTranslations.map((translation) => translation.id));
+  const blockingProduced = translations.filter(
+    (translation) => !safeIds.has(translation.id) && translation.status === "translated"
+  );
+  if (blockingProduced.length > 0) {
     io.stderr(
-      `Patch written without ${droppedForErrors} translation(s) that still carry blocking validation errors; validate and repair before shipping.\n`
+      `Patch written without ${blockingProduced.length} produced translation(s) that still carry blocking validation errors; validate and repair before shipping.\n`
     );
     return 2;
   }
