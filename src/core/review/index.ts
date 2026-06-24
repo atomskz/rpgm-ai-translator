@@ -84,6 +84,7 @@ export async function reviewTranslations(
     }
     const { checkpointResults, failed: batchFailed } = collectRevalidatedBatch(
       reviewed,
+      new Set(batch.map((unit) => unit.id)),
       reviewedById,
       (result) => mergeReviewResult(translationById.get(result.id), result),
       (merged) => {

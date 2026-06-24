@@ -22,6 +22,9 @@ import type { TranslationResult } from "../types.js";
 export type RevalidatedBatch = {
   checkpointResults: TranslationResult[];
   failed: number;
+  // Results dropped because their id was not requested in this batch or duplicated
+  // one already processed.
+  anomalous: number;
 };
 
 /**
@@ -35,14 +38,25 @@ export type RevalidatedBatch = {
  */
 export function collectRevalidatedBatch(
   results: TranslationResult[],
+  requestedIds: Set<string>,
   acceptedById: Map<string, TranslationResult>,
   buildAccepted: (result: TranslationResult) => TranslationResult,
   rejectIfRegressed: (accepted: TranslationResult) => TranslationResult | undefined
 ): RevalidatedBatch {
   const checkpointResults: TranslationResult[] = [];
   let failed = 0;
+  let anomalous = 0;
+  const seen = new Set<string>();
 
   for (const result of results) {
+    // Drop a response id that was not requested in this batch, or a duplicate of one
+    // already processed: counting it would inflate the failure tally and writing it
+    // would duplicate a checkpoint line that then replays on resume.
+    if (!requestedIds.has(result.id) || seen.has(result.id)) {
+      anomalous += 1;
+      continue;
+    }
+    seen.add(result.id);
     if (result.status !== "translated") {
       failed += 1;
       checkpointResults.push(result);
@@ -59,5 +73,5 @@ export function collectRevalidatedBatch(
     checkpointResults.push(accepted);
   }
 
-  return { checkpointResults, failed };
+  return { checkpointResults, failed, anomalous };
 }

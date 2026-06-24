@@ -14,6 +14,10 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Reconcile provider response ids on the review and repair passes: a result whose
+  id was not requested in the batch, or that duplicates one already processed, is
+  dropped instead of inflating the failure count and writing a duplicate checkpoint
+  line that would replay on resume (the translate pass already did this).
 - Carry `--include-comments` (and `--dialogue-max-length`) translations through to
   the patch. `run` now writes the patch from the units it already extracted instead
   of re-extracting with a narrower flag set, and standalone `apply` (without

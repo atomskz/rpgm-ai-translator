@@ -139,6 +139,7 @@ export async function repairTranslations(
     }
     const { checkpointResults, failed: batchFailed } = collectRevalidatedBatch(
       results,
+      new Set(batch.map((unit) => unit.id)),
       repairedById,
       (result) => ({ ...result, metadata: { ...result.metadata, repaired: true, repairMode: "translate" as const } }),
       rejectIfRegressed
@@ -172,6 +173,7 @@ export async function repairTranslations(
     }
     const { checkpointResults, failed: batchFailed } = collectRevalidatedBatch(
       results,
+      new Set(batch.map((unit) => unit.id)),
       repairedById,
       (result) => ({ ...result, metadata: { ...result.metadata, repaired: true, repairMode: "review" as const } }),
       rejectIfRegressed
