@@ -2,41 +2,61 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main, develop]
   pull_request:
-    branches:
-      - main
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
-    name: Typecheck, lint, test, and build
+  verify:
+    name: Verify (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
-
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["20.19.0", "22", "24"]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ matrix.node }}
           cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Test
-        run: npm test
-
-      - name: Build
-        run: npm run build
-
-      - name: Package smoke
-        run: npm run pack:check
+  package:
+    name: Package smoke test
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.0"
+          cache: npm
+      - run: npm ci
+      - name: Pack (prepack builds dist)
+        run: npm pack
+      - name: Install the tarball into a clean project and run the binary
+        run: |
+          tarball="$(ls rpgm-ai-translator-*.tgz)"
+          workdir="$(mktemp -d)"
+          cd "$workdir"
+          npm init -y >/dev/null 2>&1
+          npm install "$GITHUB_WORKSPACE/$tarball"
+          ./node_modules/.bin/rpgm-ai-translator --help
+      - name: Upload package tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpgm-ai-translator-tarball
+          path: rpgm-ai-translator-*.tgz
+          retention-days: 14
