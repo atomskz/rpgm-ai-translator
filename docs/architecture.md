@@ -22,7 +22,7 @@ and provider code does not know how to patch RPG Maker projects.
 - `src/core/review`: second-pass translation review grouped by map/event context.
 - `src/core/repair`: targeted repair of translations referenced by validation reports.
 - `src/core/retry`: shared retry policy for provider calls.
-- `src/core/font-patch`: RPG Maker MZ font patch support.
+- `src/core/font-patch`: RPG Maker MV/MZ font patch support.
 - `src/providers`: LLM provider adapters (with injected config) and prompt builders.
 
 ## Pipeline

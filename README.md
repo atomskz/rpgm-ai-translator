@@ -39,7 +39,7 @@ Supported:
 - glossary validation;
 - targeted repair for validation issues with repeated attempts and checkpointing;
 - safe patch output;
-- optional RPG Maker MZ font patching.
+- optional RPG Maker MV/MZ font patching.
 
 Not supported yet:
 

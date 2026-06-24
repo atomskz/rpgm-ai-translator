@@ -19,6 +19,12 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Font-patch the correct engine and layout instead of silently no-opping. `patch-font`
+  now detects the engine (and a deployed `www/` layout): RPG Maker MZ writes the
+  `System.json` `advanced` font fields as before, while RPG Maker MV rewrites
+  `fonts/gamefont.css` (the `GameFont` face) — previously MV copied the font file but
+  had no effect, and a `www/`-layout game failed to find `System.json`. An
+  unrecognized project is now refused with a clear error.
 - Re-validate that an in-place target still resolves inside the project immediately
   before each write, so a directory symlink swapped into the path after the initial
   read-time check cannot redirect an in-place write out of the project (TOCTOU).

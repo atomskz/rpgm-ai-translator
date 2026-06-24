@@ -310,7 +310,11 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   });
   if (fontPath) {
     io.stderr("Applying font patch...\n");
-    await applyFontPatch(projectPath, outDir, { fontPath, numberFontPath });
+    await applyFontPatch(projectPath, outDir, {
+      fontPath,
+      numberFontPath,
+      onWarning: (warning) => io.stderr(`Warning: ${warning}\n`)
+    });
   }
   io.stderr("Writing translations...\n");
   await writeTranslationResultsFile(path.join(workDir, "translations.json"), translations);

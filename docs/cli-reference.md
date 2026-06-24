@@ -55,8 +55,8 @@ its value, or a duplicated value option, is also rejected.
 | `--repair-attempts <n>` | Repair passes (`run --repair`). Default `1`. |
 | `--mode <patch\|in-place>` | Apply mode. Default `patch`. |
 | `--backup <dir>` | Backup directory for in-place mode. |
-| `--font <file>` | Main RPG Maker MZ font to copy into the patch. |
-| `--number-font <file>` | MZ number font; defaults to `--font`. |
+| `--font <file>` | Main UI font to copy into the patch (RPG Maker MV or MZ). |
+| `--number-font <file>` | MZ-only number font; defaults to `--font` (ignored on MV). |
 | `--dialogue-max-length <n>` | Per-line dialogue width limit in display cells. Default `52`. |
 | `--include-comments` | Extract event comments. |
 | `--include-plugins` | Extract cautious plugin parameters and selected plugin command text. |
@@ -128,8 +128,10 @@ apply only in `--mode patch` together with `--out`.
 
 ### `patch-font <game> --out <dir> --font <file> [options]`
 
-Patch RPG Maker MZ font settings into an output folder. Options: `--out`
-(required), `--font` (required), `--number-font`.
+Patch the game's UI font into an output folder. The engine is detected (including a
+deployed `www/` layout): MZ writes `System.json`'s `advanced` font fields, while MV
+rewrites `fonts/gamefont.css` (`GameFont`). An unrecognized project is refused.
+Options: `--out` (required), `--font` (required), `--number-font` (MZ only).
 
 ### `run <game> --out <dir> [options]`
 

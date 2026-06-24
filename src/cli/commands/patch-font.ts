@@ -26,7 +26,11 @@ export async function patchFontCommand(args: string[], io: CliIO): Promise<numbe
   const outDir = requireOption(args, "--out");
   const fontPath = requireOption(args, "--font");
   const { numberFontPath } = readFontOptions(args);
-  const result = await applyFontPatch(projectPath, outDir, { fontPath, numberFontPath });
+  const result = await applyFontPatch(projectPath, outDir, {
+    fontPath,
+    numberFontPath,
+    onWarning: (message) => io.stderr(`Warning: ${message}\n`)
+  });
   io.stdout(`${JSON.stringify(result, null, 2)}\n`);
   return 0;
 }

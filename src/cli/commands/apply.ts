@@ -69,7 +69,11 @@ export async function applyCommand(args: string[], io: CliIO): Promise<number> {
   }
   if (applyOptions.mode === "patch" && applyOptions.outDir && fontPath && !applyOptions.dryRun) {
     io.stderr("Applying font patch...\n");
-    await applyFontPatch(projectPath, applyOptions.outDir, { fontPath, numberFontPath });
+    await applyFontPatch(projectPath, applyOptions.outDir, {
+      fontPath,
+      numberFontPath,
+      onWarning: (warning) => io.stderr(`Warning: ${warning}\n`)
+    });
   }
   // Print a human-readable summary instead of the raw result JSON, which a
   // non-programmer cannot read; the file output is the artifact that matters.

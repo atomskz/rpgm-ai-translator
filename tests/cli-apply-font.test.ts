@@ -27,6 +27,68 @@ describe("CLI apply and patch-font", () => {
     expect(patchedSystem.advanced.numberFontFilename).toBe("RusFont.ttf");
   });
 
+  it("patches an MV game by rewriting fonts/gamefont.css", async () => {
+    const root = await createCliTempDir("rpgm-cli-font-mv-");
+    const outDir = path.join(root, "out");
+    const fontPath = path.join(root, "RusFont.ttf");
+    await writeFile(fontPath, "fake-font", "utf8");
+    await mkdir(path.join(root, "game", "data"), { recursive: true });
+    await mkdir(path.join(root, "game", "js"), { recursive: true });
+    await writeFile(path.join(root, "game", "js", "rpg_core.js"), "", "utf8");
+    await writeJsonFixture(path.join(root, "game", "data", "System.json"), {});
+
+    const exitCode = await runCli(["patch-font", path.join(root, "game"), "--out", outDir, "--font", fontPath], {
+      stdout: () => undefined,
+      stderr: () => undefined
+    });
+
+    expect(exitCode).toBe(0);
+    expect(await readFile(path.join(outDir, "fonts", "RusFont.ttf"), "utf8")).toBe("fake-font");
+    const css = await readFile(path.join(outDir, "fonts", "gamefont.css"), "utf8");
+    expect(css).toContain("font-family: GameFont");
+    expect(css).toContain('url("RusFont.ttf")');
+    // MV has no System.json.advanced font mechanism, so it is left untouched.
+    await expect(access(path.join(outDir, "data", "System.json"))).rejects.toThrow();
+  });
+
+  it("locates and patches System.json under a www/ layout", async () => {
+    const root = await createCliTempDir("rpgm-cli-font-www-");
+    const outDir = path.join(root, "out");
+    const fontPath = path.join(root, "RusFont.ttf");
+    await writeFile(fontPath, "fake-font", "utf8");
+    await mkdir(path.join(root, "game", "www", "data"), { recursive: true });
+    await mkdir(path.join(root, "game", "www", "js"), { recursive: true });
+    await writeFile(path.join(root, "game", "www", "js", "rmmz_core.js"), "", "utf8");
+    await writeJsonFixture(path.join(root, "game", "www", "data", "System.json"), { advanced: {} });
+
+    const exitCode = await runCli(["patch-font", path.join(root, "game"), "--out", outDir, "--font", fontPath], {
+      stdout: () => undefined,
+      stderr: () => undefined
+    });
+
+    expect(exitCode).toBe(0);
+    const patchedSystem = JSON.parse(await readFile(path.join(outDir, "www", "data", "System.json"), "utf8"));
+    expect(patchedSystem.advanced.mainFontFilename).toBe("RusFont.ttf");
+    expect(await readFile(path.join(outDir, "www", "fonts", "RusFont.ttf"), "utf8")).toBe("fake-font");
+  });
+
+  it("refuses to font-patch an unrecognized project", async () => {
+    const root = await createCliTempDir("rpgm-cli-font-unknown-");
+    const outDir = path.join(root, "out");
+    const fontPath = path.join(root, "RusFont.ttf");
+    await writeFile(fontPath, "fake-font", "utf8");
+    await mkdir(path.join(root, "game"), { recursive: true });
+
+    const errors: string[] = [];
+    const exitCode = await runCli(["patch-font", path.join(root, "game"), "--out", outDir, "--font", fontPath], {
+      stdout: () => undefined,
+      stderr: (text) => errors.push(text)
+    });
+
+    expect(exitCode).not.toBe(0);
+    expect(errors.join("")).toContain("not a recognized RPG Maker");
+  });
+
   it("applies translations using an explicit units file", async () => {
     const root = await createCliTempDir("rpgm-cli-apply-units-");
     const gamePath = path.join(root, "game");
