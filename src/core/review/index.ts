@@ -26,9 +26,10 @@ import type {
   TranslationUnit,
   ValidationIssue
 } from "../types.js";
-import { normalizeBatchSize, splitBatch } from "../batching/index.js";
+import { splitBatch } from "../batching/index.js";
 import { summarizeBatchFailures } from "../reports/failures.js";
 import { isRetryableProviderError, withProviderRetry } from "../retry/index.js";
+import { collectRevalidatedBatch } from "../revalidation/index.js";
 import { DefaultValidator, introducedErrorCode } from "../validators/index.js";
 
 export type ReviewPassResult = {
@@ -58,7 +59,7 @@ export async function reviewTranslations(
   const reviewedById = new Map<string, TranslationResult>();
   let failed = 0;
   let completed = 0;
-  const batches = groupReviewUnits(candidates).flatMap((group) => splitBatch(group, normalizeBatchSize(options.batchSize)));
+  const batches = groupReviewUnits(candidates).flatMap((group) => splitBatch(group, options.batchSize));
 
   for (const [batchOffset, batch] of batches.entries()) {
     const batchIndex = batchOffset + 1;
@@ -81,35 +82,19 @@ export async function reviewTranslations(
     } catch (error: unknown) {
       reviewed = failedReviewBatch(batch, provider, options, error);
     }
-    const checkpointResults: TranslationResult[] = [];
-    for (const result of reviewed) {
-      if (result.status === "translated") {
-        const current = translationById.get(result.id);
-        const merged = {
-          ...current,
-          ...result,
-          translation: result.translation,
-          provider: result.provider,
-          model: result.model,
-          status: result.status,
-          issues: result.issues,
-          metadata: { ...current?.metadata, ...result.metadata, reviewed: true }
-        };
-        const unit = unitsById.get(result.id);
+    const { checkpointResults, failed: batchFailed } = collectRevalidatedBatch(
+      reviewed,
+      reviewedById,
+      (result) => mergeReviewResult(translationById.get(result.id), result),
+      (merged) => {
+        const unit = unitsById.get(merged.id);
+        const current = translationById.get(merged.id);
         const introduced = unit ? introducedErrorCode(unit, current, merged, validator) : undefined;
-        if (introduced) {
-          // The review made the translation worse; keep the pre-review text.
-          failed += 1;
-          checkpointResults.push(regressedReviewResult(result, current, introduced));
-          continue;
-        }
-        reviewedById.set(result.id, merged);
-        checkpointResults.push(merged);
-      } else {
-        failed += 1;
-        checkpointResults.push(result);
+        // The review made the translation worse; keep the pre-review text.
+        return introduced ? regressedReviewResult(merged, current, introduced) : undefined;
       }
-    }
+    );
+    failed += batchFailed;
     await options.onBatchResults?.(checkpointResults);
     completed += batch.length;
 
@@ -133,6 +118,22 @@ export async function reviewTranslations(
     reviewed: reviewedById.size,
     failed,
     skipped: translations.length - reviewedById.size - failed
+  };
+}
+
+// Fold a reviewed result onto the previous translation, keeping the prior
+// metadata, replacing the text/provider/model/status/issues with the review's,
+// and marking it reviewed.
+function mergeReviewResult(current: TranslationResult | undefined, result: TranslationResult): TranslationResult {
+  return {
+    ...current,
+    ...result,
+    translation: result.translation,
+    provider: result.provider,
+    model: result.model,
+    status: result.status,
+    issues: result.issues,
+    metadata: { ...current?.metadata, ...result.metadata, reviewed: true }
   };
 }
 

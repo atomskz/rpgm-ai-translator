@@ -25,9 +25,10 @@ import type {
   TranslationUnit,
   ValidationIssue
 } from "../types.js";
-import { normalizeBatchSize, splitBatch } from "../batching/index.js";
+import { splitBatch } from "../batching/index.js";
 import { summarizeBatchFailures } from "../reports/failures.js";
 import { isRetryableProviderError, withProviderRetry } from "../retry/index.js";
+import { collectRevalidatedBatch } from "../revalidation/index.js";
 import { DefaultValidator, introducedErrorCode } from "../validators/index.js";
 
 export type RepairOptions = ReviewOptions & {
@@ -125,7 +126,7 @@ export async function repairTranslations(
   const repairedById = new Map<string, TranslationResult>();
   let failed = 0;
 
-  for (const batch of splitBatch(toTranslate, normalizeBatchSize(options.batchSize))) {
+  for (const batch of splitBatch(toTranslate, options.batchSize)) {
     let results: TranslationResult[];
     try {
       results = await withProviderRetry(() => provider.translateBatch(batch, options), {
@@ -136,31 +137,18 @@ export async function repairTranslations(
     } catch (error: unknown) {
       results = failedRepairTranslateBatch(batch, provider, options, error);
     }
-    const checkpointResults: TranslationResult[] = [];
-    for (const result of results) {
-      if (result.status === "translated") {
-        const repaired = {
-          ...result,
-          metadata: { ...result.metadata, repaired: true, repairMode: "translate" as const }
-        };
-        const rejected = rejectIfRegressed(repaired);
-        if (rejected) {
-          failed += 1;
-          checkpointResults.push(rejected);
-          continue;
-        }
-        repairedById.set(result.id, repaired);
-        checkpointResults.push(repaired);
-      } else {
-        failed += 1;
-        checkpointResults.push(result);
-      }
-    }
+    const { checkpointResults, failed: batchFailed } = collectRevalidatedBatch(
+      results,
+      repairedById,
+      (result) => ({ ...result, metadata: { ...result.metadata, repaired: true, repairMode: "translate" as const } }),
+      rejectIfRegressed
+    );
+    failed += batchFailed;
     await options.onBatchResults?.(checkpointResults);
   }
 
   let completed = 0;
-  const reviewBatches = splitBatch(toReview, normalizeBatchSize(options.batchSize));
+  const reviewBatches = splitBatch(toReview, options.batchSize);
   for (const [batchOffset, batch] of reviewBatches.entries()) {
     const batchIndex = batchOffset + 1;
     options.onProgress?.({
@@ -182,26 +170,13 @@ export async function repairTranslations(
     } catch (error: unknown) {
       results = failedRepairReviewBatch(batch, provider, options, error);
     }
-    const checkpointResults: TranslationResult[] = [];
-    for (const result of results) {
-      if (result.status === "translated") {
-        const repaired = {
-          ...result,
-          metadata: { ...result.metadata, repaired: true, repairMode: "review" as const }
-        };
-        const rejected = rejectIfRegressed(repaired);
-        if (rejected) {
-          failed += 1;
-          checkpointResults.push(rejected);
-          continue;
-        }
-        repairedById.set(result.id, repaired);
-        checkpointResults.push(repaired);
-      } else {
-        failed += 1;
-        checkpointResults.push(result);
-      }
-    }
+    const { checkpointResults, failed: batchFailed } = collectRevalidatedBatch(
+      results,
+      repairedById,
+      (result) => ({ ...result, metadata: { ...result.metadata, repaired: true, repairMode: "review" as const } }),
+      rejectIfRegressed
+    );
+    failed += batchFailed;
     await options.onBatchResults?.(checkpointResults);
     completed += batch.length;
 

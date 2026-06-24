@@ -26,7 +26,9 @@ export function normalizeBatchSize(batchSize: number | undefined, fallback = DEF
   return Math.floor(batchSize);
 }
 
-export function splitBatch<T>(items: T[], batchSize: number): T[][] {
+// Splits into batches, normalizing the raw size itself so callers pass the
+// option value directly instead of pre-normalizing it (which double-normalized).
+export function splitBatch<T>(items: T[], batchSize: number | undefined): T[][] {
   const normalizedBatchSize = normalizeBatchSize(batchSize);
   const batches: T[][] = [];
   for (let index = 0; index < items.length; index += normalizedBatchSize) {

@@ -92,9 +92,9 @@ export async function translateWithMemory(
   const memoryEntriesToUpsert: MemoryEntry[] = [];
 
   for (const result of translatedMisses) {
-    const cacheKey = keyForResult(result, keyByRepresentativeId);
+    const cacheKey = cacheKeyForResult(result, keyByRepresentativeId);
     const unit = cacheKey ? missesByKey.get(cacheKey) : undefined;
-    if (!unit) {
+    if (!cacheKey || !unit) {
       continue;
     }
     translatedByKey.set(cacheKey, result);
@@ -183,7 +183,7 @@ function expandBatchResultsForDuplicateMisses(
     ...options,
     onBatchResults: async (batchResults) => {
       const expandedResults = batchResults.flatMap((result) => {
-        const cacheKey = keyForResult(result, keyByRepresentativeId);
+        const cacheKey = cacheKeyForResult(result, keyByRepresentativeId);
         const missedUnits = cacheKey ? missedUnitsByKey.get(cacheKey) : undefined;
         if (!missedUnits) {
           return [result];
@@ -228,8 +228,8 @@ async function upsertMemoryEntries(memory: TranslationMemory, entries: MemoryEnt
   }
 }
 
-function keyForResult(result: TranslationResult, keyByRepresentativeId: Map<string, string>): string {
-  return keyByRepresentativeId.get(result.id) ?? "";
+function cacheKeyForResult(result: TranslationResult, keyByRepresentativeId: Map<string, string>): string | undefined {
+  return keyByRepresentativeId.get(result.id);
 }
 
 /**
