@@ -54,5 +54,31 @@ export function setJsonPathSegments(root: unknown, segments: string[], newValue:
 }
 
 export function parseJsonPath(jsonPath: string): string[] {
-  return jsonPath.split(".").filter(Boolean);
+  // Keep empty segments: a key that is the empty string (e.g. `{"": ...}`) is a
+  // real path step, and dropping it would collapse the path onto a different leaf.
+  // Only a wholly empty path means "no segments".
+  return jsonPath.length === 0 ? [] : jsonPath.split(".");
+}
+
+// Inside a stringified-JSON blob an array index and a numeric object key (`{"0":
+// ...}`) would both serialize to the segment "0" and collide. Array indices are
+// stored with a leading "#" marker so the two stay distinct in unit ids; an object
+// key that itself begins with "#" is escaped by doubling it. Decoding strips the
+// marker back to the raw property key (an array index works as a string subscript).
+export function encodeArrayIndexSegment(index: number): string {
+  return `#${index}`;
+}
+
+export function encodeObjectKeySegment(key: string): string {
+  return key.startsWith("#") ? `#${key}` : key;
+}
+
+export function decodeEncodedJsonSegment(segment: string): string {
+  if (/^#\d+$/.test(segment)) {
+    return segment.slice(1);
+  }
+  if (segment.startsWith("##")) {
+    return segment.slice(1);
+  }
+  return segment;
 }

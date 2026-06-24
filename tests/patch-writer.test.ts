@@ -316,10 +316,10 @@ describe("patch writer", () => {
 
     const extractor = new RpgMakerMvMzExtractor();
     const units = await extractor.extract(root);
-    const choiceUnit = units.find((unit) => unit.id === "Map001.events.1.pages.0.list.0.parameters.3.choices.$json.0.label");
+    const choiceUnit = units.find((unit) => unit.id === "Map001.events.1.pages.0.list.0.parameters.3.choices.$json.#0.label");
     expect(choiceUnit).toMatchObject({
       source: "Give the ring?",
-      constraints: { sourceEncoding: "json-stringified-json", encodedJsonPath: "0.label" }
+      constraints: { sourceEncoding: "json-stringified-json", encodedJsonPath: "#0.label" }
     });
 
     const result = await extractor.applyTranslations(
@@ -344,6 +344,78 @@ describe("patch writer", () => {
       { label: "Отдать кольцо?", value: "give_ring" },
       { label: "Keep it", value: "keep_ring" }
     ]);
+  });
+
+  it("round-trips empty keys and distinguishes a numeric object key from an array index", async () => {
+    const root = path.join(tmpdir(), `rpgm-encoded-keys-${Date.now()}`);
+    const outDir = path.join(tmpdir(), `rpgm-encoded-keys-out-${Date.now()}`);
+    await mkdir(path.join(root, "data"), { recursive: true });
+    await mkdir(path.join(root, "js"), { recursive: true });
+    await writeFile(path.join(root, "js", "rmmz_core.js"), "", "utf8");
+    await writeJson(path.join(root, "data", "Map001.json"), {
+      events: [
+        null,
+        {
+          id: 1,
+          name: "Keys Event",
+          pages: [
+            {
+              list: [
+                {
+                  code: 357,
+                  parameters: [
+                    "KeysPlugin",
+                    "show",
+                    "",
+                    {
+                      choices: JSON.stringify({
+                        "0": { text: "ObjZero" },
+                        "": { text: "EmptyKey" },
+                        items: [{ text: "ArrZero" }]
+                      })
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    const extractor = new RpgMakerMvMzExtractor();
+    const units = await extractor.extract(root);
+    const base = "Map001.events.1.pages.0.list.0.parameters.3.choices.$json";
+    const objKeyUnit = units.find((unit) => unit.source === "ObjZero");
+    const emptyKeyUnit = units.find((unit) => unit.source === "EmptyKey");
+    const arrayUnit = units.find((unit) => unit.source === "ArrZero");
+
+    // A numeric object key and an array index no longer collapse to the same id.
+    expect(objKeyUnit?.id).toBe(`${base}.0.text`);
+    expect(arrayUnit?.id).toBe(`${base}.items.#0.text`);
+    expect(objKeyUnit?.id).not.toBe(arrayUnit?.id);
+    // An empty key keeps its (empty) segment rather than collapsing the path.
+    expect(emptyKeyUnit?.id).toBe(`${base}..text`);
+
+    const result = await extractor.applyTranslations(
+      root,
+      [objKeyUnit, emptyKeyUnit, arrayUnit].map((unit) => ({
+        id: unit?.id ?? "",
+        source: unit?.source ?? "",
+        translation: `[${unit?.source}]`,
+        provider: "manual",
+        model: "manual",
+        status: "translated" as const
+      })),
+      { mode: "patch", outDir }
+    );
+
+    const patched = JSON.parse(await readFile(path.join(outDir, "data", "Map001.json"), "utf8"));
+    const encoded = JSON.parse(patched.events[1].pages[0].list[0].parameters[3].choices);
+    expect(result.unitsApplied).toBe(3);
+    expect(encoded["0"].text).toBe("[ObjZero]");
+    expect(encoded[""].text).toBe("[EmptyKey]");
+    expect(encoded.items[0].text).toBe("[ArrZero]");
   });
 
   it("writes in-place only after creating a backup", async () => {
@@ -622,10 +694,10 @@ describe("patch writer", () => {
 
     const extractor = new RpgMakerMvMzExtractor();
     const units = await extractor.extract(root, { includePlugins: true });
-    const choiceUnit = units.find((unit) => unit.id === "plugins.0.parameters.Choices.$json.0.label");
+    const choiceUnit = units.find((unit) => unit.id === "plugins.0.parameters.Choices.$json.#0.label");
     expect(choiceUnit).toMatchObject({
       source: "Quest Log",
-      constraints: { sourceEncoding: "json-stringified-json", encodedJsonPath: "0.label" }
+      constraints: { sourceEncoding: "json-stringified-json", encodedJsonPath: "#0.label" }
     });
 
     const result = await extractor.applyTranslations(

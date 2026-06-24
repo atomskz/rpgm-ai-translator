@@ -18,6 +18,7 @@
  */
 
 import type { TranslationCategory, TranslationUnit } from "../../types.js";
+import { encodeArrayIndexSegment, encodeObjectKeySegment } from "../../utils/json-path.js";
 import {
   type DraftBase,
   type UnitDraft,
@@ -63,7 +64,9 @@ function visitEncodedJsonStrings(
   visit: (segments: string[], key: string, value: string) => void
 ): void {
   if (Array.isArray(value)) {
-    value.forEach((item, index) => visitEncodedJsonStrings(item, [...pathSegments, String(index)], visit));
+    value.forEach((item, index) =>
+      visitEncodedJsonStrings(item, [...pathSegments, encodeArrayIndexSegment(index)], visit)
+    );
     return;
   }
 
@@ -72,7 +75,7 @@ function visitEncodedJsonStrings(
   }
 
   for (const [key, item] of Object.entries(value)) {
-    const segments = [...pathSegments, key];
+    const segments = [...pathSegments, encodeObjectKeySegment(key)];
     if (typeof item === "string") {
       visit(segments, key, item);
     } else {

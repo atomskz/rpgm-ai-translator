@@ -27,7 +27,14 @@ import {
   replacePluginsArray,
   setPluginParameter
 } from "../plugins/index.js";
-import { getJsonPath, getJsonPathSegments, parseJsonPath, setJsonPath, setJsonPathSegments } from "../utils/json-path.js";
+import {
+  decodeEncodedJsonSegment,
+  getJsonPath,
+  getJsonPathSegments,
+  parseJsonPath,
+  setJsonPath,
+  setJsonPathSegments
+} from "../utils/json-path.js";
 import { detectJsonStyle, pathExists, serializeJson, writeFileAtomic, type JsonStyle } from "../utils/fs.js";
 
 type PreparedFile = {
@@ -452,12 +459,14 @@ function currentSourceValue(currentValue: unknown, unit: TranslationUnit): strin
 }
 
 // Prefer the explicit segments (dot-safe); fall back to splitting the legacy
-// dotted path for units read from older units.json files.
+// dotted path for units read from older units.json files. Segments are decoded
+// from their stored form (array-index "#0" marker, escaped "#") to the raw
+// property key used for traversal; a string subscript indexes an array too.
 function encodedJsonSegments(unit: TranslationUnit): string[] | undefined {
-  if (unit.constraints?.encodedJsonSegments) {
-    return unit.constraints.encodedJsonSegments;
-  }
-  return unit.constraints?.encodedJsonPath ? parseJsonPath(unit.constraints.encodedJsonPath) : undefined;
+  const stored =
+    unit.constraints?.encodedJsonSegments ??
+    (unit.constraints?.encodedJsonPath ? parseJsonPath(unit.constraints.encodedJsonPath) : undefined);
+  return stored?.map(decodeEncodedJsonSegment);
 }
 
 function encodeTranslation(unit: TranslationUnit, currentValue: unknown, translation: string): string {
