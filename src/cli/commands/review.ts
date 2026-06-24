@@ -90,5 +90,12 @@ export async function reviewCommand(args: string[], io: CliIO): Promise<number> 
   });
   await writeTranslationResultsFile(out, result.translations);
   io.stderr(`Reviewed: ${result.reviewed}, failed: ${result.failed}, skipped: ${result.skipped}\n`);
+  // A pass that reviewed nothing while batches failed (an expired key, a downed
+  // endpoint) is a hard failure, not a silent success: exit non-zero so a
+  // `review && validate && apply` chain stops instead of shipping un-reviewed text.
+  if (result.reviewed === 0 && result.failed > 0) {
+    io.stderr("Review produced no reviewed translations; every batch failed.\n");
+    return 1;
+  }
   return 0;
 }
