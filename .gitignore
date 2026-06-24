@@ -17,6 +17,10 @@ temp/
 *.bak
 *.backup
 
+# npm pack output
+*.tgz
+*.tar
+
 # Secrets
 apikey.txt
 *.key
