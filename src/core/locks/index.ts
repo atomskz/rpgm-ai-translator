@@ -17,13 +17,21 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { mkdir, open, readFile, rm } from "node:fs/promises";
+import { rmSync } from "node:fs";
+import { mkdir, open, readFile, rename, rm } from "node:fs/promises";
 import path from "node:path";
 
 const LOCK_FILENAME = ".rpgm-run.lock";
 
+// Per-process counter so each reclaim renames the stale lock to a unique name,
+// even when the same process reclaims more than once.
+let reclaimCounter = 0;
+
 export type DirectoryLock = {
   release(): Promise<void>;
+  // Synchronous removal for signal handlers, which must finish before the process
+  // is torn down (an async release would not run in time).
+  releaseSync(): void;
 };
 
 // Acquire an exclusive lock on a directory for the duration of a run, so two
@@ -42,23 +50,23 @@ export async function acquireDirectoryLock(dirPath: string): Promise<DirectoryLo
       }
       released = true;
       await rm(lockPath, { force: true });
+    },
+    releaseSync() {
+      if (released) {
+        return;
+      }
+      released = true;
+      rmSync(lockPath, { force: true });
     }
   };
 }
 
 async function createLockFile(lockPath: string): Promise<void> {
-  try {
-    await writeNewLockFile(lockPath);
-    return;
-  } catch (error: unknown) {
-    if (!isErrno(error, "EEXIST")) {
-      throw error;
-    }
-  }
-  // The lock exists. Reclaim it only if the run that wrote it has clearly died;
-  // otherwise refuse so a live concurrent run is never disturbed.
-  if (await isStaleLock(lockPath)) {
-    await rm(lockPath, { force: true });
+  // A starting run may find a stale lock and reclaim it, and another starting run
+  // can race for the same one. reclaimStaleLock elects a single winner, so loop a
+  // bounded number of times: create, and on EEXIST either reclaim (if stale) or
+  // give up to a live holder.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       await writeNewLockFile(lockPath);
       return;
@@ -67,11 +75,35 @@ async function createLockFile(lockPath: string): Promise<void> {
         throw error;
       }
     }
+    // The lock exists. Reclaim it only if the run that wrote it has clearly died;
+    // otherwise refuse so a live concurrent run is never disturbed.
+    if (!(await isStaleLock(lockPath))) {
+      break;
+    }
+    await reclaimStaleLock(lockPath);
   }
   throw new Error(
     `Another run is using '${path.dirname(lockPath)}' (lock file '${lockPath}'). ` +
       "Wait for it to finish, pass a different --work-dir, or delete the lock file if no run is active."
   );
+}
+
+// Claim the right to delete a stale lock atomically by renaming it to a unique
+// name first. The source exists once, so only one concurrent reclaimer's rename
+// succeeds; the rest get ENOENT and retry. Without this, two runs could both rm
+// the stale lock and recreate it, ending up as co-owners of the same work dir.
+async function reclaimStaleLock(lockPath: string): Promise<void> {
+  const reclaimedPath = `${lockPath}.${process.pid}.${reclaimCounter++}.stale`;
+  try {
+    await rename(lockPath, reclaimedPath);
+  } catch (error: unknown) {
+    if (isErrno(error, "ENOENT")) {
+      // Another reclaimer moved it first; loop and try to create our own lock.
+      return;
+    }
+    throw error;
+  }
+  await rm(reclaimedPath, { force: true });
 }
 
 async function writeNewLockFile(lockPath: string): Promise<void> {

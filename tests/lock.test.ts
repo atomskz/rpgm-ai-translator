@@ -50,4 +50,31 @@ describe("acquireDirectoryLock", () => {
     await lock.release();
     await expect(lock.release()).resolves.toBeUndefined();
   });
+
+  it("releaseSync removes the lock file so a later run can acquire it", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "rpgm-lock-"));
+    const lock = await acquireDirectoryLock(dir);
+
+    lock.releaseSync();
+    expect(await readdir(dir)).not.toContain(LOCK_FILENAME);
+
+    const second = await acquireDirectoryLock(dir);
+    await second.release();
+  });
+
+  it("never grants two owners when concurrent runs reclaim the same stale lock", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "rpgm-lock-"));
+    // A dead pid makes the existing lock reclaimable, so both racers contend for it.
+    await writeFile(path.join(dir, LOCK_FILENAME), JSON.stringify({ pid: 2147483646, startedAt: "x" }), "utf8");
+
+    const results = await Promise.allSettled([acquireDirectoryLock(dir), acquireDirectoryLock(dir)]);
+    const acquired = results.filter((result) => result.status === "fulfilled");
+
+    expect(acquired).toHaveLength(1);
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        await result.value.release();
+      }
+    }
+  });
 });

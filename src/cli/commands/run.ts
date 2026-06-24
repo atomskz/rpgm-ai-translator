@@ -82,9 +82,20 @@ export async function runCommand(args: string[], io: CliIO): Promise<number> {
   // sharing it cannot interleave checkpoint/memory appends and corrupt them.
   const workDir = readOption(args, "--work-dir") ?? `${outDir}-work`;
   const lock = await acquireDirectoryLock(workDir);
+  // SIGINT/SIGTERM (common on a long run) bypass the finally below, so remove the
+  // lock synchronously here and re-raise the signal so the process still exits
+  // with the conventional code instead of leaving a lock owned by a dead pid.
+  const onSignal = (signal: NodeJS.Signals): void => {
+    lock.releaseSync();
+    process.kill(process.pid, signal);
+  };
+  process.once("SIGINT", onSignal);
+  process.once("SIGTERM", onSignal);
   try {
     return await executeRun(args, io);
   } finally {
+    process.removeListener("SIGINT", onSignal);
+    process.removeListener("SIGTERM", onSignal);
     await lock.release();
   }
 }
