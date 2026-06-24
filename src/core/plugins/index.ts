@@ -30,15 +30,70 @@ export type RpgMakerPlugin = {
 const PLUGINS_PATH_PATTERN = /^(\d+)\.parameters\.(.+)$/;
 
 export function parsePluginsJs(raw: string): RpgMakerPlugin[] {
-  const match = raw.match(/\$plugins\s*=\s*(\[[\s\S]*\])\s*;?\s*$/);
-  if (!match) {
+  const located = locatePluginsArray(raw);
+  if (!located) {
     throw new Error("Could not parse plugins.js: missing $plugins array");
   }
-  const parsed = JSON.parse(match[1]) as unknown;
+  const parsed = JSON.parse(located.arrayText) as unknown;
   if (!Array.isArray(parsed)) {
     throw new Error("Could not parse plugins.js: $plugins is not an array");
   }
   return parsed as RpgMakerPlugin[];
+}
+
+// Locate the `$plugins = [...]` array by scanning balanced brackets from the
+// assignment, instead of anchoring on end-of-file. Anchoring dropped (or
+// mis-grabbed) the whole file when anything followed the array, such as a trailing
+// statement a hand-edited plugins.js sometimes carries. Returns the text before
+// the array, the array literal itself, and everything after it.
+function locatePluginsArray(raw: string): { prefix: string; arrayText: string; suffix: string } | undefined {
+  const assignment = raw.match(/\$plugins\s*=\s*/);
+  if (!assignment || assignment.index == null) {
+    return undefined;
+  }
+  const arrayStart = assignment.index + assignment[0].length;
+  if (raw[arrayStart] !== "[") {
+    return undefined;
+  }
+  const arrayEnd = scanBalancedArrayEnd(raw, arrayStart);
+  if (arrayEnd == null) {
+    return undefined;
+  }
+  return {
+    prefix: raw.slice(0, arrayStart),
+    arrayText: raw.slice(arrayStart, arrayEnd),
+    suffix: raw.slice(arrayEnd)
+  };
+}
+
+// Returns the index just past the `]` that closes the array opened at `start`,
+// honoring double-quoted strings (and their escapes) so a `]` inside a string does
+// not end the scan early. Returns undefined if the brackets never balance.
+function scanBalancedArrayEnd(raw: string, start: number): number | undefined {
+  let depth = 0;
+  let inString = false;
+  for (let index = start; index < raw.length; index += 1) {
+    const char = raw[index];
+    if (inString) {
+      if (char === "\\") {
+        index += 1;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+    } else if (char === "[") {
+      depth += 1;
+    } else if (char === "]") {
+      depth -= 1;
+      if (depth === 0) {
+        return index + 1;
+      }
+    }
+  }
+  return undefined;
 }
 
 export function serializePluginsJs(plugins: RpgMakerPlugin[]): string {
@@ -49,19 +104,18 @@ export function serializePluginsJs(plugins: RpgMakerPlugin[]): string {
 // keeping the file's header comments and surrounding text intact and matching the
 // array's original minified-vs-pretty shape, so the patch diff stays minimal.
 export function replacePluginsArray(raw: string, plugins: RpgMakerPlugin[]): string {
-  const match = raw.match(/(\$plugins\s*=\s*)(\[[\s\S]*\])(\s*;?\s*)$/);
-  if (!match || match.index == null) {
+  const located = locatePluginsArray(raw);
+  if (!located) {
     throw new Error("Could not locate $plugins array to rewrite");
   }
-  const [, prefix, arrayText] = match;
+  const { prefix, arrayText, suffix } = located;
   const indent = arrayText.includes("\n") ? 2 : undefined;
   // JSON.stringify emits LF; match the file's dominant EOL so the rewritten
   // array does not introduce mixed line endings into a CRLF plugins.js.
   const eol = detectEol(raw);
   const serializedLf = JSON.stringify(plugins, null, indent);
   const serialized = eol === "\r\n" ? serializedLf.replace(/\n/g, "\r\n") : serializedLf;
-  const arrayStart = match.index + prefix.length;
-  return `${raw.slice(0, arrayStart)}${serialized}${raw.slice(arrayStart + arrayText.length)}`;
+  return `${prefix}${serialized}${suffix}`;
 }
 
 export function getPluginParameter(plugins: RpgMakerPlugin[], jsonPath: string): string | undefined {

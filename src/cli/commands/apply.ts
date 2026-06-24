@@ -33,6 +33,7 @@ export async function applyCommand(args: string[], io: CliIO): Promise<number> {
   const projectPath = requirePositional(args, 0, "project path");
   const translationsPath = requirePositional(args, 1, "translations path");
   const applyOptions = readApplyOptions(args);
+  applyOptions.onWarning = (message) => io.stderr(`Warning: ${message}\n`);
   // Patch mode writes into --out; without it writePatch throws deep in the writer
   // with no usage hint. Fail early as a UsageError, like patch-font and run do.
   if (applyOptions.mode === "patch" && !applyOptions.outDir) {

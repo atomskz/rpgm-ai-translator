@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { copyFile, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { ApplyOptions, ApplyResult, TranslationResult, TranslationUnit } from "../types.js";
 import { restorePlaceholders } from "../placeholders/index.js";
@@ -94,7 +94,7 @@ export async function writePatch(
   }
 
   const root = path.resolve(projectPath);
-  const prepared = await prepareFiles(root, units, translations);
+  const prepared = await prepareFiles(root, units, translations, options.onWarning);
 
   if (options.dryRun) {
     return previewResult(root, options, prepared);
@@ -129,7 +129,8 @@ function previewResult(
 async function prepareFiles(
   root: string,
   units: TranslationUnit[],
-  translations: TranslationResult[]
+  translations: TranslationResult[],
+  onWarning?: (message: string) => void
 ): Promise<{ files: PreparedFile[]; skipped: number }> {
   const unitsById = new Map(units.map((unit) => [unit.id, unit]));
   const translatedByFile = new Map<string, Array<{ unit: TranslationUnit; result: TranslationResult }>>();
@@ -147,6 +148,7 @@ async function prepareFiles(
     translatedByFile.set(unit.filePath, bucket);
   }
 
+  const realRoot = await realpath(root).catch(() => root);
   const files: PreparedFile[] = [];
   for (const [relativeFilePath, entries] of translatedByFile.entries()) {
     // Validate before any join so a traversal attempt fails loudly instead of
@@ -154,6 +156,12 @@ async function prepareFiles(
     assertSafeRelativePath(relativeFilePath);
     const sourcePath = path.join(root, relativeFilePath);
     try {
+      // Defense-in-depth over the lexical check: a symlink inside the project must
+      // not resolve the read/write target outside it (an in-place write follows it).
+      const realSource = await realpath(sourcePath);
+      if (realSource !== realRoot && !isInsideDirectory(realRoot, realSource)) {
+        throw new Error("resolves outside the project directory via a symlink");
+      }
       const preparedFile = relativeFilePath.endsWith("js/plugins.js")
         ? await preparePluginsFile(relativeFilePath, sourcePath, entries)
         : await prepareJsonFile(relativeFilePath, sourcePath, entries);
@@ -162,10 +170,13 @@ async function prepareFiles(
       if (preparedFile.unitsApplied > 0) {
         files.push(preparedFile);
       }
-    } catch {
-      // A source file that cannot be read or parsed (e.g. a non-standard
-      // plugins.js) is skipped so its translations do not abort the whole patch.
+    } catch (error: unknown) {
+      // A source file that cannot be read, parsed, or safely resolved (e.g. a
+      // non-standard plugins.js) is skipped so its translations do not abort the
+      // whole patch — but the reason is surfaced rather than silently counted.
       skipped += entries.length;
+      const message = error instanceof Error ? error.message : String(error);
+      onWarning?.(`Skipped ${relativeFilePath} (${entries.length} translation(s)): ${message}`);
     }
   }
 
@@ -440,9 +451,25 @@ function timestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, "-");
 }
 
+// Decode a JSON string literal (the quoted form stored in a data file) to its
+// string value, or undefined when it is not a valid string literal.
+function decodeJsonStringLiteral(raw: string): string | undefined {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return typeof parsed === "string" ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function currentSourceValue(currentValue: unknown, unit: TranslationUnit): string | undefined {
   if (unit.constraints?.sourceEncoding === "json-string-literal") {
-    return currentValue === JSON.stringify(unit.source) ? unit.source : undefined;
+    // Compare by decoded value, not byte-for-byte: a valid but non-canonical
+    // literal in the file (escaped solidus `\/`, `\uXXXX`) decodes to the same
+    // string and must still match, where JSON.stringify(source) would not.
+    return typeof currentValue === "string" && decodeJsonStringLiteral(currentValue) === unit.source
+      ? unit.source
+      : undefined;
   }
 
   if (unit.constraints?.sourceEncoding === "json-stringified-json") {

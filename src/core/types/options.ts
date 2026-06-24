@@ -31,6 +31,9 @@ export type ApplyOptions = {
   // Compute what would be written (filesWritten/unitsApplied/skipped) without
   // creating or modifying any files.
   dryRun?: boolean;
+  // Reports why a source file was skipped (unreadable, unparseable, resolves
+  // outside the project) so a silent counter does not hide a real failure.
+  onWarning?: (message: string) => void;
 };
 
 export type ApplyResult = {

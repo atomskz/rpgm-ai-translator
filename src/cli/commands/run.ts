@@ -292,7 +292,8 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
     mode: "patch",
     outDir,
     includePlugins: extractOptions.includePlugins,
-    includeSpeakerNames: extractOptions.includeSpeakerNames
+    includeSpeakerNames: extractOptions.includeSpeakerNames,
+    onWarning: (warning) => io.stderr(`Warning: ${warning}\n`)
   });
   if (fontPath) {
     io.stdout("Applying font patch...\n");

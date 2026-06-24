@@ -1,4 +1,4 @@
-import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
@@ -418,6 +418,94 @@ describe("patch writer", () => {
     expect(encoded.items[0].text).toBe("[ArrZero]");
   });
 
+  it("reports the reason a source file is skipped instead of silently counting it", async () => {
+    const root = path.join(tmpdir(), `rpgm-skip-warn-${Date.now()}`);
+    const outDir = path.join(tmpdir(), `rpgm-skip-warn-out-${Date.now()}`);
+    await mkdir(path.join(root, "js"), { recursive: true });
+    await writeFile(path.join(root, "js", "plugins.js"), "var notPlugins = 1;\n", "utf8");
+    const unit: TranslationUnit = {
+      id: "plugins.0.parameters.title",
+      source: "Old",
+      filePath: "js/plugins.js",
+      jsonPath: "0.parameters.title",
+      engine: "rpgmaker-mz",
+      category: "plugin-parameter",
+      hash: "h"
+    };
+    const warnings: string[] = [];
+
+    const result = await writePatch(
+      root,
+      [unit],
+      [{ id: unit.id, source: "Old", translation: "Новый", provider: "m", model: "m", status: "translated" }],
+      { mode: "patch", outDir, onWarning: (message) => warnings.push(message) }
+    );
+
+    expect(result.skipped).toBe(1);
+    expect(warnings.join("")).toContain("js/plugins.js");
+    expect(warnings.join("")).toContain("$plugins");
+  });
+
+  it("applies a json-string-literal stored in a non-canonical form", async () => {
+    const root = path.join(tmpdir(), `rpgm-jsl-${Date.now()}`);
+    const outDir = path.join(tmpdir(), `rpgm-jsl-out-${Date.now()}`);
+    await mkdir(path.join(root, "data"), { recursive: true });
+    // The stored literal is valid but non-canonical (escaped solidus); a byte-for-byte
+    // comparison with JSON.stringify(source) would skip it.
+    await writeJson(path.join(root, "data", "Common.json"), { script: '"Visit \\/home"' });
+    const unit: TranslationUnit = {
+      id: "Common.script",
+      source: "Visit /home",
+      filePath: "data/Common.json",
+      jsonPath: "script",
+      engine: "rpgmaker-mz",
+      category: "system",
+      hash: "h",
+      constraints: { sourceEncoding: "json-string-literal" }
+    };
+
+    const result = await writePatch(
+      root,
+      [unit],
+      [{ id: unit.id, source: "Visit /home", translation: "Домой", provider: "m", model: "m", status: "translated" }],
+      { mode: "patch", outDir }
+    );
+
+    const patched = JSON.parse(await readFile(path.join(outDir, "data", "Common.json"), "utf8"));
+    expect(result.unitsApplied).toBe(1);
+    expect(patched.script).toBe(JSON.stringify("Домой"));
+  });
+
+  it("skips a unit file that resolves outside the project via a symlink", async () => {
+    const root = path.join(tmpdir(), `rpgm-symlink-${Date.now()}`);
+    const outside = path.join(tmpdir(), `rpgm-symlink-outside-${Date.now()}.json`);
+    const outDir = path.join(tmpdir(), `rpgm-symlink-out-${Date.now()}`);
+    await mkdir(path.join(root, "data"), { recursive: true });
+    await writeFile(outside, JSON.stringify({ name: "secret" }), "utf8");
+    await symlink(outside, path.join(root, "data", "Actors.json"));
+    const unit: TranslationUnit = {
+      id: "Actors.1.name",
+      source: "secret",
+      filePath: "data/Actors.json",
+      jsonPath: "name",
+      engine: "rpgmaker-mz",
+      category: "name",
+      hash: "h"
+    };
+    const warnings: string[] = [];
+
+    const result = await writePatch(
+      root,
+      [unit],
+      [{ id: unit.id, source: "secret", translation: "x", provider: "m", model: "m", status: "translated" }],
+      { mode: "patch", outDir, onWarning: (message) => warnings.push(message) }
+    );
+
+    expect(result.unitsApplied).toBe(0);
+    expect(result.skipped).toBe(1);
+    expect(warnings.join("")).toContain("symlink");
+  });
+
   it("writes in-place only after creating a backup", async () => {
     const root = path.join(tmpdir(), `rpgm-in-place-${Date.now()}`);
     const backupDir = path.join(tmpdir(), `rpgm-in-place-backup-${Date.now()}`);
@@ -835,6 +923,22 @@ describe("replacePluginsArray line endings", () => {
     const rewritten = replacePluginsArray(raw, [{ name: "X", parameters: { title: "New" } }]);
     expect(rewritten).not.toContain("\r");
     expect(rewritten).toContain("New");
+  });
+
+  it("parses and rewrites a $plugins array even when trailing code follows it", () => {
+    const raw =
+      "var $plugins = " +
+      JSON.stringify([{ name: "A", status: true, parameters: { title: "Old" } }]) +
+      ';\nwindow.$plugins.push({ note: "extra ]" });\n';
+
+    const plugins = parsePluginsJs(raw);
+    expect(plugins).toHaveLength(1);
+    expect(plugins[0].name).toBe("A");
+
+    const rewritten = replacePluginsArray(raw, [{ name: "A", status: true, parameters: { title: "Новый" } }]);
+    expect(rewritten).toContain("Новый");
+    // The trailing statement (and its string holding a `]`) survives the rewrite.
+    expect(rewritten).toContain('window.$plugins.push({ note: "extra ]" });');
   });
 });
 
