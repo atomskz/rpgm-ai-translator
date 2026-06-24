@@ -510,7 +510,8 @@ describe("DeepSeekProvider", () => {
     expect(body.messages[0].content).toContain("Review and revise");
     expect(body.messages[1].content).toContain("currentTranslation");
     expect(body.thinking).toEqual({ type: "enabled" });
-    expect(body.temperature).toBe(0.7);
+    // A reasoning pass omits temperature (ignored on V4, rejected by deepseek-reasoner).
+    expect(body.temperature).toBeUndefined();
     expect(body.max_tokens).toBe(2048);
     expect(results[0]).toMatchObject({
       translation: "Я готова.",

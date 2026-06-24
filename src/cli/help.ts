@@ -81,7 +81,7 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--model": "Provider model name.",
   "--batch-size": "Translation units per provider request.",
   "--timeout-ms": "Provider request timeout in milliseconds.",
-  "--temperature": "Provider sampling temperature (0..2).",
+  "--temperature": "Provider sampling temperature (0..2). Ignored on the reasoning review/repair passes.",
   "--max-tokens": "Provider output token limit (DeepSeek: 8192, or 32000 for reasoning review/repair).",
   "--max-tokens-budget": "Abort the run if estimated or used tokens exceed this budget.",
   "--retry-attempts": "Provider retry attempts for transient failures (timeout, network, rate limit, 5xx). Default: 2.",
@@ -202,6 +202,7 @@ Common options:
 
   --temperature <n>
       Provider sampling temperature. DeepSeek default: 0.3. Range: 0..2.
+      Ignored on the reasoning review/repair passes (thinking enabled).
 
   --max-tokens <n>
       Provider output token limit. DeepSeek default: 8192, or 32000 for the

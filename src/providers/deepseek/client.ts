@@ -68,15 +68,21 @@ export class DeepSeekClient {
     // When thinking is enabled the chain-of-thought is billed against max_tokens,
     // so use a larger default; an explicit --max-tokens still takes precedence.
     const defaultMaxTokens = thinkingMode === "enabled" ? DEFAULT_THINKING_MAX_TOKENS : DEFAULT_MAX_TOKENS;
-    const body = JSON.stringify({
+    const requestBody: Record<string, unknown> = {
       model,
       messages,
       thinking: { type: thinkingMode },
-      temperature: options.temperature ?? DEFAULT_TEMPERATURE,
       max_tokens: options.maxTokens ?? defaultMaxTokens,
       response_format: { type: "json_object" },
       stream: false
-    });
+    };
+    // A reasoning pass (thinking enabled) ignores temperature on DeepSeek V4 and
+    // rejects it with a non-retryable 400 on deepseek-reasoner, so only send it on
+    // a non-thinking request where it actually has an effect.
+    if (thinkingMode !== "enabled") {
+      requestBody.temperature = options.temperature ?? DEFAULT_TEMPERATURE;
+    }
+    const body = JSON.stringify(requestBody);
 
     // The client is the single retry layer. Honor the caller's --retry-attempts
     // so the pipeline's retry setting controls real provider retries instead of
