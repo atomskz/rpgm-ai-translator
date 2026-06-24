@@ -92,6 +92,53 @@ describe("CLI review and characters", () => {
     ]);
   });
 
+  it("discards an explicit review checkpoint when the target language changed", async () => {
+    const root = await createCliTempDir("rpgm-cli-review-stale-");
+    const unitsPath = path.join(root, "units.json");
+    const translationsPath = path.join(root, "translations.json");
+    const checkpointPath = path.join(root, "review.checkpoint.jsonl");
+    const outPath = path.join(root, "translations.reviewed.json");
+    const unit = dialogueUnit();
+    await writeJsonFixture(unitsPath, [unit]);
+    await writeJsonFixture(translationsPath, [
+      translatedResult({ id: unit.id, source: unit.source, translation: "Я готов." })
+    ]);
+    await writeJsonlFixture(checkpointPath, [
+      {
+        id: unit.id,
+        source: unit.source,
+        translation: "STALE EN CHECKPOINT",
+        provider: "deepseek",
+        model: "deepseek-v4-flash",
+        status: "translated"
+      }
+    ]);
+    // The signature beside the checkpoint records a different target language, so
+    // the checkpoint must be discarded rather than mixed into a --target ru review.
+    await writeJsonFixture(`${checkpointPath}.meta.json`, {
+      targetLanguage: "en",
+      sourceLanguage: "",
+      provider: "mock",
+      model: "",
+      glossaryHash: "stale"
+    });
+
+    const stderr: string[] = [];
+    const exitCode = await runCli(
+      ["review", unitsPath, translationsPath, "--provider", "mock", "--target", "ru", "--checkpoint", checkpointPath, "--out", outPath],
+      {
+        stdout: () => undefined,
+        stderr: (text) => stderr.push(text)
+      }
+    );
+
+    const reviewed = JSON.parse(await readFile(outPath, "utf8"));
+    expect(exitCode).toBe(0);
+    expect(stderr.join("")).toContain("checkpoint parameters");
+    expect(reviewed[0].translation).not.toBe("STALE EN CHECKPOINT");
+    expect(reviewed[0]).toMatchObject({ id: unit.id, metadata: { reviewed: true } });
+  });
+
   it("generates a character glossary from units", async () => {
     const root = await createCliTempDir("rpgm-cli-characters-");
     const unitsPath = path.join(root, "units.json");

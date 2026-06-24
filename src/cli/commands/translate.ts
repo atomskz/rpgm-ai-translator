@@ -22,22 +22,17 @@ import { JsonlTranslationMemory, translateWithMemory } from "../../core/memory/i
 import { createReport } from "../../core/reports/index.js";
 import {
   appendTranslationResultsJsonlFile,
-  readTranslationResultsJsonlFile,
   readTranslationUnitsFile,
-  resetTranslationResultsJsonlFile,
   writeTranslationResultsFile
 } from "../../core/translation-units/index.js";
 import { loadGlossary } from "../../config/index.js";
 import { createProvider } from "../../providers/index.js";
 import {
   checkpointedTranslationsById,
-  checkpointMetaPath,
   checkpointSignature,
-  checkpointSignaturesEqual,
   defaultCheckpointPath,
   missingCheckpointResult,
-  readCheckpointSignatureFile,
-  writeCheckpointSignatureFile
+  resolveCheckpoint
 } from "../checkpoints.js";
 import { maybeWriteReport } from "../file-utils.js";
 import {
@@ -50,6 +45,7 @@ import {
   requirePositional
 } from "../options.js";
 import { createProgressLogger } from "../progress.js";
+import type { TranslationResult } from "../../core/types.js";
 import type { CliIO } from "../types.js";
 
 export async function translateCommand(args: string[], io: CliIO): Promise<number> {
@@ -64,20 +60,20 @@ export async function translateCommand(args: string[], io: CliIO): Promise<numbe
   const glossaryPath = readOption(args, "--glossary");
   const units = await readTranslationUnitsFile(unitsPath);
   const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
-  const checkpointPath = checkpointOption ?? (out ? defaultCheckpointPath(out) : undefined);
   // Refuse to resume an explicit checkpoint written for a different language,
   // model, provider or glossary; reusing it would ship stale output. A derived
   // checkpoint (no --checkpoint) is reset each run, so it cannot bleed across.
+  const checkpointPath = checkpointOption ?? (out ? defaultCheckpointPath(out) : undefined);
   const signature = checkpointSignature(providerName, providerOptions, glossary);
-  const previousSignature = checkpointOption
-    ? await readCheckpointSignatureFile(checkpointMetaPath(checkpointOption))
-    : undefined;
-  const staleCheckpoint = previousSignature != null && !checkpointSignaturesEqual(previousSignature, signature);
-  if (staleCheckpoint && checkpointOption) {
-    await resetTranslationResultsJsonlFile(checkpointOption);
+  let checkpointResults: TranslationResult[] = [];
+  let staleCheckpoint = false;
+  let resumed = false;
+  if (checkpointPath) {
+    const resolved = await resolveCheckpoint({ checkpointOption, derivedPath: checkpointPath, signature });
+    checkpointResults = resolved.results;
+    staleCheckpoint = resolved.stale;
+    resumed = resolved.resumed;
   }
-  const checkpointResults =
-    checkpointOption && !staleCheckpoint ? await readTranslationResultsJsonlFile(checkpointOption) : [];
   const checkpointById = checkpointedTranslationsById(units, checkpointResults);
   const unitsToTranslate = units.filter((unit) => !checkpointById.has(unit.id));
   const tokenBudgetLimit = readPositiveIntegerOption(args, "--max-tokens-budget");
@@ -87,12 +83,9 @@ export async function translateCommand(args: string[], io: CliIO): Promise<numbe
     io.stderr("Warning: checkpoint parameters (language/model/glossary) changed; discarding it and translating fresh.\n");
   }
   if (checkpointPath) {
-    if (checkpointOption && !staleCheckpoint) {
+    if (resumed) {
       io.stdout(`Loaded checkpoint: ${checkpointById.size}/${units.length} translated units from ${checkpointPath}\n`);
-    } else if (!checkpointOption) {
-      await resetTranslationResultsJsonlFile(checkpointPath);
     }
-    await writeCheckpointSignatureFile(checkpointMetaPath(checkpointPath), signature);
     io.stdout(`Writing checkpoint: ${checkpointPath}\n`);
   }
   const provider = createProvider(providerName, readProviderConfig(args));

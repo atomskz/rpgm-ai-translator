@@ -18,6 +18,10 @@
  */
 
 import { readFile } from "node:fs/promises";
+import {
+  readTranslationResultsJsonlFile,
+  resetTranslationResultsJsonlFile
+} from "../core/translation-units/index.js";
 import type { CharacterGlossary, Glossary, TranslationResult, TranslationUnit } from "../core/types.js";
 import { writeFileAtomic } from "../core/utils/fs.js";
 import { hashCacheKey } from "../core/utils/hash.js";
@@ -98,6 +102,49 @@ export async function readCheckpointSignatureFile(metaPath: string): Promise<Che
 
 export async function writeCheckpointSignatureFile(metaPath: string, signature: CheckpointSignature): Promise<void> {
   await writeFileAtomic(metaPath, `${JSON.stringify(signature, null, 2)}\n`);
+}
+
+export type ResolvedCheckpoint = {
+  checkpointPath: string;
+  /** Results to seed resume; empty when the checkpoint is derived or stale. */
+  results: TranslationResult[];
+  /** An explicit --checkpoint was discarded because its signature no longer matches. */
+  stale: boolean;
+  /** An explicit --checkpoint is being resumed (compatible or unsigned). */
+  resumed: boolean;
+};
+
+// Resolves where the JSONL checkpoint lives and gates resume on the run
+// signature. An explicit --checkpoint written for a different language, model,
+// provider or glossary is discarded rather than silently reused (which would
+// ship stale output such as the previous language); a derived checkpoint (no
+// --checkpoint) is reset every run. Either way a fresh signature is stamped
+// beside the resolved path. translate/run/review/repair all funnel through this
+// so no command can resume an incompatible checkpoint.
+export async function resolveCheckpoint(params: {
+  checkpointOption: string | undefined;
+  derivedPath: string;
+  signature: CheckpointSignature;
+}): Promise<ResolvedCheckpoint> {
+  const { checkpointOption, derivedPath, signature } = params;
+  const checkpointPath = checkpointOption ?? derivedPath;
+  let results: TranslationResult[] = [];
+  let stale = false;
+  let resumed = false;
+  if (checkpointOption) {
+    const previousSignature = await readCheckpointSignatureFile(checkpointMetaPath(checkpointOption));
+    stale = previousSignature != null && !checkpointSignaturesEqual(previousSignature, signature);
+    if (stale) {
+      await resetTranslationResultsJsonlFile(checkpointOption);
+    } else {
+      results = await readTranslationResultsJsonlFile(checkpointOption);
+      resumed = true;
+    }
+  } else {
+    await resetTranslationResultsJsonlFile(derivedPath);
+  }
+  await writeCheckpointSignatureFile(checkpointMetaPath(checkpointPath), signature);
+  return { checkpointPath, results, stale, resumed };
 }
 
 export function checkpointedTranslationsById(

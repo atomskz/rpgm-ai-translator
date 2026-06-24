@@ -20,18 +20,18 @@
 import { reviewTranslations } from "../../core/review/index.js";
 import {
   appendTranslationResultsJsonlFile,
-  readTranslationResultsJsonlFile,
   readTranslationResultsFile,
   readTranslationUnitsFile,
-  resetTranslationResultsJsonlFile,
   writeTranslationResultsFile
 } from "../../core/translation-units/index.js";
 import { loadCharacterGlossary, loadGlossary } from "../../config/index.js";
 import { createProvider } from "../../providers/index.js";
 import {
   checkpointedTranslationsById,
+  checkpointSignature,
   defaultCheckpointPath,
-  mergeCheckpointTranslations
+  mergeCheckpointTranslations,
+  resolveCheckpoint
 } from "../checkpoints.js";
 import {
   assertProviderReady,
@@ -59,15 +59,23 @@ export async function reviewCommand(args: string[], io: CliIO): Promise<number> 
   const translations = await readTranslationResultsFile(translationsPath);
   const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
   const characterGlossary = charactersPath ? await loadCharacterGlossary(charactersPath) : undefined;
-  const checkpointPath = checkpointOption ?? defaultCheckpointPath(out);
-  const checkpointResults = checkpointOption ? await readTranslationResultsJsonlFile(checkpointOption) : [];
-  const checkpointById = checkpointedTranslationsById(units, checkpointResults);
+  // Gate resume on the run signature so a checkpoint written for a different
+  // target/model/glossary is discarded rather than mixing stale output into the
+  // review (e.g. resuming a --target en checkpoint under --target ru).
+  const signature = checkpointSignature(providerName, providerOptions, glossary, characterGlossary);
+  const { checkpointPath, results, stale, resumed } = await resolveCheckpoint({
+    checkpointOption,
+    derivedPath: defaultCheckpointPath(out),
+    signature
+  });
+  const checkpointById = checkpointedTranslationsById(units, results);
   const unitsToReview = units.filter((unit) => !checkpointById.has(unit.id));
   const translationsWithCheckpoint = mergeCheckpointTranslations(units, translations, checkpointById);
-  if (checkpointOption) {
+  if (stale) {
+    io.stderr("Warning: review checkpoint parameters (language/model/glossary) changed; discarding it and reviewing fresh.\n");
+  }
+  if (resumed) {
     io.stdout(`Loaded review checkpoint: ${checkpointById.size}/${units.length} translated units from ${checkpointPath}\n`);
-  } else {
-    await resetTranslationResultsJsonlFile(checkpointPath);
   }
   io.stdout(`Writing review checkpoint: ${checkpointPath}\n`);
   const result = await reviewTranslations(unitsToReview, translationsWithCheckpoint, createProvider(providerName, readProviderConfig(args)), {

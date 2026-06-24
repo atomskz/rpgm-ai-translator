@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli/app.js";
-import { actorNameUnit, createCliTempDir, writeJsonFixture } from "./cli/helpers.js";
+import { actorNameUnit, createCliTempDir, writeJsonFixture, writeJsonlFixture } from "./cli/helpers.js";
 
 describe("CLI validate and repair", () => {
   it("validates translations and writes a report", async () => {
@@ -130,6 +130,75 @@ describe("CLI validate and repair", () => {
         metadata: { repaired: true, repairMode: "translate" }
       })
     ]);
+  });
+
+  it("discards an explicit repair checkpoint when the target language changed", async () => {
+    const root = await createCliTempDir("rpgm-cli-repair-stale-");
+    const unitsPath = path.join(root, "units.json");
+    const translationsPath = path.join(root, "translations.json");
+    const reportPath = path.join(root, "report.json");
+    const checkpointPath = path.join(root, "repair.checkpoint.jsonl");
+    const outPath = path.join(root, "translations.repaired.json");
+    await writeJsonFixture(unitsPath, [actorNameUnit()]);
+    await writeJsonFixture(translationsPath, []);
+    await writeJsonFixture(reportPath, {
+      engine: "rpgmaker-mv",
+      filesScanned: 1,
+      unitsExtracted: 1,
+      unitsTranslated: 0,
+      fromMemory: 0,
+      failed: 0,
+      validationIssues: [
+        { id: "Actors.1.name", severity: "error", code: "MISSING_TRANSLATION", message: "Missing translation" }
+      ]
+    });
+    await writeJsonlFixture(checkpointPath, [
+      {
+        id: "Actors.1.name",
+        source: "Aria",
+        translation: "STALE EN CHECKPOINT",
+        provider: "deepseek",
+        model: "deepseek-v4-flash",
+        status: "translated"
+      }
+    ]);
+    // The signature records a different target, so the checkpoint must be dropped
+    // and the unit repaired fresh rather than resumed from the stale translation.
+    await writeJsonFixture(`${checkpointPath}.meta.json`, {
+      targetLanguage: "en",
+      sourceLanguage: "",
+      provider: "mock",
+      model: "",
+      glossaryHash: "stale"
+    });
+
+    const stderr: string[] = [];
+    const exitCode = await runCli(
+      [
+        "repair",
+        unitsPath,
+        translationsPath,
+        "--report",
+        reportPath,
+        "--provider",
+        "mock",
+        "--target",
+        "ru",
+        "--checkpoint",
+        checkpointPath,
+        "--out",
+        outPath
+      ],
+      {
+        stdout: () => undefined,
+        stderr: (text) => stderr.push(text)
+      }
+    );
+
+    const repaired = JSON.parse(await readFile(outPath, "utf8"));
+    expect(exitCode).toBe(0);
+    expect(stderr.join("")).toContain("checkpoint parameters");
+    expect(repaired[0].translation).toBe("[ru] Aria");
   });
 
   it("warns when the report was built from a different units file", async () => {

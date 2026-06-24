@@ -21,10 +21,8 @@ import { repairTranslations } from "../../core/repair/index.js";
 import { readReportFile, reportUnitsFingerprint } from "../../core/reports/index.js";
 import {
   appendTranslationResultsJsonlFile,
-  readTranslationResultsJsonlFile,
   readTranslationResultsFile,
   readTranslationUnitsFile,
-  resetTranslationResultsJsonlFile,
   writeTranslationResultsFile
 } from "../../core/translation-units/index.js";
 import { DefaultValidator, validateTranslationResults } from "../../core/validators/index.js";
@@ -32,8 +30,10 @@ import { loadCharacterGlossary, loadGlossary } from "../../config/index.js";
 import { createProvider } from "../../providers/index.js";
 import {
   checkpointedTranslationsById,
+  checkpointSignature,
   defaultCheckpointPath,
-  mergeCheckpointTranslations
+  mergeCheckpointTranslations,
+  resolveCheckpoint
 } from "../checkpoints.js";
 import {
   assertProviderReady,
@@ -76,16 +76,24 @@ export async function repairCommand(args: string[], io: CliIO): Promise<number> 
   }
   const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
   const characterGlossary = charactersPath ? await loadCharacterGlossary(charactersPath) : undefined;
-  const checkpointPath = checkpointOption ?? defaultCheckpointPath(out);
-  const checkpointResults = checkpointOption ? await readTranslationResultsJsonlFile(checkpointOption) : [];
-  const checkpointById = checkpointedTranslationsById(units, checkpointResults);
+  // Gate resume on the run signature so a checkpoint written for a different
+  // target/model/glossary is discarded rather than mixing stale output into the
+  // repair (e.g. resuming a --target en checkpoint under --target ru).
+  const signature = checkpointSignature(providerName, providerOptions, glossary, characterGlossary);
+  const { checkpointPath, results, stale, resumed } = await resolveCheckpoint({
+    checkpointOption,
+    derivedPath: defaultCheckpointPath(out),
+    signature
+  });
+  const checkpointById = checkpointedTranslationsById(units, results);
   if (checkpointById.size > 0) {
     translations = mergeCheckpointTranslations(units, translations, checkpointById);
   }
-  if (checkpointOption) {
+  if (stale) {
+    io.stderr("Warning: repair checkpoint parameters (language/model/glossary) changed; discarding it and repairing fresh.\n");
+  }
+  if (resumed) {
     io.stdout(`Loaded repair checkpoint: ${checkpointById.size}/${units.length} translated units from ${checkpointPath}\n`);
-  } else {
-    await resetTranslationResultsJsonlFile(checkpointPath);
   }
   io.stdout(`Writing repair checkpoint: ${checkpointPath}\n`);
   io.stdout(`Repairing translations for ${issueCodes ? issueCodes.join(",") : "all"} validation issue codes...\n`);
