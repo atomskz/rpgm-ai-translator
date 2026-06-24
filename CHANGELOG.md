@@ -19,6 +19,9 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Re-validate that an in-place target still resolves inside the project immediately
+  before each write, so a directory symlink swapped into the path after the initial
+  read-time check cannot redirect an in-place write out of the project (TOCTOU).
 - Cap the number of glossary entries injected into a single translation or review
   batch (keeping the most specific terms and warning when trimming), so a large
   glossary matching many common terms can no longer inflate the prompt and crowd out

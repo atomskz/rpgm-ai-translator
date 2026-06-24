@@ -363,12 +363,29 @@ async function rollbackPatchFiles(
   }
 }
 
+// Re-validate that a target still resolves inside the project immediately before an
+// in-place write. The read-time realpath check can be defeated by a symlink swapped
+// into a path component afterwards (TOCTOU); re-resolving here narrows that window so
+// the write cannot follow a freshly-planted directory symlink out of the project.
+async function assertResolvesInsideProject(realRoot: string, targetPath: string): Promise<void> {
+  let realTarget: string;
+  try {
+    realTarget = await realpath(targetPath);
+  } catch {
+    throw new Error(`'${targetPath}' could not be resolved before writing in place`);
+  }
+  if (realTarget !== realRoot && !isInsideDirectory(realRoot, realTarget)) {
+    throw new Error(`'${targetPath}' resolves outside the project directory via a symlink`);
+  }
+}
+
 async function writeInPlaceFiles(
   root: string,
   prepared: { files: PreparedFile[]; skipped: number; skippedUnmatched: number },
   options: ApplyOptions
 ): Promise<ApplyResult> {
   const backupDir = path.resolve(options.backupDir ?? path.join(root, `.rpgm-ai-translator-backup-${timestamp()}`));
+  const realRoot = await realpath(root).catch(() => root);
   const stagingDir = await createSiblingTempDir(root, "staging");
   const backupStagingDir = await createSiblingTempDir(backupDir, "backup");
   const filesWritten: string[] = [];
@@ -385,6 +402,7 @@ async function writeInPlaceFiles(
     const replaced: PreparedFile[] = [];
     try {
       for (const file of prepared.files) {
+        await assertResolvesInsideProject(realRoot, file.sourcePath);
         await atomicReplaceFile(path.join(stagingDir, file.relativeFilePath), file.sourcePath);
         replaced.push(file);
         filesWritten.push(file.sourcePath);
