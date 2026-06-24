@@ -336,6 +336,23 @@ describe("DeepSeekProvider", () => {
     expect(results[0].issues?.[0].message).toContain("ENOTFOUND");
   });
 
+  it("does not classify a 'fetch failed' message without a cause code as a network error", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      retryDelayMs: 0,
+      maxRetries: 0,
+      // No cause/code: classification must come from the code, not the message text.
+      fetchFn: async () => {
+        throw new TypeError("fetch failed");
+      }
+    });
+
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    expect(results[0].status).toBe("failed");
+    expect(results[0].issues?.[0].code).toBe("PROVIDER_RESPONSE_ERROR");
+  });
+
   it("reports an actionable error when the response is truncated at max_tokens", async () => {
     const provider = new DeepSeekProvider({
       apiKey: "test-key",

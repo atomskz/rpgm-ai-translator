@@ -17,6 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { DEFAULT_RETRY_ATTEMPTS } from "../../core/retry/index.js";
 import type { TranslateOptions } from "../../core/types.js";
 import type { ChatMessage } from "../prompt-builder.js";
 import {
@@ -50,7 +51,7 @@ export class DeepSeekClient {
     this.apiKey = config.apiKey ?? process.env.DEEPSEEK_API_KEY;
     this.baseUrl = (config.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
     this.fetchFn = config.fetchFn ?? ((url, init) => fetch(url, init) as Promise<DeepSeekResponse>);
-    this.maxRetries = config.maxRetries ?? 2;
+    this.maxRetries = config.maxRetries ?? DEFAULT_RETRY_ATTEMPTS;
     this.retryDelayMs = config.retryDelayMs ?? 250;
   }
 

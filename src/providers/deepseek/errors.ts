@@ -138,12 +138,12 @@ export function isTimeoutError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
 
+// Classify purely by the error code walked from the cause chain, never by the
+// message text: a `fetch failed` TypeError from undici always carries a `cause`
+// with the real code (ECONNRESET, ENOTFOUND, UND_ERR_*, ...), so matching the
+// message string was a brittle duplicate that contradicted the code-based path.
 export function isNetworkError(error: unknown): boolean {
-  if (networkErrorCode(error) !== undefined) {
-    return true;
-  }
-  // Fallback for runtimes that surface only the wrapper message without a cause.
-  return error instanceof Error && error.message.includes("fetch failed");
+  return networkErrorCode(error) !== undefined;
 }
 
 function normalizeProviderError(error: unknown): { code: ValidationIssue["code"]; message: string } {

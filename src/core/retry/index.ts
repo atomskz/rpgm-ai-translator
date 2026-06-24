@@ -19,6 +19,11 @@
 
 import type { ValidationIssue } from "../types.js";
 
+// Single source of truth for the default provider retry attempts, shared by the
+// DeepSeek client (the real retry layer) and this wrapper so they cannot drift.
+// Matches the documented `--retry-attempts` default.
+export const DEFAULT_RETRY_ATTEMPTS = 2;
+
 export type RetryEvent = {
   error: unknown;
   retryIndex: number;
@@ -57,6 +62,11 @@ export function isRetryableProviderError(error: unknown): boolean {
  * carried on `TranslateOptions`/`ReviewOptions`. Shared by the translate, review,
  * repair and character-inference passes so transient provider failures are
  * retried consistently rather than only on the bulk translate path.
+ *
+ * Note: the bundled providers (DeepSeek, mock) retry internally and degrade to
+ * failed results instead of throwing, so for them this wrapper performs no extra
+ * retries — its operation never throws. It is the retry path for a custom provider
+ * that signals a transient failure by throwing.
  */
 export async function withProviderRetry<T>(
   operation: () => Promise<T>,
@@ -71,7 +81,7 @@ export async function withProviderRetry<T>(
 }
 
 export async function withRetry<T>(operation: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
-  const retryAttempts = options.retryAttempts ?? 1;
+  const retryAttempts = options.retryAttempts ?? DEFAULT_RETRY_ATTEMPTS;
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= retryAttempts; attempt += 1) {
