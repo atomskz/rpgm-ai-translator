@@ -349,8 +349,9 @@ node dist/cli/index.js run --help      # flags for a single command
 
 On a usage error the CLI prints the command usage and a `--help` hint. Add
 `--verbose` to any command to print the full error stack and cause chain when a
-run fails. Global flags (`--verbose`, `--config`) may appear before or after the
-subcommand.
+run fails. Global flags (`--verbose`, `--config`) may be given as a leading flag
+before the command (`rpgm-ai-translator --verbose translate …`) or anywhere after
+it.
 
 Machine-readable output (extracted units, translation results, the validation
 report) goes to stdout; progress, summaries and warnings go to stderr. So

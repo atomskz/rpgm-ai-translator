@@ -20,6 +20,9 @@ Accepted by every command:
   of just the message.
 - `--help`, `-h` — print help for the command (or global help with no command).
 
+`--config` and `--verbose` may be given as a leading flag before the command
+(`rpgm-ai-translator --verbose <command> …`) or anywhere after it.
+
 Unknown options are rejected with a "did you mean" suggestion; an option missing
 its value, or a duplicated value option, is also rejected.
 

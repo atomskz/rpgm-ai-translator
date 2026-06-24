@@ -101,7 +101,8 @@ different `--work-dir` or delete the lock file.
 - Errors include `MISSING_TRANSLATION`, `EMPTY_TRANSLATION`, the placeholder
   issues (`MISSING_PLACEHOLDER`, `EXTRA_PLACEHOLDER`, `DUPLICATE_PLACEHOLDER`),
   `CONTROL_CODE_CHANGED`, `VARIABLE_CHANGED`, `NUMBER_CHANGED`, and
-  `MAX_LINES_EXCEEDED`.
+  `MAX_LINES_EXCEEDED`, plus the structural codes `INVALID_JSON`, `ID_MISMATCH`
+  and `UNKNOWN_TRANSLATION_ID`.
 - Warnings include `MAX_LENGTH_EXCEEDED` (horizontal fitting is best-effort),
   `TECHNICAL_TOKEN_CHANGED` (a `<tag>` or control code differs between source and
   translation), `UNCHANGED_TRANSLATION`, and `GLOSSARY_VIOLATION`.
