@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { DEFAULT_RETRY_ATTEMPTS } from "../../core/retry/index.js";
+import { DEFAULT_RETRY_ATTEMPTS, sleep } from "../../core/retry/index.js";
 import type { TranslateOptions } from "../../core/types.js";
 import type { ChatMessage } from "../prompt-builder.js";
 import {
@@ -178,10 +178,4 @@ export function retryAfterMs(response: DeepSeekResponse): number | undefined {
     return Math.max(0, dateMs - Date.now());
   }
   return undefined;
-}
-
-async function sleep(ms: number): Promise<void> {
-  await new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
 }
