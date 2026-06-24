@@ -98,6 +98,18 @@ describe("validateCommandArgs", () => {
 });
 
 describe("runCli option validation", () => {
+  it("accepts a global flag before the subcommand", async () => {
+    const errors: string[] = [];
+    const exitCode = await runCli(["--verbose", "detect", process.cwd()], {
+      stdout: () => undefined,
+      stderr: (text) => errors.push(text)
+    });
+
+    // The leading --verbose must not be mistaken for the command.
+    expect(exitCode).toBe(0);
+    expect(errors.join("")).not.toContain("Unknown command");
+  });
+
   it("reports an unknown option through the CLI and exits non-zero", async () => {
     const errors: string[] = [];
     const exitCode = await runCli(["translate", "units.json", "--taget", "ru"], {

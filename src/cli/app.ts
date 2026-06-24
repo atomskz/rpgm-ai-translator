@@ -29,7 +29,7 @@ import { translateCommand } from "./commands/translate.js";
 import { validateCommand } from "./commands/validate.js";
 import { loadProjectConfig, mergeConfigIntoArgs } from "../config/project.js";
 import { commandHelp, commandUsage, helpText } from "./help.js";
-import { readOption, UsageError, validateCommandArgs } from "./options.js";
+import { GLOBAL_BOOLEAN_FLAGS, GLOBAL_VALUE_OPTIONS, readOption, UsageError, validateCommandArgs } from "./options.js";
 import type { CliIO, CommandHandler } from "./types.js";
 
 export type { CliIO } from "./types.js";
@@ -48,8 +48,37 @@ const COMMANDS = new Map<string, CommandHandler>([
   ["run", runCommand]
 ]);
 
+// Peel global flags (--verbose, --config <value>) off the front of argv so they
+// can precede the subcommand. Stops at the first non-global token, which is the
+// command. Globals after the command are left in place and handled as usual.
+function splitLeadingGlobalArgs(argv: string[]): { leading: string[]; rest: string[] } {
+  const valueGlobals = new Set<string>(GLOBAL_VALUE_OPTIONS);
+  const booleanGlobals = new Set<string>(GLOBAL_BOOLEAN_FLAGS);
+  const leading: string[] = [];
+  let index = 0;
+  while (index < argv.length) {
+    const token = argv[index];
+    if (booleanGlobals.has(token)) {
+      leading.push(token);
+      index += 1;
+    } else if (valueGlobals.has(token) && index + 1 < argv.length) {
+      leading.push(token, argv[index + 1]);
+      index += 2;
+    } else {
+      break;
+    }
+  }
+  return { leading, rest: argv.slice(index) };
+}
+
 export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<number> {
-  const [command, ...args] = argv;
+  // Accept global flags before the subcommand (e.g. `--verbose translate ...`):
+  // strip the leading globals, dispatch on the next token, and append the globals
+  // to the command's args so they are still honored. Without this the leading flag
+  // was read as the command and reported as "Unknown command: --verbose".
+  const { leading, rest } = splitLeadingGlobalArgs(argv);
+  const [command, ...commandArgs] = rest;
+  const args = [...commandArgs, ...leading];
 
   try {
     if (!command || command === "--help" || command === "-h" || command === "help") {
