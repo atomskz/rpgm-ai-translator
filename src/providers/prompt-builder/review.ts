@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { ReviewOptions, ReviewUnit } from "../../core/types.js";
+import type { Glossary, ReviewOptions, ReviewUnit } from "../../core/types.js";
 import { filterGlossaryForReviewBatch } from "./glossary.js";
 import { buildReviewSystemPrompt } from "./system-prompts.js";
 import type { ChatMessage } from "./types.js";
@@ -36,10 +36,13 @@ export function buildReviewMessages(batch: ReviewUnit[], options: ReviewOptions)
   ];
 }
 
+// `glossary` is the already-filtered glossary for this batch. buildReviewMessages
+// is the single entry point that filters once and passes it in; this builder no
+// longer recomputes the filter by default.
 export function buildReviewUserPayload(
   batch: ReviewUnit[],
   options: ReviewOptions,
-  glossary = filterGlossaryForReviewBatch(options.glossary, batch)
+  glossary: Glossary
 ): Record<string, unknown> {
   return {
     targetLanguage: options.targetLanguage,

@@ -5,10 +5,8 @@ import {
   buildCharacterInferenceUserPayload,
   buildReviewMessages,
   buildReviewSystemPrompt,
-  buildReviewUserPayload,
   buildTranslationMessages,
-  buildTranslationSystemPrompt,
-  buildTranslationUserPayload
+  buildTranslationSystemPrompt
 } from "../src/providers/prompt-builder.js";
 import type { TranslationUnit } from "../src/core/types.js";
 
@@ -25,19 +23,21 @@ describe("prompt builder", () => {
   });
 
   it("puts source strings, context, constraints and glossary in the user payload", () => {
-    const payload = buildTranslationUserPayload([unit()], {
-      targetLanguage: "ru",
-      glossary: {
-        Aria: {
-          mode: "custom",
-          translation: "Ария"
-        },
-        Unused: {
-          mode: "custom",
-          translation: "Не используется"
+    const payload = JSON.parse(
+      buildTranslationMessages([unit()], {
+        targetLanguage: "ru",
+        glossary: {
+          Aria: {
+            mode: "custom",
+            translation: "Ария"
+          },
+          Unused: {
+            mode: "custom",
+            translation: "Не используется"
+          }
         }
-      }
-    });
+      })[1].content
+    );
 
     expect(payload).toMatchObject({
       targetLanguage: "ru",
@@ -82,10 +82,12 @@ describe("prompt builder", () => {
       source: "Add Salt to the pot.",
       normalizedSource: "Add Salt to the pot."
     };
-    const payload = buildTranslationUserPayload([saltUnit], {
-      targetLanguage: "ru",
-      glossary: { Al: { mode: "keep" }, Salt: { mode: "keep" } }
-    });
+    const payload = JSON.parse(
+      buildTranslationMessages([saltUnit], {
+        targetLanguage: "ru",
+        glossary: { Al: { mode: "keep" }, Salt: { mode: "keep" } }
+      })[1].content
+    );
 
     // "Salt" is a whole word so it is sent; "Al" only sits inside "Salt", so the
     // token-aware filter must not pull it into the prompt.
@@ -99,10 +101,12 @@ describe("prompt builder", () => {
       source: "ｱﾘｱが来た。",
       normalizedSource: "ｱﾘｱが来た。"
     };
-    const payload = buildTranslationUserPayload([kanaUnit], {
-      targetLanguage: "ru",
-      glossary: { "ｱﾘｱ": { mode: "keep" } }
-    });
+    const payload = JSON.parse(
+      buildTranslationMessages([kanaUnit], {
+        targetLanguage: "ru",
+        glossary: { "ｱﾘｱ": { mode: "keep" } }
+      })[1].content
+    );
 
     expect(payload.glossary).toHaveProperty("ｱﾘｱ");
   });
@@ -144,24 +148,26 @@ describe("prompt builder", () => {
 
   it("builds review prompts with current translations and character context", () => {
     const prompt = buildReviewSystemPrompt("ru");
-    const payload = buildReviewUserPayload(
-      [
+    const payload = JSON.parse(
+      buildReviewMessages(
+        [
+          {
+            id: "Map001.events.1.pages.0.list.1.parameters.0",
+            source: "I am ready.",
+            currentTranslation: "Я готов.",
+            normalizedSource: "I am ready.",
+            category: "dialogue",
+            context: { speaker: "Aria", eventId: 1 },
+            issues: [{ id: "Map001.events.1.pages.0.list.1.parameters.0", severity: "warning", code: "MAX_LENGTH_EXCEEDED", message: "Too long" }]
+          }
+        ],
         {
-          id: "Map001.events.1.pages.0.list.1.parameters.0",
-          source: "I am ready.",
-          currentTranslation: "Я готов.",
-          normalizedSource: "I am ready.",
-          category: "dialogue",
-          context: { speaker: "Aria", eventId: 1 },
-          issues: [{ id: "Map001.events.1.pages.0.list.1.parameters.0", severity: "warning", code: "MAX_LENGTH_EXCEEDED", message: "Too long" }]
+          targetLanguage: "ru",
+          characterGlossary: {
+            Aria: { gender: "female", translation: "Ария" }
+          }
         }
-      ],
-      {
-        targetLanguage: "ru",
-        characterGlossary: {
-          Aria: { gender: "female", translation: "Ария" }
-        }
-      }
+      )[1].content
     );
 
     expect(prompt).toContain("pronoun/gender agreement");

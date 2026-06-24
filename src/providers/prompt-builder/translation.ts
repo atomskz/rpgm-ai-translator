@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { TranslateOptions, TranslationUnit } from "../../core/types.js";
+import type { Glossary, TranslateOptions, TranslationUnit } from "../../core/types.js";
 import { filterGlossaryForBatch } from "./glossary.js";
 import { buildTranslationSystemPrompt } from "./system-prompts.js";
 import type { ChatMessage } from "./types.js";
@@ -36,10 +36,13 @@ export function buildTranslationMessages(batch: TranslationUnit[], options: Tran
   ];
 }
 
+// `glossary` is the already-filtered glossary for this batch. buildTranslationMessages
+// is the single entry point that filters once and passes it in; this builder no
+// longer recomputes the filter (an O(glossary x batch) regex scan) by default.
 export function buildTranslationUserPayload(
   batch: TranslationUnit[],
   options: TranslateOptions,
-  glossary = filterGlossaryForBatch(options.glossary, batch)
+  glossary: Glossary
 ): Record<string, unknown> {
   return {
     targetLanguage: options.targetLanguage,
