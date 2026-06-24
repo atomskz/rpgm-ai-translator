@@ -227,6 +227,9 @@ export type CommandOptionSpec = {
   // Appended to the "too many arguments" error when the extra positional is a
   // common confusion (characters takes translations via --translations).
   extraPositionalHint?: string;
+  // Alternate spellings accepted for a value option, mapped to the canonical flag,
+  // so run honours repair's --codes/--attempts without listing duplicates in --help.
+  aliases?: Readonly<Record<string, string>>;
 };
 
 // Allowed options per command, mirroring exactly what each command handler reads.
@@ -290,7 +293,9 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
       "--repair-codes", "--font", "--number-font", "--mode", "--backup", "--dialogue-max-length"
     ],
     booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--review", "--repair", "--dry-run"],
-    maxPositionals: 1
+    maxPositionals: 1,
+    // Accept repair's flag names so muscle memory transfers between the commands.
+    aliases: { "--codes": "--repair-codes", "--attempts": "--repair-attempts" }
   },
   "patch-font": {
     valueOptions: ["--out", "--font", "--number-font"],
@@ -343,9 +348,16 @@ export function validateCommandArgs(command: string, args: string[]): void {
   if (!spec) {
     return;
   }
-  const valueOptions = new Set<string>([...spec.valueOptions, ...GLOBAL_VALUE_OPTIONS]);
+  const aliases = spec.aliases ?? {};
+  const valueOptions = new Set<string>([...spec.valueOptions, ...Object.keys(aliases), ...GLOBAL_VALUE_OPTIONS]);
   const booleanFlags = new Set<string>([...spec.booleanFlags, ...GLOBAL_BOOLEAN_FLAGS]);
-  const knownOptions = [...spec.valueOptions, ...GLOBAL_VALUE_OPTIONS, ...spec.booleanFlags, ...GLOBAL_BOOLEAN_FLAGS];
+  const knownOptions = [
+    ...spec.valueOptions,
+    ...Object.keys(aliases),
+    ...GLOBAL_VALUE_OPTIONS,
+    ...spec.booleanFlags,
+    ...GLOBAL_BOOLEAN_FLAGS
+  ];
   const seenValueOptions = new Set<string>();
 
   for (let index = 0; index < args.length; index += 1) {
@@ -360,10 +372,13 @@ export function validateCommandArgs(command: string, args: string[]): void {
       continue;
     }
     if (valueOptions.has(token)) {
-      if (seenValueOptions.has(token)) {
+      // Collapse an alias to its canonical flag so --codes and --repair-codes
+      // count as the same option rather than slipping past as two distinct ones.
+      const canonicalToken = aliases[token] ?? token;
+      if (seenValueOptions.has(canonicalToken)) {
         throw new UsageError(`Option ${token} was provided more than once`);
       }
-      seenValueOptions.add(token);
+      seenValueOptions.add(canonicalToken);
       const value = args[index + 1];
       // Reject a missing value, the next flag standing in for one, and an
       // empty/whitespace value (e.g. --target "") that would otherwise slip past

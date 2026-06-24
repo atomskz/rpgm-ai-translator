@@ -83,6 +83,18 @@ describe("validateCommandArgs", () => {
   it("accepts the documented positionals for a two-argument command", () => {
     expect(() => validateCommandArgs("review", ["units.json", "translations.json", "--out", "out.json"])).not.toThrow();
   });
+
+  it("accepts repair's --codes and --attempts as aliases in run", () => {
+    expect(() =>
+      validateCommandArgs("run", ["./game", "--out", "./out", "--codes", "MISSING_TRANSLATION", "--attempts", "2"])
+    ).not.toThrow();
+  });
+
+  it("treats an alias and its canonical flag as the same option", () => {
+    expect(() =>
+      validateCommandArgs("run", ["./game", "--out", "./out", "--codes", "MISSING_TRANSLATION", "--repair-codes", "EMPTY_TRANSLATION"])
+    ).toThrow("Option --repair-codes was provided more than once");
+  });
 });
 
 describe("runCli option validation", () => {

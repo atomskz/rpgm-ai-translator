@@ -245,6 +245,29 @@ describe("run command", () => {
     expect(report.validationIssues).toEqual([]);
   });
 
+  it("accepts --attempts as an alias for --repair-attempts", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-repair-alias-"));
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "out");
+    const memoryPath = path.join(root, "memory.jsonl");
+    const sourceWithControlCode = String.raw`Hello \N[1].`;
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await mkdir(path.join(gamePath, "js"), { recursive: true });
+    await writeFile(path.join(gamePath, "js", "rpg_core.js"), "", "utf8");
+    await writeJson(path.join(gamePath, "data", "Actors.json"), [null, { id: 1, name: "Aria", profile: sourceWithControlCode }]);
+    await seedBrokenProfileMemory(gamePath, memoryPath, sourceWithControlCode, "[ru] Hello without placeholder.");
+
+    const output: string[] = [];
+    const exitCode = await runCli(
+      ["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--memory", memoryPath, "--repair", "--attempts", "2"],
+      { stdout: (text) => output.push(text), stderr: () => undefined }
+    );
+
+    // The alias mapped to --repair-attempts, so the progress shows two passes.
+    expect(exitCode).toBe(0);
+    expect(output.join("")).toContain("Repair attempt 1/2");
+  });
+
   it("discards checkpoints when the target language changes between runs", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-relang-"));
     const gamePath = path.join(root, "game");

@@ -139,7 +139,8 @@ repair, apply, optional font patch. `run` always writes a patch, so `--mode` and
 `--memory`, `--glossary`, `--characters`, `--repair-attempts`, `--repair-codes`,
 `--font`, `--number-font`, `--dialogue-max-length`, `--include-comments`,
 `--include-plugins`, `--include-speaker-names`, `--review`, `--repair`,
-`--dry-run`.
+`--dry-run`. `--codes` and `--attempts` are accepted as aliases for
+`--repair-codes` and `--repair-attempts`.
 
 ## Environment
 

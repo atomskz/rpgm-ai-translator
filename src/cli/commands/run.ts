@@ -118,8 +118,11 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   const glossaryPath = readOption(args, "--glossary");
   const charactersPath = readOption(args, "--characters");
   const repairEnabled = hasFlag(args, "--repair");
-  const repairAttempts = readPositiveIntegerOption(args, "--repair-attempts") ?? 1;
-  const repairCodes = readIssueCodesOption(args, "--repair-codes");
+  // Accept repair's --attempts/--codes as aliases so a user does not have to learn
+  // two names for the same setting; the run-specific names take precedence.
+  const repairAttempts =
+    readPositiveIntegerOption(args, "--repair-attempts") ?? readPositiveIntegerOption(args, "--attempts") ?? 1;
+  const repairCodes = readIssueCodesOption(args, "--repair-codes") ?? readIssueCodesOption(args, "--codes");
   const tokenBudgetLimit = readPositiveIntegerOption(args, "--max-tokens-budget");
   const budget = tokenBudgetLimit != null ? new TokenBudget(tokenBudgetLimit) : undefined;
   // Intermediate artifacts (units, raw/reviewed/repaired translations, memory,

@@ -58,7 +58,10 @@ const COMMAND_HELP: Record<string, CommandHelpMeta> = {
   run: {
     usage: "run <game> --out <dir> [options]",
     summary: "Full pipeline: detect, extract, translate, optional review, validate, optional repair, apply, optional font patch.",
-    notes: ["run always writes a patch; --mode and --backup are ignored."]
+    notes: [
+      "run always writes a patch; --mode and --backup are ignored.",
+      "--codes and --attempts are accepted as aliases for --repair-codes and --repair-attempts."
+    ]
   }
 };
 
