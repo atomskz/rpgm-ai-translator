@@ -242,7 +242,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   characters: {
     valueOptions: [
       "--out", "--translations", "--provider", "--base-url", "--target", "--model", "--batch-size",
-      "--timeout-ms", "--temperature", "--max-tokens"
+      "--timeout-ms", "--temperature", "--max-tokens", "--max-tokens-budget"
     ],
     booleanFlags: ["--draft-only", "--include-mentions"]
   },

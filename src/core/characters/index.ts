@@ -26,6 +26,7 @@ import type {
   TranslationUnit
 } from "../types.js";
 import { normalizeBatchSize } from "../batching/index.js";
+import type { TokenBudget } from "../cost/index.js";
 import { isRetryableProviderError, withProviderRetry } from "../retry/index.js";
 
 export type CharacterExtractionOptions = {
@@ -81,10 +82,16 @@ export function extractCharacterCandidates(
 export async function inferCharacterGlossary(
   candidates: CharacterCandidate[],
   provider: LLMProvider,
-  options: CharacterInferenceOptions
+  options: CharacterInferenceOptions,
+  budget?: TokenBudget
 ): Promise<CharacterGlossary> {
   const batchSize = normalizeBatchSize(options.batchSize);
   const glossary: CharacterGlossary = {};
+  // The provider degrades to a review draft instead of surfacing token usage, so
+  // charge the budget a per-batch estimate and abort once the cumulative estimate
+  // passes the limit — mirroring how translate guards each batch against
+  // --max-tokens-budget rather than letting this pass spend without bound.
+  let estimatedTokens = 0;
 
   for (let index = 0; index < candidates.length; index += batchSize) {
     const batch = candidates.slice(index, index + batchSize);
@@ -99,9 +106,30 @@ export async function inferCharacterGlossary(
       response = markBatchForManualReview(batch, error);
     }
     mergePreferringConfidence(glossary, reconcileBatch(batch, response, options.onWarning));
+    if (budget) {
+      estimatedTokens += estimateCandidateTokens(batch);
+      budget.assertEstimateWithin(estimatedTokens);
+    }
   }
 
   return glossary;
+}
+
+// Rough per-candidate token estimate (the provider does not report usage for
+// inference). Mirrors the cost module's ~4-chars-per-token plus fixed per-item
+// overhead heuristic so the character pass is bounded by the same budget guard.
+const CHARS_PER_TOKEN = 4;
+const OVERHEAD_TOKENS_PER_CANDIDATE = 16;
+
+function estimateCandidateTokens(candidates: CharacterCandidate[]): number {
+  let characters = 0;
+  for (const candidate of candidates) {
+    characters += candidate.name.length + (candidate.suggestedTranslation?.length ?? 0);
+    for (const evidence of candidate.evidence) {
+      characters += evidence.source.length + (evidence.translation?.length ?? 0);
+    }
+  }
+  return Math.ceil(characters / CHARS_PER_TOKEN) + candidates.length * OVERHEAD_TOKENS_PER_CANDIDATE;
 }
 
 // Reconcile a batch's response against the requested candidates: drop entries

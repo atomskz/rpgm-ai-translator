@@ -4,6 +4,7 @@ import {
   extractCharacterCandidates,
   inferCharacterGlossary
 } from "../src/core/characters/index.js";
+import { TokenBudget } from "../src/core/cost/index.js";
 import type { LLMProvider, TranslationUnit } from "../src/core/types.js";
 
 describe("character candidates", () => {
@@ -181,6 +182,34 @@ describe("character candidates", () => {
 
     expect(Object.keys(result)).toEqual(["Aria"]);
     expect(warnings[0]).toContain("returned 1 unrequested name(s): Ghost");
+  });
+
+  it("aborts character inference once the token budget is exceeded", async () => {
+    const seen: string[][] = [];
+    const provider: LLMProvider = {
+      name: "test",
+      translateBatch: async () => [],
+      reviewBatch: async () => [],
+      inferCharacters: async (batch) => {
+        seen.push(batch.map((candidate) => candidate.name));
+        return Object.fromEntries(batch.map((candidate) => [candidate.name, { gender: "unknown", type: "person" }]));
+      }
+    };
+
+    await expect(
+      inferCharacterGlossary(
+        [
+          { name: "Aria", sources: ["actor"], occurrences: 1, evidence: [] },
+          { name: "Borin", sources: ["actor"], occurrences: 1, evidence: [] }
+        ],
+        provider,
+        { targetLanguage: "ru", batchSize: 1 },
+        new TokenBudget(5)
+      )
+    ).rejects.toThrow(/--max-tokens-budget/);
+
+    // The first batch was sent, then the budget tripped before the second.
+    expect(seen).toEqual([["Aria"]]);
   });
 
   it("keeps the higher-confidence entry when a name recurs across batches", async () => {

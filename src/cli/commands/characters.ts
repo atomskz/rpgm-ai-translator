@@ -26,12 +26,14 @@ import {
   readTranslationResultsFile,
   readTranslationUnitsFile
 } from "../../core/translation-units/index.js";
+import { TokenBudget } from "../../core/cost/index.js";
 import { createProvider } from "../../providers/index.js";
 import { writeJson } from "../file-utils.js";
 import {
   assertProviderReady,
   hasFlag,
   readOption,
+  readPositiveIntegerOption,
   readProviderCliOptions,
   readProviderConfig,
   readProviderName,
@@ -49,6 +51,8 @@ export async function charactersCommand(args: string[], io: CliIO): Promise<numb
     assertProviderReady(providerName);
   }
   const providerOptions = readProviderCliOptions(args);
+  const tokenBudgetLimit = readPositiveIntegerOption(args, "--max-tokens-budget");
+  const budget = tokenBudgetLimit != null ? new TokenBudget(tokenBudgetLimit) : undefined;
   const units = await readTranslationUnitsFile(unitsPath);
   const translations = translationsPath ? await readTranslationResultsFile(translationsPath) : [];
   const candidates = extractCharacterCandidates(units, translations, {
@@ -57,10 +61,15 @@ export async function charactersCommand(args: string[], io: CliIO): Promise<numb
   const glossary =
     providerName === "none" || hasFlag(args, "--draft-only")
       ? candidatesToDraftGlossary(candidates)
-      : await inferCharacterGlossary(candidates, createProvider(providerName, readProviderConfig(args)), {
-          ...providerOptions,
-          onWarning: (message) => io.stderr(`Warning: ${message}\n`)
-        });
+      : await inferCharacterGlossary(
+          candidates,
+          createProvider(providerName, readProviderConfig(args)),
+          {
+            ...providerOptions,
+            onWarning: (message) => io.stderr(`Warning: ${message}\n`)
+          },
+          budget
+        );
   await writeJson(out, glossary);
   io.stdout(`Character candidates: ${candidates.length}. Wrote ${Object.keys(glossary).length} character entries.\n`);
   return 0;
