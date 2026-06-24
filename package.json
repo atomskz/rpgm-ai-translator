@@ -3,6 +3,14 @@
   "version": "0.1.6",
   "description": "AI-assisted translation pipeline for RPG Maker MV/MZ games.",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "engines": {
     "node": ">=20.19.0"
   },
@@ -21,6 +29,7 @@
     "lint": "eslint .",
     "pack:check": "npm pack --dry-run",
     "prepack": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm run lint && npm test",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

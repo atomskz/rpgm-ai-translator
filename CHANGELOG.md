@@ -6,6 +6,9 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Changed
 
+- Expose the package as a typed entry point (`main`/`types`/`exports` →
+  `dist/index`), stop shipping source maps that pointed at the unpublished `src/`
+  tree, and run `typecheck`/`lint`/`test` on `prepublishOnly`.
 - Exit non-zero on a partial result so a wrapping script or agent does not treat it
   as a clean success: `run` and `repair` exit `2` when apply-blocking validation
   errors remain unresolved (the patch is still written, without the affected
