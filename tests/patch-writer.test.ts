@@ -43,6 +43,57 @@ describe("patch writer", () => {
     expect(patched[1].description).toBe(String.raw`Восстанавливает \V[1] ОЗ.`);
   });
 
+  it("changes only the translated leaf and preserves the rest of the document", async () => {
+    const root = path.join(tmpdir(), `rpgm-patch-roundtrip-${Date.now()}`);
+    const outDir = path.join(tmpdir(), `rpgm-patch-roundtrip-out-${Date.now()}`);
+    await mkdir(path.join(root, "data"), { recursive: true });
+    await mkdir(path.join(root, "js"), { recursive: true });
+    await writeFile(path.join(root, "js", "rpg_core.js"), "", "utf8");
+    // A document with a null hole, numbers, an empty string, nested objects and
+    // arrays, plus untranslated siblings — everything but one leaf must survive.
+    const original = [
+      null,
+      {
+        id: 1,
+        name: "Potion",
+        description: "Restores HP.",
+        price: 50,
+        note: "",
+        effects: [{ code: 11, dataId: 0, value1: 100, value2: 0 }],
+        meta: { rare: false, tags: ["heal", "common"] }
+      },
+      { id: 2, name: "Ether", description: "Restores MP.", price: 120 }
+    ];
+    await writeJson(path.join(root, "data", "Items.json"), original);
+
+    const extractor = new RpgMakerMvMzExtractor();
+    const units = await extractor.extract(root);
+    const target = units.find((u) => u.id === "Items.1.description");
+    expect(target).toBeDefined();
+
+    await extractor.applyTranslations(
+      root,
+      [
+        {
+          id: "Items.1.description",
+          source: target?.source ?? "",
+          translation: "Восстанавливает ОЗ.",
+          provider: "mock",
+          model: "mock",
+          status: "translated"
+        }
+      ],
+      { mode: "patch", outDir }
+    );
+
+    const patched = JSON.parse(await readFile(path.join(outDir, "data", "Items.json"), "utf8"));
+    // Deep-equal the whole document against the original with only the one leaf
+    // changed: any dropped field, reordered array or coerced number would fail here.
+    const expected = JSON.parse(JSON.stringify(original));
+    expected[1].description = "Восстанавливает ОЗ.";
+    expect(patched).toEqual(expected);
+  });
+
   it("rejects a unit file path that escapes the project root", async () => {
     const root = path.join(tmpdir(), `rpgm-patch-traversal-${Date.now()}`);
     const outDir = path.join(tmpdir(), `rpgm-patch-traversal-out-${Date.now()}`);

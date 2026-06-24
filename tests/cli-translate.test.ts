@@ -187,6 +187,41 @@ describe("CLI translate", () => {
     });
   });
 
+  it("rejects an unknown provider with a clear usage error", async () => {
+    const root = await createCliTempDir("rpgm-cli-provider-foo-");
+    const unitsPath = path.join(root, "units.json");
+    await writeJsonFixture(unitsPath, [actorNameUnit()]);
+    const errors: string[] = [];
+
+    const exitCode = await runCli(["translate", unitsPath, "--provider", "foo", "--out", path.join(root, "out.json")], {
+      stdout: () => undefined,
+      stderr: (text) => errors.push(text)
+    });
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("")).toContain("Unknown provider 'foo'");
+  });
+
+  it.each([
+    ["--batch-size", "0", "positive integer"],
+    ["--batch-size", "-1", "positive integer"],
+    ["--batch-size", "1.5", "positive integer"],
+    ["--temperature", "3", "less than or equal to 2"]
+  ])("rejects invalid %s %s", async (flag, value, message) => {
+    const root = await createCliTempDir("rpgm-cli-bad-number-");
+    const unitsPath = path.join(root, "units.json");
+    await writeJsonFixture(unitsPath, [actorNameUnit()]);
+    const errors: string[] = [];
+
+    const exitCode = await runCli(
+      ["translate", unitsPath, "--provider", "mock", flag, value, "--out", path.join(root, "out.json")],
+      { stdout: () => undefined, stderr: (text) => errors.push(text) }
+    );
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("")).toContain(message);
+  });
+
   it("fails fast when deepseek is requested without DEEPSEEK_API_KEY", async () => {
     const originalKey = process.env.DEEPSEEK_API_KEY;
     delete process.env.DEEPSEEK_API_KEY;
