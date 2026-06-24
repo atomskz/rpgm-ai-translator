@@ -17,6 +17,9 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Reject an in-place `--backup` directory that overlaps the game (the project root
+  or its `data`/`js` folders), so the backup's rename-swap cannot clobber the very
+  files it is meant to preserve. The default hidden backup directory is unaffected.
 - Guard the `--max-tokens-budget` before each character-inference batch (projected
   against the tokens already spent by translate/review/repair) instead of after the
   provider call, so an over-budget inference fails before spending rather than after.

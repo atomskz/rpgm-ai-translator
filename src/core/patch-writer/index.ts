@@ -65,6 +65,23 @@ function isInsideDirectory(parent: string, candidate: string): boolean {
   return relative.length > 0 && !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
+// In-place mode publishes the backup directory with a rename-swap, so an explicit
+// --backup-dir that overlaps the game itself (the root, or the `data`/`js` content
+// folders being replaced) would clobber the very files it is meant to preserve.
+// The default backup (a dedicated hidden dir inside the root) is unaffected.
+function assertBackupDirSafe(root: string, backupDir: string): void {
+  const resolved = path.resolve(backupDir);
+  if (resolved === root || isInsideDirectory(resolved, root)) {
+    throw new Error(`Backup directory must not be the game folder or contain it ('${backupDir}')`);
+  }
+  for (const contentDir of ["data", "js"]) {
+    const dir = path.join(root, contentDir);
+    if (resolved === dir || isInsideDirectory(dir, resolved) || isInsideDirectory(resolved, dir)) {
+      throw new Error(`Backup directory must not overlap the game '${contentDir}' folder ('${backupDir}')`);
+    }
+  }
+}
+
 // Reject a unit file path that is absolute or escapes the root via `..`. The same
 // relative path is joined to the game dir, the output/staging dir and the backup
 // dir, so validating it once at intake confines every read and write. A
@@ -94,6 +111,9 @@ export async function writePatch(
   }
 
   const root = path.resolve(projectPath);
+  if (options.mode === "in-place" && options.backupDir != null) {
+    assertBackupDirSafe(root, options.backupDir);
+  }
   const prepared = await prepareFiles(root, units, translations, options.onWarning);
 
   if (options.dryRun) {
