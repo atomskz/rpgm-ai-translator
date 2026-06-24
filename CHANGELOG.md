@@ -14,6 +14,9 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Measure `maxLength` per line (the widest rendered line) instead of across the
+  whole string, so a translation legitimately wrapped over several lines is no
+  longer reported as `MAX_LENGTH_EXCEEDED` for its summed width.
 - Discard a checkpoint whose signature file is present but unparseable or missing
   fields, instead of resuming it as "no information". A truly absent signature (an
   older work directory) is still resumed for backward compatibility, but a

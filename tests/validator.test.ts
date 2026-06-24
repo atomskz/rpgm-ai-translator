@@ -421,6 +421,22 @@ describe("DefaultValidator", () => {
     expect(codes(issues)).toContain("MAX_LINES_EXCEEDED");
   });
 
+  it("measures maxLength per line so a wrapped translation is not a false overflow", () => {
+    // Each line is 5 cells (within maxLength 6); only the summed width (10) would
+    // have exceeded under the old whole-string measurement.
+    const wrapped = validate(
+      unit({ constraints: { maxLength: 6, maxLines: 2 } }),
+      result({ translation: "Hello\nWorld" })
+    );
+    const oneLongLine = validate(
+      unit({ constraints: { maxLength: 6, maxLines: 2 } }),
+      result({ translation: "Hello there\nshort" })
+    );
+
+    expect(codes(wrapped)).not.toContain("MAX_LENGTH_EXCEEDED");
+    expect(codes(oneLongLine)).toContain("MAX_LENGTH_EXCEEDED");
+  });
+
   it("measures maxLength as full-width display cells for CJK text", () => {
     // "こんにちは" is 5 code units but renders as 10 message-box cells.
     const withinChars = validate(

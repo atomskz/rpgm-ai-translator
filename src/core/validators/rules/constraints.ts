@@ -31,10 +31,15 @@ export function validateConstraints(unit: TranslationUnit, result: TranslationRe
   // MAX_LENGTH_EXCEEDED warnings (which then fed wasted repair work).
   const rendered = visibleText(result.translation, unit.placeholders);
 
-  // `maxLength` is a message-box cell budget, so measure display width: a
-  // full-width CJK glyph occupies two cells while `String.length` counts it as one.
-  if (maxLength != null && displayWidth(rendered) > maxLength) {
-    issues.push(issue(unit.id, "warning", "MAX_LENGTH_EXCEEDED", `Translation exceeds maxLength ${maxLength}`));
+  // `maxLength` is a per-line message-box cell budget, so measure the widest
+  // rendered line, not the whole string: a translation legitimately wrapped across
+  // lines must not be summed into a false overflow. Display width (not
+  // `String.length`) is used because a full-width CJK glyph occupies two cells.
+  if (maxLength != null) {
+    const widestLine = Math.max(...rendered.split(/\r?\n/).map((line) => displayWidth(line)));
+    if (widestLine > maxLength) {
+      issues.push(issue(unit.id, "warning", "MAX_LENGTH_EXCEEDED", `Translation exceeds maxLength ${maxLength}`));
+    }
   }
 
   if (maxLines != null && rendered.split(/\r?\n/).length > maxLines) {
