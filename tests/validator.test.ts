@@ -3,6 +3,7 @@ import { protectPlaceholders } from "../src/core/placeholders/index.js";
 import {
   DefaultValidator,
   filterTranslationsWithoutValidationErrors,
+  introducedErrorCode,
   validateTranslationResults
 } from "../src/core/validators/index.js";
 import type { Glossary, TranslationResult, TranslationUnit, ValidationIssue } from "../src/core/types.js";
@@ -120,6 +121,58 @@ describe("DefaultValidator", () => {
     expect(codes(missingAndExtra)).toContain("MISSING_PLACEHOLDER");
     expect(codes(missingAndExtra)).toContain("EXTRA_PLACEHOLDER");
     expect(codes(duplicate)).toContain("DUPLICATE_PLACEHOLDER");
+  });
+
+  it("flags a repair that breaks a different placeholder of the same code as a regression", () => {
+    const protectedText = protectPlaceholders(String.raw`Hello \N[1], take \I[64].`);
+    const unitWithPlaceholders = unit({
+      id: "Map001.events.1.pages.0.list.0.parameters.0",
+      source: String.raw`Hello \N[1], take \I[64].`,
+      normalizedSource: protectedText.text,
+      jsonPath: "events.1.pages.0.list.0.parameters.0",
+      category: "dialogue",
+      placeholders: protectedText.placeholders
+    });
+    // Previous drops <PH_1>; the "repair" restores it but drops <PH_2>. Both carry
+    // exactly one MISSING_PLACEHOLDER, so a code-presence check would wave it through.
+    const previous = result({
+      id: unitWithPlaceholders.id,
+      source: unitWithPlaceholders.source,
+      translation: "Привет, возьми <PH_2>."
+    });
+    const candidate = result({
+      id: unitWithPlaceholders.id,
+      source: unitWithPlaceholders.source,
+      translation: "Привет <PH_1>, возьми."
+    });
+
+    expect(introducedErrorCode(unitWithPlaceholders, previous, candidate, new DefaultValidator())).toBe(
+      "MISSING_PLACEHOLDER"
+    );
+  });
+
+  it("accepts a repair that fixes an error without introducing another", () => {
+    const protectedText = protectPlaceholders(String.raw`Hello \N[1].`);
+    const unitWithPlaceholders = unit({
+      id: "Map001.x",
+      source: String.raw`Hello \N[1].`,
+      normalizedSource: protectedText.text,
+      jsonPath: "x",
+      category: "dialogue",
+      placeholders: protectedText.placeholders
+    });
+    const previous = result({
+      id: unitWithPlaceholders.id,
+      source: unitWithPlaceholders.source,
+      translation: "Привет."
+    });
+    const candidate = result({
+      id: unitWithPlaceholders.id,
+      source: unitWithPlaceholders.source,
+      translation: "Привет <PH_1>."
+    });
+
+    expect(introducedErrorCode(unitWithPlaceholders, previous, candidate, new DefaultValidator())).toBeUndefined();
   });
 
   it("flags a hallucinated placeholder as EXTRA_PLACEHOLDER, not a technical-token change", () => {

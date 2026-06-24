@@ -17,6 +17,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Reject a review/repair result that breaks a different token of an error code it
+  already had (for example fixing one missing placeholder while dropping another):
+  the regression gate now compares each error by code and message — which names the
+  specific token — instead of merely by whether the code was already present, so a
+  freshly-broken translation can no longer slip through with an unchanged error count.
 - Recognize asset references that contain spaces or backslash separators (for
   example `img\face 1.png`) as non-translatable, so they are no longer extracted as
   translatable strings.
