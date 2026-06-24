@@ -162,6 +162,9 @@ function extractSystem(data: JsonObject, base: DraftBase): UnitDraft[] {
       continue;
     }
     value.forEach((source, index) => {
+      // RPG Maker reserves index 0 of these system arrays as an empty placeholder
+      // (ids are 1-based); skip it explicitly. isTranslatableString would also
+      // filter the empty slot, but the guard documents the 1-based convention.
       if (index > 0 && isTranslatableString(source)) {
         units.push(makeDraft(base, `${field}.${index}`, source, "system"));
       }

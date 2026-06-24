@@ -925,6 +925,17 @@ describe("replacePluginsArray line endings", () => {
     expect(rewritten).toContain("New");
   });
 
+  it("preserves a 4-space indented plugins.js instead of reformatting to 2 spaces", () => {
+    const array = JSON.stringify([{ name: "X", status: true, parameters: { title: "Old" } }], null, 4);
+    const raw = `var $plugins =\n${array};\n`;
+
+    const rewritten = replacePluginsArray(raw, [{ name: "X", status: true, parameters: { title: "Новый" } }]);
+
+    expect(rewritten).toContain("Новый");
+    expect(rewritten).toContain("\n    {"); // the element stays indented by 4 spaces
+    expect(rewritten).not.toContain("\n  {"); // and is not reformatted to 2 spaces
+  });
+
   it("parses and rewrites a $plugins array even when trailing code follows it", () => {
     const raw =
       "var $plugins = " +

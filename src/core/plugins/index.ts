@@ -109,13 +109,27 @@ export function replacePluginsArray(raw: string, plugins: RpgMakerPlugin[]): str
     throw new Error("Could not locate $plugins array to rewrite");
   }
   const { prefix, arrayText, suffix } = located;
-  const indent = arrayText.includes("\n") ? 2 : undefined;
+  // Reproduce the array's original indentation (a hand-edited plugins.js may use
+  // 4 spaces or tabs) instead of hardcoding 2, so the patch diff stays minimal.
+  const indent = detectArrayIndent(arrayText);
   // JSON.stringify emits LF; match the file's dominant EOL so the rewritten
   // array does not introduce mixed line endings into a CRLF plugins.js.
   const eol = detectEol(raw);
   const serializedLf = JSON.stringify(plugins, null, indent);
   const serialized = eol === "\r\n" ? serializedLf.replace(/\n/g, "\r\n") : serializedLf;
   return `${prefix}${serialized}${suffix}`;
+}
+
+// Infer the array's per-level indentation from its first indented line, so a
+// rewrite reuses the original unit (2 spaces, 4 spaces, or a tab). A string indent
+// is used by JSON.stringify per nesting level; undefined keeps a minified array on
+// one line.
+function detectArrayIndent(arrayText: string): string | number | undefined {
+  if (!arrayText.includes("\n")) {
+    return undefined;
+  }
+  const match = arrayText.match(/\n([ \t]+)/);
+  return match ? match[1] : 2;
 }
 
 export function getPluginParameter(plugins: RpgMakerPlugin[], jsonPath: string): string | undefined {
