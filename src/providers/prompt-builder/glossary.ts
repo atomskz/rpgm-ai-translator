@@ -20,41 +20,58 @@
 import type { Glossary, ReviewUnit, TranslationUnit } from "../../core/types.js";
 import { glossaryTermMatches } from "../../core/utils/text.js";
 
-export function filterGlossaryForBatch(glossary: Glossary | undefined, batch: TranslationUnit[]): Glossary {
-  if (!glossary) {
-    return {};
-  }
+// Even after relevance filtering, a large glossary against a batch of common terms
+// (or short CJK substrings) can match enough entries to inflate the prompt and risk
+// truncating the actual translation payload. Bound the count per batch.
+const MAX_GLOSSARY_ENTRIES_PER_BATCH = 100;
 
-  const relevant: Glossary = {};
-  for (const [term, entry] of Object.entries(glossary)) {
-    if (
-      batch.some(
-        (unit) => glossaryTermMatches(unit.source, term) || glossaryTermMatches(unit.normalizedSource ?? "", term)
-      )
-    ) {
-      relevant[term] = entry;
-    }
+function capRelevant(
+  matched: Array<[string, Glossary[string]]>,
+  onWarning?: (message: string) => void
+): Glossary {
+  if (matched.length <= MAX_GLOSSARY_ENTRIES_PER_BATCH) {
+    return Object.fromEntries(matched);
   }
-  return relevant;
+  // Keep the most specific terms — a longer term is less likely to be an incidental
+  // match — and drop the rest, warning so the truncation is not silent.
+  const kept = [...matched].sort(([a], [b]) => b.length - a.length).slice(0, MAX_GLOSSARY_ENTRIES_PER_BATCH);
+  onWarning?.(
+    `Glossary matched ${matched.length} terms for a batch; keeping the ${MAX_GLOSSARY_ENTRIES_PER_BATCH} most specific to keep the prompt within budget.`
+  );
+  return Object.fromEntries(kept);
 }
 
-export function filterGlossaryForReviewBatch(glossary: Glossary | undefined, batch: ReviewUnit[]): Glossary {
+export function filterGlossaryForBatch(
+  glossary: Glossary | undefined,
+  batch: TranslationUnit[],
+  onWarning?: (message: string) => void
+): Glossary {
   if (!glossary) {
     return {};
   }
 
-  const relevant: Glossary = {};
-  for (const [term, entry] of Object.entries(glossary)) {
-    if (
-      batch.some(
-        (unit) =>
-          glossaryTermMatches(unit.source, term) ||
-          glossaryTermMatches(unit.normalizedSource ?? "", term) ||
-          glossaryTermMatches(unit.currentTranslation ?? "", term)
-      )
-    ) {
-      relevant[term] = entry;
-    }
+  const matched = Object.entries(glossary).filter(([term]) =>
+    batch.some((unit) => glossaryTermMatches(unit.source, term) || glossaryTermMatches(unit.normalizedSource ?? "", term))
+  );
+  return capRelevant(matched, onWarning);
+}
+
+export function filterGlossaryForReviewBatch(
+  glossary: Glossary | undefined,
+  batch: ReviewUnit[],
+  onWarning?: (message: string) => void
+): Glossary {
+  if (!glossary) {
+    return {};
   }
-  return relevant;
+
+  const matched = Object.entries(glossary).filter(([term]) =>
+    batch.some(
+      (unit) =>
+        glossaryTermMatches(unit.source, term) ||
+        glossaryTermMatches(unit.normalizedSource ?? "", term) ||
+        glossaryTermMatches(unit.currentTranslation ?? "", term)
+    )
+  );
+  return capRelevant(matched, onWarning);
 }

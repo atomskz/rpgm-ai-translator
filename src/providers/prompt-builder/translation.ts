@@ -23,7 +23,7 @@ import { buildTranslationSystemPrompt } from "./system-prompts.js";
 import type { ChatMessage } from "./types.js";
 
 export function buildTranslationMessages(batch: TranslationUnit[], options: TranslateOptions): ChatMessage[] {
-  const glossary = filterGlossaryForBatch(options.glossary, batch);
+  const glossary = filterGlossaryForBatch(options.glossary, batch, options.onWarning);
   return [
     {
       role: "system",

@@ -6,9 +6,10 @@ import {
   buildReviewMessages,
   buildReviewSystemPrompt,
   buildTranslationMessages,
-  buildTranslationSystemPrompt
+  buildTranslationSystemPrompt,
+  filterGlossaryForBatch
 } from "../src/providers/prompt-builder.js";
-import type { TranslationUnit } from "../src/core/types.js";
+import type { Glossary, TranslationUnit } from "../src/core/types.js";
 
 describe("prompt builder", () => {
   it("builds a safety-focused system prompt without source data", () => {
@@ -266,6 +267,23 @@ describe("prompt builder", () => {
     // 200 retained characters plus a single ellipsis marker.
     expect(candidate.evidence[0].source).toHaveLength(201);
     expect(candidate.evidence[0].source.endsWith("…")).toBe(true);
+  });
+
+  it("caps the per-batch glossary to the most specific terms and warns", () => {
+    const glossary: Glossary = {};
+    for (let index = 0; index < 150; index += 1) {
+      glossary[`term${String(index).padStart(4, "0")}`] = { mode: "keep" };
+    }
+    const source = Object.keys(glossary).join(" ");
+    const warnings: string[] = [];
+
+    const filtered = filterGlossaryForBatch(glossary, [{ ...unit(), source, normalizedSource: source }], (message) =>
+      warnings.push(message)
+    );
+
+    // All 150 terms match the source, but the cap keeps only the 100 most specific.
+    expect(Object.keys(filtered)).toHaveLength(100);
+    expect(warnings.join("")).toContain("keeping the 100 most specific");
   });
 });
 

@@ -23,7 +23,7 @@ import { buildReviewSystemPrompt } from "./system-prompts.js";
 import type { ChatMessage } from "./types.js";
 
 export function buildReviewMessages(batch: ReviewUnit[], options: ReviewOptions): ChatMessage[] {
-  const glossary = filterGlossaryForReviewBatch(options.glossary, batch);
+  const glossary = filterGlossaryForReviewBatch(options.glossary, batch, options.onWarning);
   return [
     {
       role: "system",

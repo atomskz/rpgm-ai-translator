@@ -19,6 +19,10 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Cap the number of glossary entries injected into a single translation or review
+  batch (keeping the most specific terms and warning when trimming), so a large
+  glossary matching many common terms can no longer inflate the prompt and crowd out
+  the translation payload.
 - Distinguish an `apply` skip caused by an id/source mismatch from a translation
   that was simply not produced (failed or empty): the "ids did not match" warning
   and the non-zero exit on a majority skip now fire only on real mismatches, so
