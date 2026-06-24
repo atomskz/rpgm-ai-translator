@@ -53,24 +53,33 @@ export async function applyCommand(args: string[], io: CliIO): Promise<number> {
     ? await writePatch(projectPath, await readTranslationUnitsFile(unitsPath), translationsToApply, applyOptions)
     : await new RpgMakerMvMzExtractor().applyTranslations(projectPath, translationsToApply, applyOptions);
   // Without --units, apply re-extracts the game and matches by id. If the saved
-  // translations came from a different extraction (e.g. --include-plugins), most
-  // ids will not match and get silently skipped. Warn loudly instead.
+  // translations came from a different extraction (e.g. --include-plugins), ids
+  // will not match and get silently skipped. Warn on any skip — even a partial one
+  // can quietly drop a large slice of the translation — and not only at >=50%.
   const considered = result.unitsApplied + result.skipped;
-  if (!unitsPath && considered > 0 && result.skipped >= considered / 2) {
+  if (!unitsPath && result.skipped > 0) {
+    const severe = result.skipped >= considered / 2;
     io.stderr(
-      `Warning: skipped ${result.skipped}/${considered} translations because their ids did not match the re-extracted units. ` +
-        "If you extracted with different flags (for example --include-plugins or --include-speaker-names), pass --units <units.json> so ids match exactly.\n"
+      `Warning: skipped ${result.skipped}/${considered} translation(s) because their ids did not match the re-extracted units.` +
+        (severe ? " Most translations were dropped." : "") +
+        " If you extracted with different flags (for example --include-plugins or --include-speaker-names), pass --units <units.json> so ids match exactly.\n"
     );
   }
   if (applyOptions.mode === "patch" && applyOptions.outDir && fontPath && !applyOptions.dryRun) {
     io.stdout("Applying font patch...\n");
     await applyFontPatch(projectPath, applyOptions.outDir, { fontPath, numberFontPath });
   }
+  // Print a human-readable summary instead of the raw result JSON, which a
+  // non-programmer cannot read; the file output is the artifact that matters.
   if (applyOptions.dryRun) {
     io.stdout(
       `[dry run] Would write ${result.filesWritten.length} file(s), apply ${result.unitsApplied} unit(s), skip ${result.skipped}. No files were written.\n`
     );
+  } else {
+    const backup = result.backupDir ? ` Backup: ${result.backupDir}.` : "";
+    io.stdout(
+      `Applied ${result.unitsApplied} translation(s) to ${result.filesWritten.length} file(s); skipped ${result.skipped}.${backup}\n`
+    );
   }
-  io.stdout(`${JSON.stringify(result, null, 2)}\n`);
   return 0;
 }

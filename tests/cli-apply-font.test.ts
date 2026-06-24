@@ -103,6 +103,33 @@ describe("CLI apply and patch-font", () => {
     expect(errors.join("")).toContain("--units");
   });
 
+  it("warns even when only some translations are skipped without --units", async () => {
+    const root = await createCliTempDir("rpgm-cli-apply-partial-");
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "patch");
+    const translationsPath = path.join(root, "translations.json");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await writeJsonFixture(path.join(gamePath, "data", "System.json"), {});
+    await writeJsonFixture(path.join(gamePath, "data", "Actors.json"), [null, { name: "Aria" }, { name: "Borin" }]);
+    await writeJsonFixture(translationsPath, [
+      translatedResult({ id: "Actors.1.name", source: "Aria", translation: "Ария" }),
+      translatedResult({ id: "Actors.2.name", source: "Borin", translation: "Борин" }),
+      translatedResult({ id: "Unknown.1.name", source: "Ghost", translation: "Призрак" })
+    ]);
+
+    const errors: string[] = [];
+    const output: string[] = [];
+    const exitCode = await runCli(["apply", gamePath, translationsPath, "--out", outDir], {
+      stdout: (text) => output.push(text),
+      stderr: (text) => errors.push(text)
+    });
+
+    // Only one of three is skipped (<50%), which the old threshold left silent.
+    expect(exitCode).toBe(0);
+    expect(errors.join("")).toContain("skipped 1/3 translation(s)");
+    expect(output.join("")).toContain("Applied 2 translation(s)");
+  });
+
   it("previews an apply with --dry-run without writing any files", async () => {
     const root = await createCliTempDir("rpgm-cli-apply-dry-");
     const gamePath = path.join(root, "game");
