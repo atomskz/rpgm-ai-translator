@@ -14,6 +14,10 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Reject `__proto__`, `constructor` and `prototype` as JSON-path or plugin-parameter
+  segments when applying a patch, so a crafted `units.json` cannot turn the path
+  writers into a prototype-pollution primitive. Such a unit is skipped instead of
+  written.
 - Measure `maxLength` per line (the widest rendered line) instead of across the
   whole string, so a translation legitimately wrapped over several lines is no
   longer reported as `MAX_LENGTH_EXCEEDED` for its summed width.

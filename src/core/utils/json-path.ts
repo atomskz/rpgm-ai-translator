@@ -17,6 +17,17 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
+// Property keys that, if traversed or written, could pollute `Object.prototype`
+// (and through it every object in the process). A unit path comes from a possibly
+// untrusted `units.json`, so a crafted `constructor.prototype.x` must never become
+// a write target — guard the segment setters/getters rather than relying on the
+// patch writer's source-match gate, which is incidental protection.
+const UNSAFE_PATH_SEGMENTS = new Set(["__proto__", "constructor", "prototype"]);
+
+export function isUnsafePathSegment(segment: string): boolean {
+  return UNSAFE_PATH_SEGMENTS.has(segment);
+}
+
 export function getJsonPath(root: unknown, jsonPath: string): unknown {
   return getJsonPathSegments(root, parseJsonPath(jsonPath));
 }
@@ -29,7 +40,7 @@ export function setJsonPath(root: unknown, jsonPath: string, newValue: unknown):
 // single segment instead of being split by `parseJsonPath`.
 export function getJsonPathSegments(root: unknown, segments: string[]): unknown {
   return segments.reduce((value: unknown, segment) => {
-    if (value == null) {
+    if (value == null || isUnsafePathSegment(segment)) {
       return undefined;
     }
     return (value as Record<string, unknown>)[segment];
@@ -39,6 +50,9 @@ export function getJsonPathSegments(root: unknown, segments: string[]): unknown 
 export function setJsonPathSegments(root: unknown, segments: string[], newValue: unknown): void {
   if (segments.length === 0) {
     throw new Error("Cannot set an empty JSON path");
+  }
+  if (segments.some(isUnsafePathSegment)) {
+    throw new Error("Refusing to write through an unsafe JSON path segment (__proto__/constructor/prototype)");
   }
 
   let cursor = root as Record<string, unknown>;

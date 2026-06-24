@@ -18,6 +18,7 @@
  */
 
 import { detectEol } from "../utils/fs.js";
+import { isUnsafePathSegment } from "../utils/json-path.js";
 import { containsTranslatableLetter } from "../utils/text.js";
 
 export type RpgMakerPlugin = {
@@ -145,6 +146,9 @@ export function setPluginParameter(plugins: RpgMakerPlugin[], jsonPath: string, 
   const parsed = parsePluginParameterPath(jsonPath);
   if (!parsed) {
     throw new Error(`Invalid plugin parameter path '${jsonPath}'`);
+  }
+  if (isUnsafePathSegment(parsed.parameterKey)) {
+    throw new Error(`Refusing to write unsafe plugin parameter '${parsed.parameterKey}'`);
   }
   const parameters = plugins[parsed.pluginIndex]?.parameters;
   if (!parameters) {
