@@ -69,16 +69,23 @@ export function checkpointMetaPath(checkpointPath: string): string {
   return `${checkpointPath}.meta.json`;
 }
 
-// Reads a checkpoint signature, returning undefined when it is absent or
-// unreadable. A missing signature (a checkpoint from an older build or one
-// hand-authored in tests) is treated as "no information": the caller resumes for
-// backward compatibility and then stamps a fresh signature for next time.
-export async function readCheckpointSignatureFile(metaPath: string): Promise<CheckpointSignature | undefined> {
+export type CheckpointSignatureRead =
+  | { status: "absent" }
+  | { status: "invalid" }
+  | { status: "ok"; signature: CheckpointSignature };
+
+// Reads a checkpoint signature, distinguishing three cases so the caller can tell
+// "no information" from "bad information". An absent file (a checkpoint from an
+// older build or one hand-authored in tests) is resumed for backward
+// compatibility; a file that is present but unparseable or missing fields (a
+// tampered or half-written meta) is treated as stale so a checkpoint of unknown
+// provenance is not resumed and made to ship potentially mismatched output.
+export async function readCheckpointSignatureFile(metaPath: string): Promise<CheckpointSignatureRead> {
   let raw: string;
   try {
     raw = await readFile(metaPath, "utf8");
   } catch {
-    return undefined;
+    return { status: "absent" };
   }
   try {
     const parsed = JSON.parse(raw) as Partial<CheckpointSignature>;
@@ -88,12 +95,12 @@ export async function readCheckpointSignatureFile(metaPath: string): Promise<Che
       typeof parsed.model === "string" &&
       typeof parsed.glossaryHash === "string"
     ) {
-      return parsed as CheckpointSignature;
+      return { status: "ok", signature: parsed as CheckpointSignature };
     }
   } catch {
-    return undefined;
+    return { status: "invalid" };
   }
-  return undefined;
+  return { status: "invalid" };
 }
 
 export async function writeCheckpointSignatureFile(metaPath: string, signature: CheckpointSignature): Promise<void> {
@@ -128,8 +135,12 @@ export async function resolveCheckpoint(params: {
   let stale = false;
   let resumed = false;
   if (checkpointOption) {
-    const previousSignature = await readCheckpointSignatureFile(checkpointMetaPath(checkpointOption));
-    stale = previousSignature != null && !checkpointSignaturesEqual(previousSignature, signature);
+    const previous = await readCheckpointSignatureFile(checkpointMetaPath(checkpointOption));
+    // Discard a checkpoint whose signature mismatches, or is present but
+    // unparseable/incomplete; only a truly absent signature is resumed.
+    stale =
+      previous.status === "invalid" ||
+      (previous.status === "ok" && !checkpointSignaturesEqual(previous.signature, signature));
     if (stale) {
       await resetTranslationResultsJsonlFile(checkpointOption);
     } else {

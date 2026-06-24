@@ -14,6 +14,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Discard a checkpoint whose signature file is present but unparseable or missing
+  fields, instead of resuming it as "no information". A truly absent signature (an
+  older work directory) is still resumed for backward compatibility, but a
+  half-written or tampered signature no longer lets a checkpoint of unknown
+  provenance ship potentially mismatched output.
 - Reconcile provider response ids on the review and repair passes: a result whose
   id was not requested in the batch, or that duplicates one already processed, is
   dropped instead of inflating the failure count and writing a duplicate checkpoint

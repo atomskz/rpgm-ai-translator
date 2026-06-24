@@ -165,7 +165,12 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   const checkpointMeta = path.join(workDir, "checkpoint.meta.json");
   const signature = checkpointSignature(providerName, providerOptions, glossary, characterGlossary);
   const previousSignature = await readCheckpointSignatureFile(checkpointMeta);
-  const resume = !previousSignature || checkpointSignaturesEqual(previousSignature, signature);
+  // Resume only when the signature is absent (older work dir) or matches; a present
+  // but unparseable/incomplete signature is treated as stale and the checkpoints
+  // are discarded below.
+  const resume =
+    previousSignature.status === "absent" ||
+    (previousSignature.status === "ok" && checkpointSignaturesEqual(previousSignature.signature, signature));
   const rawCheckpointById: Map<string, TranslationResult> = resume
     ? checkpointedTranslationsById(units, await readTranslationResultsJsonlFile(rawCheckpointPath))
     : new Map();
