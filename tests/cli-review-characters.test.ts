@@ -194,4 +194,21 @@ describe("CLI review and characters", () => {
     expect(exitCode).toBe(0);
     expect(characters.Aria).toMatchObject({ review: true });
   });
+
+  it("rejects a translations file passed as a second positional to characters", async () => {
+    const root = await createCliTempDir("rpgm-cli-characters-extra-");
+    const unitsPath = path.join(root, "units.json");
+    const translationsPath = path.join(root, "translations.json");
+    await writeJsonFixture(unitsPath, [actorNameUnit({ normalizedSource: undefined, hash: "hash-aria" })]);
+    await writeJsonFixture(translationsPath, []);
+    const errors: string[] = [];
+
+    const exitCode = await runCli(
+      ["characters", unitsPath, translationsPath, "--provider", "none", "--out", path.join(root, "characters.json")],
+      { stdout: () => undefined, stderr: (text) => errors.push(text) }
+    );
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("")).toContain("pass the translations file via --translations");
+  });
 });

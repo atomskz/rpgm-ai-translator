@@ -67,6 +67,22 @@ describe("validateCommandArgs", () => {
       validateCommandArgs("extract", ["./game", "--include-plugins", "--include-plugins", "--help"])
     ).not.toThrow();
   });
+
+  it("rejects a surplus positional and points characters at --translations", () => {
+    expect(() => validateCommandArgs("characters", ["units.json", "translations.json"])).toThrow(
+      "Unexpected argument 'translations.json' for 'characters'. characters reads only <units.json>; pass the translations file via --translations."
+    );
+  });
+
+  it("rejects a surplus positional for a single-argument command", () => {
+    expect(() => validateCommandArgs("translate", ["units.json", "extra.json"])).toThrow(
+      "Unexpected argument 'extra.json' for 'translate'."
+    );
+  });
+
+  it("accepts the documented positionals for a two-argument command", () => {
+    expect(() => validateCommandArgs("review", ["units.json", "translations.json", "--out", "out.json"])).not.toThrow();
+  });
 });
 
 describe("runCli option validation", () => {

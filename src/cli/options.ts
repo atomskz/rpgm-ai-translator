@@ -220,6 +220,13 @@ export function readFontOptions(args: string[]): FontCliOptions {
 export type CommandOptionSpec = {
   valueOptions: readonly string[];
   booleanFlags: readonly string[];
+  // How many positional arguments the command reads. Anything past this is a
+  // mistake (e.g. a flag value mistyped without `--`, or translations passed
+  // positionally to characters) and is rejected rather than silently dropped.
+  maxPositionals: number;
+  // Appended to the "too many arguments" error when the extra positional is a
+  // common confusion (characters takes translations via --translations).
+  extraPositionalHint?: string;
 };
 
 // Allowed options per command, mirroring exactly what each command handler reads.
@@ -227,46 +234,54 @@ export type CommandOptionSpec = {
 // a command runs, so a typo silently falls back to a default no longer. Also the
 // single source of truth for which flags per-command help lists.
 export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
-  detect: { valueOptions: [], booleanFlags: [] },
+  detect: { valueOptions: [], booleanFlags: [], maxPositionals: 1 },
   extract: {
     valueOptions: ["--out", "--report", "--dialogue-max-length"],
-    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names"]
+    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names"],
+    maxPositionals: 1
   },
   translate: {
     valueOptions: [
       "--provider", "--base-url", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
       "--max-tokens", "--max-tokens-budget", "--retry-attempts", "--out", "--checkpoint", "--report", "--memory", "--glossary"
     ],
-    booleanFlags: []
+    booleanFlags: [],
+    maxPositionals: 1
   },
   characters: {
     valueOptions: [
       "--out", "--translations", "--provider", "--base-url", "--target", "--model", "--batch-size",
       "--timeout-ms", "--temperature", "--max-tokens", "--max-tokens-budget"
     ],
-    booleanFlags: ["--draft-only", "--include-mentions"]
+    booleanFlags: ["--draft-only", "--include-mentions"],
+    maxPositionals: 1,
+    extraPositionalHint: "characters reads only <units.json>; pass the translations file via --translations."
   },
   review: {
     valueOptions: [
       "--provider", "--base-url", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
       "--max-tokens", "--out", "--checkpoint", "--glossary", "--characters"
     ],
-    booleanFlags: []
+    booleanFlags: [],
+    maxPositionals: 2
   },
   validate: {
     valueOptions: ["--out", "--glossary"],
-    booleanFlags: []
+    booleanFlags: [],
+    maxPositionals: 2
   },
   repair: {
     valueOptions: [
       "--report", "--out", "--provider", "--base-url", "--target", "--model", "--batch-size", "--timeout-ms",
       "--temperature", "--max-tokens", "--checkpoint", "--glossary", "--characters", "--codes", "--attempts"
     ],
-    booleanFlags: []
+    booleanFlags: [],
+    maxPositionals: 2
   },
   apply: {
     valueOptions: ["--mode", "--out", "--backup", "--font", "--number-font", "--report", "--units"],
-    booleanFlags: ["--include-plugins", "--include-speaker-names", "--dry-run"]
+    booleanFlags: ["--include-plugins", "--include-speaker-names", "--dry-run"],
+    maxPositionals: 2
   },
   run: {
     valueOptions: [
@@ -274,11 +289,13 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
       "--max-tokens", "--max-tokens-budget", "--retry-attempts", "--memory", "--glossary", "--characters", "--repair-attempts",
       "--repair-codes", "--font", "--number-font", "--mode", "--backup", "--dialogue-max-length"
     ],
-    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--review", "--repair", "--dry-run"]
+    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--review", "--repair", "--dry-run"],
+    maxPositionals: 1
   },
   "patch-font": {
     valueOptions: ["--out", "--font", "--number-font"],
-    booleanFlags: []
+    booleanFlags: [],
+    maxPositionals: 1
   }
 };
 
@@ -363,6 +380,16 @@ export function validateCommandArgs(command: string, args: string[]): void {
         ? `Unknown option ${token}. Did you mean ${suggestion}?`
         : `Unknown option ${token} for '${command}'`
     );
+  }
+
+  // Reject surplus positionals so a mistyped flag value or a file passed in the
+  // wrong slot fails loudly instead of being silently ignored.
+  const positionals = readPositionals(args);
+  if (positionals.length > spec.maxPositionals) {
+    const extra = positionals.slice(spec.maxPositionals).map((value) => `'${value}'`).join(", ");
+    const plural = positionals.length - spec.maxPositionals > 1 ? "s" : "";
+    const base = `Unexpected argument${plural} ${extra} for '${command}'.`;
+    throw new UsageError(spec.extraPositionalHint ? `${base} ${spec.extraPositionalHint}` : base);
   }
 }
 
