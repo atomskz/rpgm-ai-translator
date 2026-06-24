@@ -98,7 +98,9 @@ describe("CLI apply and patch-font", () => {
       stderr: (text) => errors.push(text)
     });
 
-    expect(exitCode).toBe(0);
+    // Every translation was skipped (a full id mismatch), so apply must report a
+    // non-zero exit instead of a clean success on an almost-empty patch.
+    expect(exitCode).toBe(1);
     expect(errors.join("")).toContain("did not match the re-extracted units");
     expect(errors.join("")).toContain("--units");
   });

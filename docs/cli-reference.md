@@ -153,8 +153,8 @@ run reports the directory is in use when none is, delete the lock file.
 | Code | Meaning |
 | --- | --- |
 | `0` | Success. |
-| `1` | A usage error, a runtime failure, or a `translate`/`run` that produced no translations at all (for example a total provider outage). |
-| `2` | `validate` found apply-blocking validation errors. The report is still written. |
+| `1` | A usage error, a runtime failure, a `translate`/`run` that produced no translations at all (for example a total provider outage), or an `apply` (without `--units`) that skipped at least half of its translations because their ids did not match the re-extracted units. |
+| `2` | Apply-blocking validation errors remain: `validate` found them, or `run`/`repair` could not resolve them. The report and any patch are still written, but the affected translations were dropped from the patch. |
 
 ## Environment
 

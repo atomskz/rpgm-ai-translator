@@ -313,5 +313,15 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   io.stderr("Writing report...\n");
   await writeReportFile(path.join(workDir, "report.json"), report);
   io.stderr(`${summarizeReport(report)}\n`);
+  // Mirror `validate`: when the patch ships without translations that still carry
+  // apply-blocking errors (filtered out of safeTranslations above), exit 2 so a CI
+  // chain or agent sees a partial result instead of treating it as a clean success.
+  const droppedForErrors = translations.length - safeTranslations.length;
+  if (droppedForErrors > 0) {
+    io.stderr(
+      `Patch written without ${droppedForErrors} translation(s) that still carry blocking validation errors; validate and repair before shipping.\n`
+    );
+    return 2;
+  }
   return 0;
 }

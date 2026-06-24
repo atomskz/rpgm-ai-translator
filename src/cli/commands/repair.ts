@@ -141,6 +141,11 @@ export async function repairCommand(args: string[], io: CliIO): Promise<number> 
       `Warning: ${validationIssues.length} targeted validation issue(s) remain unresolved. Validate again and review before applying this patch.\n`
     );
   }
+  // Exit non-zero when blocking (error-severity) issues remain after the repair
+  // budget is spent, so a `repair && apply` chain stops instead of shipping them.
+  if (validationIssues.some((item) => item.severity === "error")) {
+    return 2;
+  }
   return 0;
 }
 

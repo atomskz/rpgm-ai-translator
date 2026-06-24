@@ -201,7 +201,9 @@ describe("run command", () => {
 
     const patchedActors = JSON.parse(await readFile(path.join(outDir, "data", "Actors.json"), "utf8"));
     const report = JSON.parse(await readFile(path.join(`${outDir}-work`, "report.json"), "utf8"));
-    expect(exitCode).toBe(0);
+    // The broken profile translation is dropped from the patch and its blocking
+    // error survives, so the run exits 2 while still applying the valid name.
+    expect(exitCode).toBe(2);
     expect(patchedActors[1].name).toBe("[ru] Aria");
     expect(patchedActors[1].profile).toBe(sourceWithControlCode);
     expect(report.validationIssues).toContainEqual(
@@ -373,6 +375,39 @@ describe("run command", () => {
     // comment translation had no matching unit and was silently skipped.
     expect(patched.events[1].pages[0].list[0].parameters[0]).toBe("[ru] A developer note.");
     expect(patched.events[1].pages[0].list[1].parameters[0]).toBe("[ru] Hello.");
+  });
+
+  it("exits 2 when a blocking validation error survives into the patch", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-residual-"));
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "out");
+    const workDir = `${outDir}-work`;
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await mkdir(path.join(gamePath, "js"), { recursive: true });
+    await mkdir(workDir, { recursive: true });
+    await writeFile(path.join(gamePath, "js", "rpg_core.js"), "", "utf8");
+    await writeJson(path.join(gamePath, "data", "Map001.json"), {
+      events: [null, { id: 1, name: "NPC", pages: [{ list: [{ code: 401, parameters: ["Buy 5 apples."] }] }] }]
+    });
+
+    // Resume a translation that altered an in-game number (5 -> 7): a NUMBER_CHANGED
+    // error survives validation, the unit is dropped from the patch, and the run
+    // must signal the partial result with a non-zero exit.
+    const dialogueId = "Map001.events.1.pages.0.list.0.parameters.0";
+    await writeFile(
+      path.join(workDir, "translations.raw.jsonl"),
+      `${JSON.stringify({ id: dialogueId, source: "Buy 5 apples.", translation: "Купи 7 яблок.", provider: "manual", model: "manual", status: "translated" })}\n`,
+      "utf8"
+    );
+
+    const errors: string[] = [];
+    const exitCode = await runCli(
+      ["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir],
+      { stdout: () => undefined, stderr: (text) => errors.push(text) }
+    );
+
+    expect(exitCode).toBe(2);
+    expect(errors.join("")).toContain("blocking validation errors");
   });
 
   it("resumes translation and review from existing checkpoints without re-calling the provider", async () => {

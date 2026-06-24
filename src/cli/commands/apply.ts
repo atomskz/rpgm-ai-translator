@@ -82,5 +82,12 @@ export async function applyCommand(args: string[], io: CliIO): Promise<number> {
       `Applied ${result.unitsApplied} translation(s) to ${result.filesWritten.length} file(s); skipped ${result.skipped}.${backup}\n`
     );
   }
+  // Without --units, an id-mismatch can skip most of the translations and write an
+  // almost-empty patch. Exit non-zero on a majority skip so a wrapping script does
+  // not mistake it for a successful apply; a partial skip (<50%) still warns and
+  // succeeds.
+  if (!unitsPath && !applyOptions.dryRun && considered > 0 && result.skipped >= considered / 2) {
+    return 1;
+  }
   return 0;
 }
