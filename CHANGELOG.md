@@ -18,6 +18,9 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 - Version the validation report (`schemaVersion`) and record a units fingerprint,
   so `repair` warns when the report was generated from a different extraction and
   an unrecognized report version is rejected with a clear message.
+- Accept the global `--verbose` and `--config` flags before the subcommand
+  (`rpgm-ai-translator --verbose translate …`), not only after it, so a leading
+  flag is no longer reported as "Unknown command".
 
 ### Changed
 
@@ -37,6 +40,17 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 - Split CI into a Node-version matrix `verify` job and a `package` smoke-test job
   that installs the packed tarball and uploads it as an artifact named by the
   short commit SHA.
+- Send only machine-readable JSON to stdout and route progress, batch summaries
+  and warnings to stderr, so redirecting stdout (for example `extract … > units.json`)
+  captures a clean payload with no human-readable noise mixed in.
+- Preserve a hand-edited `plugins.js`'s array indentation (2 or 4 spaces, or tabs)
+  when rewriting it, changing only the translated strings.
+- Estimate the `--max-tokens-budget` before the review and repair passes too
+  (against the tokens already spent), not only before translate, so an over-budget
+  run fails before a pass starts instead of mid-batch with tokens wasted.
+- Narrow the public API surface: drop the unused `AppConfig`/`defaultConfig`
+  exports, keep the prompt payload builders internal, and stop writing a write-only
+  `.meta.json` beside a derived (non-`--checkpoint`) checkpoint.
 
 ### Fixed
 
@@ -57,6 +71,18 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 - Surface provider failure reasons in batch progress output, disambiguate
   encoded-JSON unit ids when object keys contain dots, and match half-width
   katakana glossary terms.
+- Round-trip JSON paths losslessly: keep an empty-string object key, and
+  distinguish a numeric object key (`{"0": ...}`) from an array index so two
+  neighbouring values no longer collapse onto the same unit id.
+- Stop sending `temperature` on the reasoning review/repair passes (thinking
+  enabled), where `deepseek-reasoner` rejected it with a non-retryable 400 and
+  DeepSeek V4 ignored it anyway.
+- Make `apply`/`run` patch skips visible and harden writing: report why a file was
+  skipped (unreadable, unparseable, or resolving outside the project via a symlink)
+  instead of only counting it; parse a `plugins.js` that has code after the
+  `$plugins` array; apply a script/control-variable string literal stored in a
+  valid but non-canonical form (escaped solidus, `\uXXXX`); and reject a unit file
+  that resolves outside the project through a symlink.
 
 ## 0.1.5 - 2026-06-23
 
