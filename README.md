@@ -144,15 +144,17 @@ node dist/cli/index.js extract ./game \
   --report ./work/extract-report.json
 ```
 
-Use `--include-comments` if event comments should be included. Use
-`--include-plugins` cautiously because plugin formats vary heavily between games.
-Speaker names from RPG Maker MZ/MV `Show Text` commands are not translated by
-default because many games and plugins use them as portrait lookup keys. Use
-`--include-speaker-names` only if the game does not depend on speaker names as
-technical identifiers. Use `--dialogue-max-length <n>` to override the per-line
-dialogue width limit (default `52` display cells) when the game's message font
-fits more or fewer characters; the limit is baked into each dialogue unit's
-`maxLength` constraint.
+Extraction options:
+
+- `--include-comments` — also extract event comments.
+- `--include-plugins` — extract cautious plugin parameters and selected plugin
+  text. Use it carefully: plugin formats vary heavily between games.
+- `--include-speaker-names` — translate `Show Text` speaker names. Off by default
+  because many games and portrait plugins use them as technical lookup keys;
+  enable it only if the game does not.
+- `--dialogue-max-length <n>` — override the per-line dialogue width limit
+  (default `52` display cells) to match the game's message font. The limit is
+  baked into each dialogue unit's `maxLength` constraint.
 
 ### Translate With DeepSeek
 
@@ -175,22 +177,24 @@ node dist/cli/index.js translate ./work/units.json \
   --out ./work/translations.raw.json
 ```
 
-`--batch-size` is the number of translation units sent to the provider in one
-request. Smaller batches are slower but safer for large or context-heavy strings.
-For DeepSeek, `--temperature` controls sampling randomness and `--max-tokens`
-sets the response token limit. The defaults are `0.3` and `8192` (the translate
-pass disables thinking; the reasoning review/repair passes default to `32000` —
-see [Reasoning passes and `max_tokens`](#reasoning-passes-and-max_tokens)).
-Use `--base-url <url>` to target any OpenAI-compatible endpoint (including a
-local one), and `--max-tokens-budget <n>` to abort the run before it exceeds a
-token budget.
-When `--out` is provided, `translate` also writes a JSONL checkpoint after each
-completed batch. Without `--checkpoint`, the path is derived from `--out` (for
-example `translations.raw.json` becomes `translations.raw.jsonl`) and written
-fresh each run — a standalone `translate` does not resume from it. To resume,
-pass `--checkpoint <file>`: existing translated entries in that JSONL file are
-reused and only missing units are sent to the provider. (The `run` pipeline
-manages and resumes its own per-stage checkpoints in the work directory.)
+Key flags:
+
+- `--batch-size <n>` — translation units sent per request. Smaller batches are
+  slower but safer for large or context-heavy strings.
+- `--temperature <n>` / `--max-tokens <n>` — DeepSeek sampling randomness and
+  response token limit (defaults `0.3` and `8192`). The translate pass disables
+  thinking; the reasoning review/repair passes default to `32000` — see
+  [Reasoning passes and `max_tokens`](#reasoning-passes-and-max_tokens).
+- `--base-url <url>` — target any OpenAI-compatible endpoint, including a local one.
+- `--max-tokens-budget <n>` — abort the run before it exceeds a token budget.
+
+Checkpoints: when `--out` is set, `translate` writes a JSONL checkpoint after each
+completed batch. Without `--checkpoint`, the path is derived from `--out`
+(`translations.raw.json` becomes `translations.raw.jsonl`) and rewritten fresh
+each run — a standalone `translate` does not resume from it. To resume, pass
+`--checkpoint <file>`: existing translated entries in that file are reused and
+only missing units are sent to the provider. (The `run` pipeline manages and
+resumes its own per-stage checkpoints in the work directory.)
 
 ### Generate Character Glossary
 
@@ -273,12 +277,13 @@ node dist/cli/index.js apply ./game ./work/translations.repaired.json \
   --out ./work/patch
 ```
 
-When `--report` is provided, translations with validation errors are skipped.
-Warnings are reported but still applied. `--units` makes apply use the exact
-extracted units from the manual pipeline instead of re-extracting with possibly
-different extraction flags; without `--units`, apply re-extracts the game and
-warns loudly if most translations are skipped because their ids no longer match.
-Add `--dry-run` to preview the file/unit/skip counts without writing anything.
+- `--report <file>` — skip translations with validation errors. Warnings are
+  reported but still applied.
+- `--units <file>` — apply the exact extracted units from the manual pipeline
+  instead of re-extracting (which may use different extraction flags). Without
+  `--units`, apply re-extracts the game and warns whenever a translation is
+  skipped because its id no longer matches.
+- `--dry-run` — preview the file/unit/skip counts without writing anything.
 
 ### One-Command Pipeline
 
@@ -344,7 +349,15 @@ node dist/cli/index.js run --help      # flags for a single command
 
 On a usage error the CLI prints the command usage and a `--help` hint. Add
 `--verbose` to any command to print the full error stack and cause chain when a
-run fails. The full per-command flag reference lives in
+run fails. Global flags (`--verbose`, `--config`) may appear before or after the
+subcommand.
+
+Machine-readable output (extracted units, translation results, the validation
+report) goes to stdout; progress, summaries and warnings go to stderr. So
+redirecting stdout — for example `extract … > units.json` — captures a clean
+payload with no human-readable noise.
+
+The full per-command flag reference lives in
 [docs/cli-reference.md](docs/cli-reference.md), and common failures are covered
 in [docs/troubleshooting.md](docs/troubleshooting.md).
 
