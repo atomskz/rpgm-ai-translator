@@ -66,19 +66,15 @@ function isInsideDirectory(parent: string, candidate: string): boolean {
 }
 
 // In-place mode publishes the backup directory with a rename-swap, so an explicit
-// --backup-dir that overlaps the game itself (the root, or the `data`/`js` content
-// folders being replaced) would clobber the very files it is meant to preserve.
-// The default backup (a dedicated hidden dir inside the root) is unaffected.
+// --backup-dir must live entirely outside the game folder: being the root, sitting
+// anywhere inside it (e.g. an art subfolder), or containing it would let the swap
+// clobber the very files the backup is meant to preserve. Mirrors the patch-mode
+// --out guard. The default backup (a dedicated hidden dir inside the root) never
+// passes through here, so it is unaffected.
 function assertBackupDirSafe(root: string, backupDir: string): void {
   const resolved = path.resolve(backupDir);
-  if (resolved === root || isInsideDirectory(resolved, root)) {
-    throw new Error(`Backup directory must not be the game folder or contain it ('${backupDir}')`);
-  }
-  for (const contentDir of ["data", "js"]) {
-    const dir = path.join(root, contentDir);
-    if (resolved === dir || isInsideDirectory(dir, resolved) || isInsideDirectory(resolved, dir)) {
-      throw new Error(`Backup directory must not overlap the game '${contentDir}' folder ('${backupDir}')`);
-    }
+  if (resolved === root || isInsideDirectory(root, resolved) || isInsideDirectory(resolved, root)) {
+    throw new Error(`Backup directory must be outside the game folder ('${backupDir}')`);
   }
 }
 

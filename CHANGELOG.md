@@ -44,8 +44,9 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 - Recognize asset references that contain spaces or backslash separators (for
   example `img\face 1.png`) as non-translatable, so they are no longer extracted as
   translatable strings.
-- Reject an in-place `--backup` directory that overlaps the game (the project root
-  or its `data`/`js` folders), so the backup's rename-swap cannot clobber the very
+- Reject an in-place `--backup` directory anywhere inside the game folder (the
+  project root, its `data`/`js` folders, or any other subfolder such as `img`) as
+  well as one that contains it, so the backup's rename-swap cannot clobber the very
   files it is meant to preserve. The default hidden backup directory is unaffected.
 - Guard the `--max-tokens-budget` before each character-inference batch (projected
   against the tokens already spent by translate/review/repair) instead of after the

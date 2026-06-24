@@ -564,11 +564,38 @@ describe("patch writer", () => {
         ],
         { mode: "in-place", backupDir: path.join(root, "data", "backup") }
       )
-    ).rejects.toThrow(/Backup directory must not overlap the game 'data' folder/);
+    ).rejects.toThrow(/Backup directory must be outside the game folder/);
 
     // The guard runs before any write, so the game file is untouched.
     const unchanged = JSON.parse(await readFile(path.join(root, "data", "Actors.json"), "utf8"));
     expect(unchanged[1].name).toBe("Aria");
+  });
+
+  it("rejects an in-place backup directory inside the game root but outside data/js", async () => {
+    const root = path.join(tmpdir(), `rpgm-in-place-rootbackup-${Date.now()}`);
+    await mkdir(path.join(root, "data"), { recursive: true });
+    await mkdir(path.join(root, "js"), { recursive: true });
+    await mkdir(path.join(root, "img"), { recursive: true });
+    await writeFile(path.join(root, "js", "rpg_core.js"), "", "utf8");
+    await writeJson(path.join(root, "data", "Actors.json"), [null, { id: 1, name: "Aria" }]);
+
+    const extractor = new RpgMakerMvMzExtractor();
+    await expect(
+      extractor.applyTranslations(
+        root,
+        [
+          {
+            id: "Actors.1.name",
+            source: "Aria",
+            translation: "Ария",
+            provider: "manual",
+            model: "manual",
+            status: "translated"
+          }
+        ],
+        { mode: "in-place", backupDir: path.join(root, "img") }
+      )
+    ).rejects.toThrow(/Backup directory must be outside the game folder/);
   });
 
   it("rolls back in-place files when a later write fails", async () => {
