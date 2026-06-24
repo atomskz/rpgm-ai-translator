@@ -267,6 +267,33 @@ describe("DefaultValidator", () => {
     expect(codes(issues)).toContain("NUMBER_CHANGED");
   });
 
+  it("treats a decimal with no leading zero as unchanged", () => {
+    const issues = validate(
+      unit({ source: "Rate 0.5x", normalizedSource: "Rate 0.5x" }),
+      result({ source: "Rate 0.5x", translation: "Множитель .5x" })
+    );
+
+    expect(codes(issues)).not.toContain("NUMBER_CHANGED");
+  });
+
+  it("does not read an ellipsis followed by a digit as a decimal", () => {
+    const issues = validate(
+      unit({ source: "Wait...5 turns", normalizedSource: "Wait...5 turns" }),
+      result({ source: "Wait...5 turns", translation: "Жди...5 ходов" })
+    );
+
+    expect(codes(issues)).not.toContain("NUMBER_CHANGED");
+  });
+
+  it("still flags a changed decimal value", () => {
+    const issues = validate(
+      unit({ source: "Rate 0.5x", normalizedSource: "Rate 0.5x" }),
+      result({ source: "Rate 0.5x", translation: "Множитель 0.7x" })
+    );
+
+    expect(codes(issues)).toContain("NUMBER_CHANGED");
+  });
+
   it("reports changed variables", () => {
     const protectedText = protectPlaceholders("Hello {playerName}.");
     const issues = validate(
@@ -290,6 +317,26 @@ describe("DefaultValidator", () => {
         placeholders: protectedText.placeholders
       }),
       result({ source: "Use <ItemTag>.", translation: "Используй <WrongTag>." })
+    );
+
+    expect(codes(issues)).toContain("TECHNICAL_TOKEN_CHANGED");
+  });
+
+  it("does not treat prose comparisons as a technical token", () => {
+    const issues = validate(
+      unit({ source: "HP < 50 and MP > 20", normalizedSource: "HP < 50 and MP > 20" }),
+      result({ source: "HP < 50 and MP > 20", translation: "ХП < 50 и МП > 20" })
+    );
+
+    expect(codes(issues)).not.toContain("TECHNICAL_TOKEN_CHANGED");
+  });
+
+  it("recognises backslash control codes the protector handles", () => {
+    // \$ and \^ were invisible to the old technical-token regex, so dropping them
+    // went unreported. They are now recognised consistently with the protector.
+    const issues = validate(
+      unit({ source: String.raw`Save \$ now\^`, normalizedSource: String.raw`Save \$ now\^` }),
+      result({ source: String.raw`Save \$ now\^`, translation: "Сохрани сейчас" })
     );
 
     expect(codes(issues)).toContain("TECHNICAL_TOKEN_CHANGED");

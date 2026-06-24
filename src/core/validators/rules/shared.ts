@@ -32,9 +32,12 @@ export function issue(
 export function extractNumbers(text: string): string[] {
   // Fold full-width digits and separators (５００ -> 500, ， -> ,, ％ -> %) so a
   // locale's formatting is not mistaken for a changed number, then reduce each
-  // match to a canonical value.
+  // match to a canonical value. The second alternative also accepts a decimal with
+  // no leading zero (.5 / ,5) — but only when it does not follow an ellipsis or
+  // another digit — so `0.5` and `.5` canonicalize alike instead of reading as
+  // 0.5 vs 5.
   const normalized = text.normalize("NFKC");
-  const matches = normalized.match(/\d+(?:[.,\u00A0\u202F]\d+)*%?/g) ?? [];
+  const matches = normalized.match(/(?:\d+(?:[.,\u00A0\u202F]\d+)*|(?<![.,\d])[.,]\d+)%?/g) ?? [];
   return matches.map(canonicalizeNumber);
 }
 
@@ -87,7 +90,11 @@ export function extractTechnicalTokens(text: string): string[] {
   // does not also pollute the technical-token multiset and mask itself as a
   // TECHNICAL_TOKEN_CHANGED. Source text never contains it, so this stays symmetric.
   const withoutSentinels = text.replace(/<PH_\d+>/g, " ");
-  return withoutSentinels.match(/\\(?:[A-Za-z]+(?:\[[^\]\r\n]*\])?|\{|\}|\.|\||!|>)|%(?:\d+|(?:\.\d+)?[sdif])|\{[A-Za-z_][A-Za-z0-9_]*\}|<[^<>\n]+>/g) ?? [];
+  // Reuse the placeholder protector's tokenizer so the recognised control codes and
+  // tags stay identical to what gets protected/restored. The previous bespoke regex
+  // had drifted: it swallowed prose comparisons such as `HP < 50 and MP > 20` as a
+  // tag, and it missed `\\`, `\<`, `\$` and `\^` that the protector handles.
+  return protectPlaceholders(withoutSentinels).placeholders.map((placeholder) => placeholder.value);
 }
 
 // Display width in message-box cells. RPG Maker renders full-width (CJK/kana,
