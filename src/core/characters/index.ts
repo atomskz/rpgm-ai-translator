@@ -95,6 +95,13 @@ export async function inferCharacterGlossary(
 
   for (let index = 0; index < candidates.length; index += batchSize) {
     const batch = candidates.slice(index, index + batchSize);
+    // Guard the batch before spending on it, projected against the tokens already
+    // spent by earlier passes (translate/review/repair), so an over-budget pass
+    // fails before the provider call instead of after — matching review/repair.
+    if (budget) {
+      estimatedTokens += estimateCandidateTokens(batch);
+      budget.assertProjectedWithin(estimatedTokens);
+    }
     let response: CharacterGlossary;
     try {
       response = await withProviderRetry(() => provider.inferCharacters(batch, options), {
@@ -106,10 +113,6 @@ export async function inferCharacterGlossary(
       response = markBatchForManualReview(batch, error);
     }
     mergePreferringConfidence(glossary, reconcileBatch(batch, response, options.onWarning));
-    if (budget) {
-      estimatedTokens += estimateCandidateTokens(batch);
-      budget.assertEstimateWithin(estimatedTokens);
-    }
   }
 
   return glossary;

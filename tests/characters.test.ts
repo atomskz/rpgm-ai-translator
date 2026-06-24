@@ -204,12 +204,43 @@ describe("character candidates", () => {
         ],
         provider,
         { targetLanguage: "ru", batchSize: 1 },
-        new TokenBudget(5)
+        // 20 admits the first batch (~17 estimated tokens) but not the cumulative
+        // second (~35), so the budget trips before the second provider call.
+        new TokenBudget(20)
       )
     ).rejects.toThrow(/--max-tokens-budget/);
 
     // The first batch was sent, then the budget tripped before the second.
     expect(seen).toEqual([["Aria"]]);
+  });
+
+  it("refuses the first batch before calling the provider when already over budget", async () => {
+    const seen: string[][] = [];
+    const provider: LLMProvider = {
+      name: "test",
+      translateBatch: async () => [],
+      reviewBatch: async () => [],
+      inferCharacters: async (batch) => {
+        seen.push(batch.map((candidate) => candidate.name));
+        return {};
+      }
+    };
+    // A budget already spent by earlier passes leaves no room; projecting the next
+    // batch against it must refuse before any provider call.
+    const budget = new TokenBudget(10);
+    budget.record([
+      { id: "x", source: "x", translation: "x", provider: "p", model: "m", status: "translated", metadata: { tokenUsage: { inputTokens: 8, outputTokens: 0, totalTokens: 8 } } }
+    ]);
+
+    await expect(
+      inferCharacterGlossary(
+        [{ name: "Aria", sources: ["actor"], occurrences: 1, evidence: [] }],
+        provider,
+        { targetLanguage: "ru", batchSize: 1 },
+        budget
+      )
+    ).rejects.toThrow(/--max-tokens-budget/);
+    expect(seen).toEqual([]);
   });
 
   it("keeps the higher-confidence entry when a name recurs across batches", async () => {

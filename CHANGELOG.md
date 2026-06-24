@@ -14,6 +14,9 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Guard the `--max-tokens-budget` before each character-inference batch (projected
+  against the tokens already spent by translate/review/repair) instead of after the
+  provider call, so an over-budget inference fails before spending rather than after.
 - Reject a `custom`-mode glossary term that has no translation when the glossary is
   loaded, instead of sending the model the contradictory instruction to "use the
   provided translation exactly" with none provided.
