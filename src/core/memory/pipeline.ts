@@ -19,7 +19,7 @@
 
 import { normalizeBatchSize } from "../batching/index.js";
 import { summarizeBatchFailures } from "../reports/failures.js";
-import type { LLMProvider, TranslateOptions, TranslationResult, TranslationUnit } from "../types.js";
+import type { LLMProvider, TranslateOptions, TranslationMetadata, TranslationResult, TranslationUnit } from "../types.js";
 import { hashCacheKey } from "../utils/hash.js";
 import { translateBatchWithRetry } from "./retry.js";
 import type { MemoryEntry, TranslationMemory } from "./types.js";
@@ -188,15 +188,33 @@ function expandBatchResultsForDuplicateMisses(
         if (!missedUnits) {
           return [result];
         }
-        return missedUnits.map((missedUnit) => ({
+        // The batch usage rides on a single result. Copying it onto every
+        // duplicate-source sibling would multiply the recorded cost once these
+        // are read back from a file (where the in-process identity dedup is
+        // lost), so only the first copy keeps it.
+        return missedUnits.map((missedUnit, index) => ({
           ...result,
           id: missedUnit.id,
-          source: missedUnit.source
+          source: missedUnit.source,
+          metadata: index === 0 ? result.metadata : withoutUsage(result.metadata)
         }));
       });
       await originalOnBatchResults(expandedResults);
     }
   };
+}
+
+// Drops the batch-level usage from a copied result so a duplicate-source sibling
+// does not re-count tokens the original already accounts for. Returns the same
+// metadata untouched when it carries no usage, and undefined when nothing remains.
+function withoutUsage(metadata: TranslationMetadata | undefined): TranslationMetadata | undefined {
+  if (!metadata || (metadata.usage == null && metadata.tokenUsage == null)) {
+    return metadata;
+  }
+  const rest = { ...metadata };
+  delete rest.usage;
+  delete rest.tokenUsage;
+  return Object.keys(rest).length > 0 ? rest : undefined;
 }
 
 async function upsertMemoryEntries(memory: TranslationMemory, entries: MemoryEntry[]): Promise<void> {

@@ -36,21 +36,26 @@ export function estimateInputTokens(units: TranslationUnit[]): number {
 
 // Sum the provider-neutral token usage recorded on translation results. Returns
 // undefined when no result carries usage so callers can omit it from reports.
+//
+// A provider reports usage once per batch, but that single usage object is shared
+// across every result in the batch (and copied onto duplicate-source siblings).
+// Summing naively would multiply a batch's cost by its size, so each distinct
+// usage object is counted once by identity.
 export function aggregateTokenUsage(results: TranslationResult[]): TokenUsage | undefined {
   const total: Required<TokenUsage> = { inputTokens: 0, outputTokens: 0, totalTokens: 0, cachedInputTokens: 0 };
-  let found = false;
+  const counted = new Set<TokenUsage>();
   for (const result of results) {
     const usage = result.metadata?.tokenUsage;
-    if (!usage) {
+    if (!usage || counted.has(usage)) {
       continue;
     }
-    found = true;
+    counted.add(usage);
     total.inputTokens += usage.inputTokens ?? 0;
     total.outputTokens += usage.outputTokens ?? 0;
     total.totalTokens += usage.totalTokens ?? 0;
     total.cachedInputTokens += usage.cachedInputTokens ?? 0;
   }
-  return found ? total : undefined;
+  return counted.size > 0 ? total : undefined;
 }
 
 // Tracks tokens spent across batches and aborts when the limit is passed.

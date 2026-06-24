@@ -48,6 +48,33 @@ describe("cost estimation", () => {
     ).toBeUndefined();
   });
 
+  it("counts a batch usage object once even when stamped on every result", () => {
+    // A provider reports usage once per batch; the same object is shared across
+    // each result. Summing per result would multiply the cost by the batch size.
+    const usage = { inputTokens: 100, outputTokens: 40, totalTokens: 140 };
+    const batch: TranslationResult[] = ["a", "b", "c"].map((id) => ({
+      id,
+      source: id,
+      translation: id,
+      provider: "deepseek",
+      model: "m",
+      status: "translated",
+      metadata: { tokenUsage: usage }
+    }));
+
+    expect(aggregateTokenUsage(batch)).toEqual({
+      inputTokens: 100,
+      outputTokens: 40,
+      totalTokens: 140,
+      cachedInputTokens: 0
+    });
+
+    const budget = new TokenBudget(200);
+    budget.record(batch);
+    expect(budget.spentTokens).toBe(140);
+    expect(() => budget.assertWithin()).not.toThrow();
+  });
+
   it("enforces a token budget against estimates and accumulated usage", () => {
     const budget = new TokenBudget(50);
     expect(() => budget.assertEstimateWithin(80)).toThrow(/exceed the --max-tokens-budget of 50/);

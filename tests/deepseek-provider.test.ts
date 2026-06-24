@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DeepSeekProvider } from "../src/providers/deepseek/index.js";
 import { backoffDelay, retryAfterMs } from "../src/providers/deepseek/client.js";
+import { aggregateTokenUsage } from "../src/core/cost/index.js";
 import type { TranslationUnit } from "../src/core/types.js";
 
 type FetchInit = {
@@ -73,6 +74,42 @@ describe("DeepSeekProvider", () => {
       outputTokens: 20,
       totalTokens: 120,
       cachedInputTokens: 40
+    });
+  });
+
+  it("stamps batch usage on a single result so aggregation counts it once", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      fetchFn: async () =>
+        response(200, {
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  translations: [
+                    { id: "Actors.1.name", translation: "Ария" },
+                    { id: "Actors.2.name", translation: "Белфи" }
+                  ]
+                })
+              }
+            }
+          ],
+          usage: { total_tokens: 42 }
+        })
+    });
+
+    const batch: TranslationUnit[] = [
+      unit(),
+      { ...unit(), id: "Actors.2.name", source: "Belffie", normalizedSource: "Belffie", jsonPath: "2.name" }
+    ];
+    const results = await provider.translateBatch(batch, { targetLanguage: "ru" });
+
+    expect(results.filter((result) => result.metadata?.tokenUsage != null)).toHaveLength(1);
+    expect(aggregateTokenUsage(results)).toEqual({
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 42,
+      cachedInputTokens: 0
     });
   });
 

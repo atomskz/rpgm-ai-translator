@@ -205,6 +205,9 @@ export function translationResultsFromPayload(
   const requestedIds = new Set(batch.map((unit) => unit.id));
   const usage = response.usage;
   const tokenUsage = toTokenUsage(usage);
+  // Usage is reported once for the whole batch; stamp it on a single result so
+  // aggregation and the budget count it once rather than once per unit.
+  let usageStamped = false;
 
   const results = batch.map((unit) => {
     const translation = byId.get(unit.id);
@@ -220,6 +223,8 @@ export function translationResultsFromPayload(
       );
     }
 
+    const stampUsage = usage != null && !usageStamped;
+    usageStamped ||= stampUsage;
     return {
       id: unit.id,
       source: unit.source,
@@ -227,7 +232,7 @@ export function translationResultsFromPayload(
       provider: providerName,
       model,
       status: "translated" as const,
-      metadata: usage ? { usage, tokenUsage } : undefined
+      metadata: stampUsage ? { usage, tokenUsage } : undefined
     };
   });
 
@@ -245,6 +250,10 @@ export function reviewResultsFromPayload(
   const requestedIds = new Set(batch.map((unit) => unit.id));
   const usage = response.usage;
   const tokenUsage = toTokenUsage(usage);
+  // Usage is reported once for the whole batch; stamp it on a single result so
+  // aggregation and the budget count it once rather than once per unit. Every
+  // reviewed result still carries the reviewed flag.
+  let usageStamped = false;
 
   const results = batch.map((unit) => {
     const translation = byId.get(unit.id);
@@ -260,6 +269,8 @@ export function reviewResultsFromPayload(
       );
     }
 
+    const stampUsage = usage != null && !usageStamped;
+    usageStamped ||= stampUsage;
     return {
       id: unit.id,
       source: unit.source,
@@ -267,7 +278,7 @@ export function reviewResultsFromPayload(
       provider: providerName,
       model,
       status: "translated" as const,
-      metadata: usage ? { usage, tokenUsage, reviewed: true } : { reviewed: true }
+      metadata: stampUsage ? { usage, tokenUsage, reviewed: true } : { reviewed: true }
     };
   });
 
