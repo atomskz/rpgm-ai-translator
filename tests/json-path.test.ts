@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  decodeEncodedJsonSegment,
+  encodeArrayIndexSegment,
+  encodeObjectKeySegment,
   getJsonPath,
   isUnsafePathSegment,
   setJsonPath,
@@ -31,5 +34,21 @@ describe("json-path prototype-pollution guard", () => {
     const root: Record<string, unknown> = { a: { b: "old" } };
     setJsonPath(root, "a.b", "new");
     expect(getJsonPath(root, "a.b")).toBe("new");
+  });
+});
+
+describe("encoded-json segment round-trip", () => {
+  it("distinguishes an array index from a numeric object key", () => {
+    expect(encodeArrayIndexSegment(0)).toBe("#0");
+    expect(encodeObjectKeySegment("0")).toBe("0");
+    expect(decodeEncodedJsonSegment("#0")).toBe("0");
+    expect(decodeEncodedJsonSegment("0")).toBe("0");
+  });
+
+  it("escapes an object key that begins with #", () => {
+    expect(encodeObjectKeySegment("#tag")).toBe("##tag");
+    expect(decodeEncodedJsonSegment("##tag")).toBe("#tag");
+    // A real array index still decodes back to the bare number.
+    expect(decodeEncodedJsonSegment(encodeArrayIndexSegment(5))).toBe("5");
   });
 });
