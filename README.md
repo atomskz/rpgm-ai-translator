@@ -203,8 +203,11 @@ node dist/cli/index.js characters ./work/units.json \
   --out ./work/characters.json
 ```
 
-Review `characters.json` manually. Gender, role, and speech style inference is
-heuristic and should be corrected before the review pass.
+Review `characters.json` manually. Gender, type, and speech style inference is
+heuristic and should be corrected before the review pass. Add `--draft-only` (or
+`--provider none`) to build a heuristic glossary without calling a provider, and
+`--include-mentions` to also collect repeated capitalized names from dialogue as
+candidates.
 
 ### Review Dialogue
 

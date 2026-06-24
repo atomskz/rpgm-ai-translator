@@ -2,6 +2,62 @@
 
 All notable changes to `rpgm-ai-translator` are documented in this file.
 
+## Unreleased
+
+### Added
+
+- Lock the work directory for the duration of a `run` (a `.rpgm-run.lock` file)
+  so two runs sharing a `--work-dir` cannot interleave checkpoint and memory
+  writes and corrupt them. The lock is released on `SIGINT`/`SIGTERM`, and a lock
+  left behind by a dead process is reclaimed automatically on the next run.
+- Honor `--max-tokens-budget` during the `characters` pass, not only the
+  translate, review and repair passes.
+- Accept `--codes` and `--attempts` as aliases for `--repair-codes` and
+  `--repair-attempts` in the `run` command, so the repair flag names work in both
+  commands.
+- Version the validation report (`schemaVersion`) and record a units fingerprint,
+  so `repair` warns when the report was generated from a different extraction and
+  an unrecognized report version is rejected with a clear message.
+
+### Changed
+
+- Exit non-zero on failure: `validate` exits `2` when it finds apply-blocking
+  errors, and `translate`/`run` exit `1` when no translations are produced, so a
+  wrapping script stops instead of proceeding on empty output.
+- Require `--out` for `apply`/`run` patch mode as a usage error instead of failing
+  deep inside the patch writer with no hint.
+- Reject surplus positional arguments and empty or whitespace-only option values
+  instead of silently ignoring them; `characters` points to `--translations` when
+  a translations file is passed as a second positional.
+- Validate a units file's category, placeholders and constraints when it is
+  loaded, and validate project-config value types (warning on unknown keys).
+- Preserve original line endings (LF/CRLF) when rewriting JSON and `plugins.js`,
+  and read positional arguments independently of option order.
+- Relicense under GPL-3.0-or-later and add source-file headers.
+- Split CI into a Node-version matrix `verify` job and a `package` smoke-test job
+  that installs the packed tarball and uploads it as an artifact named by the
+  short commit SHA.
+
+### Fixed
+
+- Reject a unit file path that escapes the project or output directory before any
+  file is written.
+- Discard a `review`/`repair` checkpoint written for a different target language,
+  model, provider or glossary instead of resuming it and mixing stale output into
+  the patch (the `translate`/`run` guard now also covers the standalone passes).
+- Count a batch's token usage once instead of once per unit, so
+  `--max-tokens-budget` and the report total are no longer multiplied by the batch
+  size.
+- Stop reporting a prose comparison (`HP < 50 and MP > 20`) as a
+  `TECHNICAL_TOKEN_CHANGED`, recognize `\$`/`\^`/`\<`/`\\` consistently with the
+  placeholder protector, and treat a leading-zero-less decimal (`.5` vs `0.5`) as
+  unchanged.
+- Warn on any `apply` skip caused by an id mismatch (not only at 50% or more) and
+  print a human-readable summary instead of the raw result JSON.
+- Surface provider failure reasons in batch progress output, disambiguate
+  encoded-JSON unit ids when object keys contain dots, and match half-width
+  katakana glossary terms.
+
 ## 0.1.5 - 2026-06-23
 
 ### Added

@@ -83,6 +83,15 @@ Run `<command> --help` for the exact accepted flags, or see
 They are. `run` always writes a patch; it prints a warning and ignores `--mode`
 and `--backup`. Use the standalone `apply` command for in-place mode.
 
+## "Another run is using ..." (work-directory lock)
+
+`run` holds an exclusive lock on its work directory (a `.rpgm-run.lock` file) so a
+second run sharing the same `--work-dir` cannot interleave checkpoint and memory
+writes. The lock is released when the run finishes and on `Ctrl-C`/`SIGTERM`, and
+a lock left by a crashed run is reclaimed automatically on the next start. If you
+see this error when no run is active (for example after a `kill -9`), pass a
+different `--work-dir` or delete the lock file.
+
 ## Validation issue codes
 
 `validate` writes a report and the summary lists issues by code. Issues with
@@ -94,7 +103,8 @@ and `--backup`. Use the standalone `apply` command for in-place mode.
   `CONTROL_CODE_CHANGED`, `VARIABLE_CHANGED`, `NUMBER_CHANGED`, and
   `MAX_LINES_EXCEEDED`.
 - Warnings include `MAX_LENGTH_EXCEEDED` (horizontal fitting is best-effort),
-  `UNCHANGED_TRANSLATION`, and `GLOSSARY_VIOLATION`.
+  `TECHNICAL_TOKEN_CHANGED` (a `<tag>` or control code differs between source and
+  translation), `UNCHANGED_TRANSLATION`, and `GLOSSARY_VIOLATION`.
 
 Use `repair --codes <list>` to target specific codes, then re-run `validate` and
 inspect the report before shipping a patch.

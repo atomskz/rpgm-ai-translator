@@ -2,10 +2,13 @@
   "Aria": {
     "translation": "Ария",
     "gender": "female",
+    "type": "person",
+    "aliases": ["Aria the Brave", "Ari"],
     "speechStyle": "уверенная, краткая, без чрезмерной фамильярности"
   },
   "Moonfall": {
     "gender": "neutral",
+    "type": "place",
     "description": "топоним, не персонаж"
   }
 }

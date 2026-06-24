@@ -45,7 +45,7 @@ its value, or a duplicated value option, is also rejected.
 | `--temperature <n>` | Sampling temperature `0..2`. DeepSeek default `0.3`. |
 | `--max-tokens <n>` | Output token limit. DeepSeek default `8192`, or `32000` for the reasoning review/repair passes. |
 | `--max-tokens-budget <n>` | Abort the run if estimated or used tokens exceed this budget. |
-| `--retry-attempts <n>` | Provider retries for a failed batch. Default `1`. |
+| `--retry-attempts <n>` | Provider retries for a failed batch. Default `2`. |
 | `--codes <list>` | Comma-separated validation issue codes to repair (`repair`). |
 | `--attempts <n>` | Repair passes (`repair`). Default `1`. |
 | `--repair-codes <list>` | Issue codes to repair (`run --repair`). |
@@ -141,6 +141,20 @@ repair, apply, optional font patch. `run` always writes a patch, so `--mode` and
 `--include-plugins`, `--include-speaker-names`, `--review`, `--repair`,
 `--dry-run`. `--codes` and `--attempts` are accepted as aliases for
 `--repair-codes` and `--repair-attempts`.
+
+`run` holds an exclusive lock on the work directory (a `.rpgm-run.lock` file) for
+the whole run, so a second run sharing the same `--work-dir` fails fast instead of
+corrupting shared checkpoints and memory. The lock is released on exit and on
+`Ctrl-C`/`SIGTERM`; a lock left by a crashed run is reclaimed automatically. If a
+run reports the directory is in use when none is, delete the lock file.
+
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Success. |
+| `1` | A usage error, a runtime failure, or a `translate`/`run` that produced no translations at all (for example a total provider outage). |
+| `2` | `validate` found apply-blocking validation errors. The report is still written. |
 
 ## Environment
 
