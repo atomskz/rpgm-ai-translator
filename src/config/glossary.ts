@@ -37,6 +37,17 @@ export async function loadGlossary(filePath: string): Promise<Glossary> {
     throw new Error("Glossary must be an object whose values have a valid mode and optional translation string");
   }
 
+  // A `custom` term is defined as "use the provided translation exactly", so an
+  // entry in that mode without a translation is a contradictory instruction. Reject
+  // it before any provider call rather than sending the model an empty pin.
+  for (const [term, entry] of Object.entries(parsed)) {
+    if (entry.mode === "custom" && (entry.translation == null || entry.translation.trim() === "")) {
+      throw new Error(
+        `Glossary term '${term}' uses mode 'custom' but has no translation; custom mode requires the exact translation to use (or pick mode 'keep' or 'transliterate').`
+      );
+    }
+  }
+
   return parsed;
 }
 

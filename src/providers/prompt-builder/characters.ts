@@ -21,6 +21,28 @@ import type { CharacterCandidate, CharacterInferenceOptions } from "../../core/t
 import { buildCharacterInferenceSystemPrompt } from "./system-prompts.js";
 import type { ChatMessage } from "./types.js";
 
+// Bound the evidence sent per candidate so a character with hundreds of long lines
+// cannot inflate the prompt past the context window (which would only surface as a
+// wasted, truncated response). A handful of representative snippets is enough for
+// name inference.
+const MAX_EVIDENCE_PER_CANDIDATE = 12;
+const MAX_EVIDENCE_SNIPPET_CHARS = 200;
+
+function truncateSnippet(text: string): string {
+  return text.length > MAX_EVIDENCE_SNIPPET_CHARS ? `${text.slice(0, MAX_EVIDENCE_SNIPPET_CHARS)}…` : text;
+}
+
+function boundCandidateEvidence(candidate: CharacterCandidate): CharacterCandidate {
+  return {
+    ...candidate,
+    evidence: candidate.evidence.slice(0, MAX_EVIDENCE_PER_CANDIDATE).map((item) => ({
+      ...item,
+      source: truncateSnippet(item.source),
+      translation: item.translation == null ? item.translation : truncateSnippet(item.translation)
+    }))
+  };
+}
+
 export function buildCharacterInferenceMessages(
   candidates: CharacterCandidate[],
   options: CharacterInferenceOptions
@@ -43,7 +65,7 @@ export function buildCharacterInferenceUserPayload(
 ): Record<string, unknown> {
   return {
     targetLanguage: options.targetLanguage,
-    candidates,
+    candidates: candidates.map(boundCandidateEvidence),
     expectedResponse: {
       characters: {
         "Original Name": {

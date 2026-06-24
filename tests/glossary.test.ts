@@ -30,6 +30,14 @@ describe("glossary loading", () => {
 
     await expect(loadGlossary(glossaryPath)).rejects.toThrow("Glossary must be an object");
   });
+
+  it("rejects a custom-mode term that has no translation", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-glossary-"));
+    const glossaryPath = path.join(root, "glossary.json");
+    await writeFile(glossaryPath, JSON.stringify({ Sword: { mode: "custom" } }), "utf8");
+
+    await expect(loadGlossary(glossaryPath)).rejects.toThrow("mode 'custom' but has no translation");
+  });
 });
 
 describe("character glossary loading", () => {

@@ -50,7 +50,7 @@ export function filterGlossaryForReviewBatch(glossary: Glossary | undefined, bat
         (unit) =>
           glossaryTermMatches(unit.source, term) ||
           glossaryTermMatches(unit.normalizedSource ?? "", term) ||
-          glossaryTermMatches(unit.currentTranslation, term)
+          glossaryTermMatches(unit.currentTranslation ?? "", term)
       )
     ) {
       relevant[term] = entry;

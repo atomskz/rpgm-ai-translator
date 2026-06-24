@@ -242,6 +242,31 @@ describe("prompt builder", () => {
       expectedResponse: { characters: expect.any(Object) }
     });
   });
+
+  it("bounds candidate evidence count and snippet length", () => {
+    const longLine = "x".repeat(500);
+    const payload = buildCharacterInferenceUserPayload(
+      [
+        {
+          name: "Aria",
+          sources: ["dialogue-mention"],
+          occurrences: 30,
+          evidence: Array.from({ length: 30 }, (_, index) => ({
+            unitId: `Map001.${index}`,
+            category: "dialogue" as const,
+            source: longLine
+          }))
+        }
+      ],
+      { targetLanguage: "ru" }
+    );
+
+    const candidate = (payload.candidates as Array<{ evidence: Array<{ source: string }> }>)[0];
+    expect(candidate.evidence).toHaveLength(12);
+    // 200 retained characters plus a single ellipsis marker.
+    expect(candidate.evidence[0].source).toHaveLength(201);
+    expect(candidate.evidence[0].source.endsWith("…")).toBe(true);
+  });
 });
 
 function unit(): TranslationUnit {

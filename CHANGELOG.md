@@ -14,6 +14,15 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Reject a `custom`-mode glossary term that has no translation when the glossary is
+  loaded, instead of sending the model the contradictory instruction to "use the
+  provided translation exactly" with none provided.
+- Bound the evidence sent to the character-inference pass (cap the snippets per
+  candidate and truncate long ones) so a heavily-quoted character cannot inflate the
+  prompt past the context window and waste a truncated response.
+- Coerce a missing `currentTranslation` when filtering the glossary for a review
+  batch, so a hand-edited or checkpoint-sourced review unit without it no longer
+  throws while the batch messages are built.
 - Reject `__proto__`, `constructor` and `prototype` as JSON-path or plugin-parameter
   segments when applying a patch, so a crafted `units.json` cannot turn the path
   writers into a prototype-pollution primitive. Such a unit is skipped instead of
