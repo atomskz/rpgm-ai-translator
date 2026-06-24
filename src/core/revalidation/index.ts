@@ -73,5 +73,17 @@ export function collectRevalidatedBatch(
     checkpointResults.push(accepted);
   }
 
+  // A requested id the provider never returned is a failure, not a silent skip: the
+  // unit keeps its previous translation in the caller's final merge, but the count
+  // must reflect that the pass did not deliver it. It is deliberately not
+  // checkpointed, so a resume re-requests it rather than locking in a transient
+  // omission. The bundled providers already synthesize a failed result per missing
+  // id, so this only adds robustness for a custom provider that returns a short list.
+  for (const requestedId of requestedIds) {
+    if (!seen.has(requestedId)) {
+      failed += 1;
+    }
+  }
+
   return { checkpointResults, failed, anomalous };
 }

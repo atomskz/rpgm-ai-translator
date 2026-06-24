@@ -17,6 +17,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Count a unit a provider omits from a review/repair response as a failure rather
+  than letting it disappear into the skipped tally. The unit keeps its previous
+  translation and is left out of the checkpoint so a resume re-requests it (the
+  bundled providers already report missing ids; this hardens the shared path for a
+  custom provider that returns a short list).
 - Reject a review/repair result that breaks a different token of an error code it
   already had (for example fixing one missing placeholder while dropping another):
   the regression gate now compares each error by code and message — which names the

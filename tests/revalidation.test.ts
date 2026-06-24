@@ -63,6 +63,23 @@ describe("collectRevalidatedBatch", () => {
     expect(checkpointResults).toEqual([previous]);
   });
 
+  it("counts a requested id the provider omitted as a failure but does not checkpoint it", () => {
+    const acceptedById = new Map<string, TranslationResult>();
+    const { checkpointResults, failed, anomalous } = collectRevalidatedBatch(
+      [result("a")],
+      new Set(["a", "b"]),
+      acceptedById,
+      (r) => r,
+      () => undefined
+    );
+    // "b" was requested but never returned: counted as a failure, kept out of the
+    // checkpoint so a resume re-requests it; "a" is still accepted normally.
+    expect(failed).toBe(1);
+    expect(anomalous).toBe(0);
+    expect(acceptedById.has("a")).toBe(true);
+    expect(checkpointResults.map((r) => r.id)).toEqual(["a"]);
+  });
+
   it("records a non-translated requested result as a failure", () => {
     const acceptedById = new Map<string, TranslationResult>();
     const { failed, anomalous } = collectRevalidatedBatch(
