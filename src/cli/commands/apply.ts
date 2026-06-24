@@ -55,13 +55,14 @@ export async function applyCommand(args: string[], io: CliIO): Promise<number> {
     : await new RpgMakerMvMzExtractor().applyTranslations(projectPath, translationsToApply, applyOptions);
   // Without --units, apply re-extracts the game and matches by id. If the saved
   // translations came from a different extraction (e.g. --include-plugins), ids
-  // will not match and get silently skipped. Warn on any skip — even a partial one
-  // can quietly drop a large slice of the translation — and not only at >=50%.
-  const considered = result.unitsApplied + result.skipped;
-  if (!unitsPath && result.skipped > 0) {
-    const severe = result.skipped >= considered / 2;
+  // will not match and get silently skipped. Warn (and exit non-zero below) on an
+  // id/source mismatch only — a translation that was simply never produced
+  // (failed/empty) is a different problem and must not be blamed on a flag mismatch.
+  const considered = result.unitsApplied + result.skippedUnmatched;
+  if (!unitsPath && result.skippedUnmatched > 0) {
+    const severe = result.skippedUnmatched >= considered / 2;
     io.stderr(
-      `Warning: skipped ${result.skipped}/${considered} translation(s) because their ids did not match the re-extracted units.` +
+      `Warning: skipped ${result.skippedUnmatched}/${considered} translation(s) because their ids did not match the re-extracted units.` +
         (severe ? " Most translations were dropped." : "") +
         " If you extracted with different flags (for example --include-plugins or --include-speaker-names), pass --units <units.json> so ids match exactly.\n"
     );
@@ -82,11 +83,11 @@ export async function applyCommand(args: string[], io: CliIO): Promise<number> {
       `Applied ${result.unitsApplied} translation(s) to ${result.filesWritten.length} file(s); skipped ${result.skipped}.${backup}\n`
     );
   }
-  // Without --units, an id-mismatch can skip most of the translations and write an
-  // almost-empty patch. Exit non-zero on a majority skip so a wrapping script does
-  // not mistake it for a successful apply; a partial skip (<50%) still warns and
-  // succeeds.
-  if (!unitsPath && !applyOptions.dryRun && considered > 0 && result.skipped >= considered / 2) {
+  // Without --units, an id mismatch can skip most of the translations and write an
+  // almost-empty patch. Exit non-zero on a majority id/source mismatch so a wrapping
+  // script does not mistake it for a successful apply; a partial mismatch (<50%)
+  // still warns and succeeds, and unproduced translations never trip this.
+  if (!unitsPath && !applyOptions.dryRun && considered > 0 && result.skippedUnmatched >= considered / 2) {
     return 1;
   }
   return 0;

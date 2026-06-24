@@ -19,6 +19,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Distinguish an `apply` skip caused by an id/source mismatch from a translation
+  that was simply not produced (failed or empty): the "ids did not match" warning
+  and the non-zero exit on a majority skip now fire only on real mismatches, so
+  applying a partially-translated set no longer trips the flag-mismatch warning or a
+  spurious exit `1`.
 - Count a unit a provider omits from a review/repair response as a failure rather
   than letting it disappear into the skipped tally. The unit keeps its previous
   translation and is left out of the checkpoint so a resume re-requests it (the

@@ -46,6 +46,10 @@ export type ApplyResult = {
   filesWritten: string[];
   unitsApplied: number;
   skipped: number;
+  // Of `skipped`, the translations skipped because their id/source did not match the
+  // game data (a re-extraction/flag mismatch), as opposed to translations that were
+  // simply not produced (failed/empty) or files that could not be read.
+  skippedUnmatched: number;
   backupDir?: string;
 };
 

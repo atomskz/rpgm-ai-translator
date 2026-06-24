@@ -132,6 +132,32 @@ describe("CLI apply and patch-font", () => {
     expect(errors.join("")).toContain("Applied 2 translation(s)");
   });
 
+  it("does not warn or fail when skips are unproduced translations, not id mismatches", async () => {
+    const root = await createCliTempDir("rpgm-cli-apply-untranslated-");
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "patch");
+    const translationsPath = path.join(root, "translations.json");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await writeJsonFixture(path.join(gamePath, "data", "System.json"), {});
+    await writeJsonFixture(path.join(gamePath, "data", "Actors.json"), [null, { name: "Aria" }, { name: "Borin" }]);
+    // Both ids match the game, but two of three were never produced (failed/empty),
+    // so the majority of skips are untranslated — not an id mismatch.
+    await writeJsonFixture(translationsPath, [
+      translatedResult({ id: "Actors.1.name", source: "Aria", translation: "Ария" }),
+      translatedResult({ id: "Actors.2.name", source: "Borin", translation: "", status: "failed" })
+    ]);
+
+    const errors: string[] = [];
+    const exitCode = await runCli(["apply", gamePath, translationsPath, "--out", outDir], {
+      stdout: () => undefined,
+      stderr: (text) => errors.push(text)
+    });
+
+    expect(exitCode).toBe(0);
+    expect(errors.join("")).not.toContain("did not match the re-extracted units");
+    expect(errors.join("")).toContain("Applied 1 translation(s)");
+  });
+
   it("previews an apply with --dry-run without writing any files", async () => {
     const root = await createCliTempDir("rpgm-cli-apply-dry-");
     const gamePath = path.join(root, "game");

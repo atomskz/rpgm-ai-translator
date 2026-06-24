@@ -131,14 +131,15 @@ export async function writePatch(
 function previewResult(
   root: string,
   options: ApplyOptions,
-  prepared: { files: PreparedFile[]; skipped: number }
+  prepared: { files: PreparedFile[]; skipped: number; skippedUnmatched: number }
 ): ApplyResult {
   const baseDir = options.mode === "patch" ? path.resolve(options.outDir ?? "") : root;
   const result: ApplyResult = {
     mode: options.mode,
     filesWritten: prepared.files.map((file) => path.join(baseDir, file.relativeFilePath)),
     unitsApplied: prepared.files.reduce((total, file) => total + file.unitsApplied, 0),
-    skipped: prepared.skipped
+    skipped: prepared.skipped,
+    skippedUnmatched: prepared.skippedUnmatched
   };
   if (options.mode === "in-place" && options.backupDir) {
     result.backupDir = options.backupDir;
@@ -151,14 +152,26 @@ async function prepareFiles(
   units: TranslationUnit[],
   translations: TranslationResult[],
   onWarning?: (message: string) => void
-): Promise<{ files: PreparedFile[]; skipped: number }> {
+): Promise<{ files: PreparedFile[]; skipped: number; skippedUnmatched: number }> {
   const unitsById = new Map(units.map((unit) => [unit.id, unit]));
   const translatedByFile = new Map<string, Array<{ unit: TranslationUnit; result: TranslationResult }>>();
   let skipped = 0;
+  // Subset of `skipped` caused by an id/source mismatch with the game data, kept
+  // apart from translations that were simply not produced so a caller can warn on a
+  // genuine flag/extraction mismatch without counting unfinished translations.
+  let skippedUnmatched = 0;
 
   for (const result of translations) {
     const unit = unitsById.get(result.id);
-    if (!unit || result.status !== "translated" || result.translation.trim().length === 0) {
+    if (!unit) {
+      // The translation's id is not among the units (e.g. re-extracted with
+      // different flags) — a real id mismatch.
+      skipped += 1;
+      skippedUnmatched += 1;
+      continue;
+    }
+    if (result.status !== "translated" || result.translation.trim().length === 0) {
+      // Produced no usable translation; not an id mismatch.
       skipped += 1;
       continue;
     }
@@ -186,7 +199,10 @@ async function prepareFiles(
         ? await preparePluginsFile(relativeFilePath, sourcePath, entries)
         : await prepareJsonFile(relativeFilePath, sourcePath, entries);
 
+      // A per-file skip is a source mismatch (the game value no longer equals the
+      // unit's source) — an unmatched skip, not an unfinished translation.
       skipped += preparedFile.skipped;
+      skippedUnmatched += preparedFile.skipped;
       if (preparedFile.unitsApplied > 0) {
         files.push(preparedFile);
       }
@@ -200,7 +216,7 @@ async function prepareFiles(
     }
   }
 
-  return { files, skipped };
+  return { files, skipped, skippedUnmatched };
 }
 
 async function prepareJsonFile(
@@ -266,7 +282,7 @@ async function preparePluginsFile(
 }
 
 async function writePatchFiles(
-  prepared: { files: PreparedFile[]; skipped: number },
+  prepared: { files: PreparedFile[]; skipped: number; skippedUnmatched: number },
   outDir: string,
   skipped: number
 ): Promise<ApplyResult> {
@@ -292,7 +308,8 @@ async function writePatchFiles(
     mode: "patch",
     filesWritten,
     unitsApplied,
-    skipped
+    skipped,
+    skippedUnmatched: prepared.skippedUnmatched
   };
 }
 
@@ -348,7 +365,7 @@ async function rollbackPatchFiles(
 
 async function writeInPlaceFiles(
   root: string,
-  prepared: { files: PreparedFile[]; skipped: number },
+  prepared: { files: PreparedFile[]; skipped: number; skippedUnmatched: number },
   options: ApplyOptions
 ): Promise<ApplyResult> {
   const backupDir = path.resolve(options.backupDir ?? path.join(root, `.rpgm-ai-translator-backup-${timestamp()}`));
@@ -387,6 +404,7 @@ async function writeInPlaceFiles(
     filesWritten,
     unitsApplied,
     skipped: prepared.skipped,
+    skippedUnmatched: prepared.skippedUnmatched,
     backupDir
   };
 }
