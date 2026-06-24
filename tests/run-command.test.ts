@@ -336,6 +336,45 @@ describe("run command", () => {
     expect(patched.events[1].pages[0].list[0].parameters[0]).toBe("Длинная строка.");
   });
 
+  it("keeps event-comment translations when run with --include-comments", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-comments-"));
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "out");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await mkdir(path.join(gamePath, "js"), { recursive: true });
+    await writeFile(path.join(gamePath, "js", "rpg_core.js"), "", "utf8");
+    await writeJson(path.join(gamePath, "data", "Map001.json"), {
+      displayName: "Town",
+      events: [
+        null,
+        {
+          id: 1,
+          name: "NPC",
+          pages: [
+            {
+              list: [
+                { code: 108, parameters: ["A developer note."] },
+                { code: 401, parameters: ["Hello."] }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    const exitCode = await runCli(
+      ["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--include-comments"],
+      { stdout: () => undefined, stderr: () => undefined }
+    );
+
+    const patched = JSON.parse(await readFile(path.join(outDir, "data", "Map001.json"), "utf8"));
+    expect(exitCode).toBe(0);
+    // Before the fix the apply step re-extracted without --include-comments, so the
+    // comment translation had no matching unit and was silently skipped.
+    expect(patched.events[1].pages[0].list[0].parameters[0]).toBe("[ru] A developer note.");
+    expect(patched.events[1].pages[0].list[1].parameters[0]).toBe("[ru] Hello.");
+  });
+
   it("resumes translation and review from existing checkpoints without re-calling the provider", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-resume-"));
     const gamePath = path.join(root, "game");

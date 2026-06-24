@@ -26,7 +26,7 @@ import { applyFontPatch } from "../../core/font-patch/index.js";
 import { estimateInputTokens, TokenBudget } from "../../core/cost/index.js";
 import { acquireDirectoryLock } from "../../core/locks/index.js";
 import { JsonlTranslationMemory, translateWithMemory } from "../../core/memory/index.js";
-import { assertPatchOutputOutsideGame } from "../../core/patch-writer/index.js";
+import { assertPatchOutputOutsideGame, writePatch } from "../../core/patch-writer/index.js";
 import { repairTranslations } from "../../core/repair/index.js";
 import { createReport, summarizeReport, writeReportFile } from "../../core/reports/index.js";
 import { reviewTranslations } from "../../core/review/index.js";
@@ -295,11 +295,12 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   }
   const safeTranslations = filterTranslationsWithoutValidationErrors(translations, validationIssues);
   io.stderr(`Applying patch with ${safeTranslations.length}/${translations.length} validation-safe translations...\n`);
-  await new RpgMakerMvMzExtractor(detector).applyTranslations(projectPath, safeTranslations, {
+  // Patch from the units already extracted with the full run flags (comments,
+  // dialogue length) rather than re-extracting with a narrower set, which dropped
+  // comment translations as id mismatches.
+  await writePatch(projectPath, units, safeTranslations, {
     mode: "patch",
     outDir,
-    includePlugins: extractOptions.includePlugins,
-    includeSpeakerNames: extractOptions.includeSpeakerNames,
     onWarning: (warning) => io.stderr(`Warning: ${warning}\n`)
   });
   if (fontPath) {

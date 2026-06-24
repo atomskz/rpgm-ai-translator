@@ -26,8 +26,13 @@ export type ApplyOptions = {
   mode: ApplyMode;
   outDir?: string;
   backupDir?: string;
+  includeEventComments?: boolean;
   includePlugins?: boolean;
   includeSpeakerNames?: boolean;
+  // Must mirror the extraction flags so the re-extracted units (when no explicit
+  // units list is supplied) match the translated ids; otherwise comment or
+  // length-constrained units are missing and their translations are skipped.
+  dialogueMaxLength?: number;
   // Compute what would be written (filesWritten/unitsApplied/skipped) without
   // creating or modifying any files.
   dryRun?: boolean;

@@ -204,8 +204,10 @@ export function readApplyOptions(args: string[]): ApplyOptions {
     mode: readApplyMode(args),
     outDir: readOption(args, "--out"),
     backupDir: readOption(args, "--backup"),
+    includeEventComments: hasFlag(args, "--include-comments"),
     includePlugins: hasFlag(args, "--include-plugins"),
     includeSpeakerNames: hasFlag(args, "--include-speaker-names"),
+    dialogueMaxLength: readPositiveIntegerOption(args, "--dialogue-max-length"),
     dryRun: hasFlag(args, "--dry-run")
   };
 }
@@ -282,8 +284,8 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
     maxPositionals: 2
   },
   apply: {
-    valueOptions: ["--mode", "--out", "--backup", "--font", "--number-font", "--report", "--units"],
-    booleanFlags: ["--include-plugins", "--include-speaker-names", "--dry-run"],
+    valueOptions: ["--mode", "--out", "--backup", "--font", "--number-font", "--report", "--units", "--dialogue-max-length"],
+    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--dry-run"],
     maxPositionals: 2
   },
   run: {

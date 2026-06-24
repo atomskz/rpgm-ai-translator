@@ -2,6 +2,17 @@
 
 All notable changes to `rpgm-ai-translator` are documented in this file.
 
+## Unreleased
+
+### Fixed
+
+- Carry `--include-comments` (and `--dialogue-max-length`) translations through to
+  the patch. `run` now writes the patch from the units it already extracted instead
+  of re-extracting with a narrower flag set, and standalone `apply` (without
+  `--units`) accepts `--include-comments`/`--dialogue-max-length` so the re-extracted
+  ids match. Previously a `run --include-comments` translated event comments but
+  silently dropped them at apply as id mismatches.
+
 ## 0.1.6 - 2026-06-24
 
 ### Added

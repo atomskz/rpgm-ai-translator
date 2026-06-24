@@ -97,8 +97,10 @@ export class RpgMakerMvMzExtractor implements Extractor {
     }
 
     const units = await this.extract(projectPath, {
+      includeEventComments: options.includeEventComments,
       includePlugins: options.includePlugins,
-      includeSpeakerNames: options.includeSpeakerNames
+      includeSpeakerNames: options.includeSpeakerNames,
+      dialogueMaxLength: options.dialogueMaxLength
     });
     return writePatch(projectPath, units, translations, options);
   }
