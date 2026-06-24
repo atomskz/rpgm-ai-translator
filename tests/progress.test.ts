@@ -51,7 +51,7 @@ describe("summarizeBatchFailures", () => {
 
 describe("createProgressLogger", () => {
   it("prints the failure reasons under a batch line when units failed", () => {
-    const { io, out } = capture();
+    const { io, err } = capture();
     const log = createProgressLogger(io);
     log({
       type: "batch-complete",
@@ -64,13 +64,13 @@ describe("createProgressLogger", () => {
       total: 2,
       failures: [{ code: "PROVIDER_NETWORK_ERROR", message: "fetch failed", count: 2 }]
     });
-    const text = out.join("");
+    const text = err.join("");
     expect(text).toContain("translated 0, failed 2");
     expect(text).toContain("PROVIDER_NETWORK_ERROR (2): fetch failed");
   });
 
   it("does not print reasons when nothing failed", () => {
-    const { io, out } = capture();
+    const { io, err } = capture();
     const log = createProgressLogger(io);
     log({
       type: "batch-complete",
@@ -83,7 +83,7 @@ describe("createProgressLogger", () => {
       total: 2,
       failures: []
     });
-    const text = out.join("");
+    const text = err.join("");
     expect(text).toContain("translated 2, failed 0");
     expect(text).not.toContain(" - ");
   });

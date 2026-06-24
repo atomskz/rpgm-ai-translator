@@ -46,27 +46,27 @@ export function createProgressLogger(io: CliIO): NonNullable<TranslateOptions["o
     if (event.type === "memory-hit") {
       memoryHits += 1;
       if (memoryHits === 1 || memoryHits % 100 === 0) {
-        io.stdout(`Memory hits: ${memoryHits}/${event.total}\n`);
+        io.stderr(`Memory hits: ${memoryHits}/${event.total}\n`);
       }
       return;
     }
 
     if (event.type === "batch-start") {
-      io.stdout(
+      io.stderr(
         `Translating batch ${event.batchIndex}/${event.batchCount} (${event.batchSize} units, completed ${event.completed}/${event.total})...\n`
       );
       return;
     }
 
     if (event.type === "review-batch-start") {
-      io.stdout(
+      io.stderr(
         `Reviewing batch ${event.batchIndex}/${event.batchCount} (${event.batchSize} units, completed ${event.completed}/${event.total})...\n`
       );
       return;
     }
 
     if (event.type === "review-batch-complete") {
-      io.stdout(
+      io.stderr(
         `Completed review batch ${event.batchIndex}/${event.batchCount}: reviewed ${event.reviewed}, failed ${event.failed}, completed ${event.completed}/${event.total}\n` +
           (event.failed > 0 ? failureReasonLines(event.failures) : "")
       );
@@ -74,13 +74,13 @@ export function createProgressLogger(io: CliIO): NonNullable<TranslateOptions["o
     }
 
     if (event.type === "batch-retry") {
-      io.stdout(
+      io.stderr(
         `Retrying batch ${event.batchIndex}/${event.batchCount}, attempt ${event.attempt + 1}/${event.maxAttempts}: ${event.message}\n`
       );
       return;
     }
 
-    io.stdout(
+    io.stderr(
       `Completed batch ${event.batchIndex}/${event.batchCount}: translated ${event.translated}, failed ${event.failed}, completed ${event.completed}/${event.total}\n` +
         (event.failed > 0 ? failureReasonLines(event.failures) : "")
     );

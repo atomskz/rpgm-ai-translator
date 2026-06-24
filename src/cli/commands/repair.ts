@@ -93,10 +93,10 @@ export async function repairCommand(args: string[], io: CliIO): Promise<number> 
     io.stderr("Warning: repair checkpoint parameters (language/model/glossary) changed; discarding it and repairing fresh.\n");
   }
   if (resumed) {
-    io.stdout(`Loaded repair checkpoint: ${checkpointById.size}/${units.length} translated units from ${checkpointPath}\n`);
+    io.stderr(`Loaded repair checkpoint: ${checkpointById.size}/${units.length} translated units from ${checkpointPath}\n`);
   }
-  io.stdout(`Writing repair checkpoint: ${checkpointPath}\n`);
-  io.stdout(`Repairing translations for ${issueCodes ? issueCodes.join(",") : "all"} validation issue codes...\n`);
+  io.stderr(`Writing repair checkpoint: ${checkpointPath}\n`);
+  io.stderr(`Repairing translations for ${issueCodes ? issueCodes.join(",") : "all"} validation issue codes...\n`);
   let validationIssues = filterValidationIssues(report.validationIssues, issueCodes, checkpointById);
   let repaired = 0;
   let translated = 0;
@@ -105,7 +105,7 @@ export async function repairCommand(args: string[], io: CliIO): Promise<number> 
   let skipped = 0;
   const provider = createProvider(providerName, readProviderConfig(args));
   for (let attempt = 1; attempt <= attempts && validationIssues.length > 0; attempt += 1) {
-    io.stdout(`Repair attempt ${attempt}/${attempts}: ${validationIssues.length} targeted issues...\n`);
+    io.stderr(`Repair attempt ${attempt}/${attempts}: ${validationIssues.length} targeted issues...\n`);
     const result = await repairTranslations(units, translations, validationIssues, provider, {
       ...providerOptions,
       glossary,
@@ -114,7 +114,7 @@ export async function repairCommand(args: string[], io: CliIO): Promise<number> 
       onProgress: createProgressLogger(io),
       onBatchResults: async (batchResults) => {
         await appendTranslationResultsJsonlFile(checkpointPath, batchResults);
-        io.stdout(`Repair checkpoint saved: ${batchResults.length} results.\n`);
+        io.stderr(`Repair checkpoint saved: ${batchResults.length} results.\n`);
       }
     });
     translations = result.translations;
@@ -123,7 +123,7 @@ export async function repairCommand(args: string[], io: CliIO): Promise<number> 
     reviewed += result.reviewed;
     failed += result.failed;
     skipped += result.skipped;
-    io.stdout(
+    io.stderr(
       `Repair attempt ${attempt}/${attempts}: repaired ${result.repaired}, translated ${result.translated}, reviewed ${result.reviewed}, failed ${result.failed}, skipped ${result.skipped}\n`
     );
     if (result.repaired === 0) {
@@ -133,7 +133,7 @@ export async function repairCommand(args: string[], io: CliIO): Promise<number> 
     validationIssues = filterValidationIssues(currentIssues, issueCodes, new Map());
   }
   await writeTranslationResultsFile(out, translations);
-  io.stdout(
+  io.stderr(
     `Repaired: ${repaired}, translated: ${translated}, reviewed: ${reviewed}, failed: ${failed}, skipped: ${skipped}, remaining targeted issues: ${validationIssues.length}\n`
   );
   if (validationIssues.length > 0) {

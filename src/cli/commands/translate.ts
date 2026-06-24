@@ -84,9 +84,9 @@ export async function translateCommand(args: string[], io: CliIO): Promise<numbe
   }
   if (checkpointPath) {
     if (resumed) {
-      io.stdout(`Loaded checkpoint: ${checkpointById.size}/${units.length} translated units from ${checkpointPath}\n`);
+      io.stderr(`Loaded checkpoint: ${checkpointById.size}/${units.length} translated units from ${checkpointPath}\n`);
     }
-    io.stdout(`Writing checkpoint: ${checkpointPath}\n`);
+    io.stderr(`Writing checkpoint: ${checkpointPath}\n`);
   }
   const provider = createProvider(providerName, readProviderConfig(args));
   const translatedResults = await translateWithMemory(
@@ -101,7 +101,7 @@ export async function translateCommand(args: string[], io: CliIO): Promise<numbe
           ? async (batchResults) => {
               if (checkpointPath) {
                 await appendTranslationResultsJsonlFile(checkpointPath, batchResults);
-                io.stdout(`Checkpoint saved: ${batchResults.length} results.\n`);
+                io.stderr(`Checkpoint saved: ${batchResults.length} results.\n`);
               }
               budget?.record(batchResults);
               budget?.assertWithin();

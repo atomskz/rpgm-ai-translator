@@ -127,7 +127,7 @@ describe("CLI apply and patch-font", () => {
     // Only one of three is skipped (<50%), which the old threshold left silent.
     expect(exitCode).toBe(0);
     expect(errors.join("")).toContain("skipped 1/3 translation(s)");
-    expect(output.join("")).toContain("Applied 2 translation(s)");
+    expect(errors.join("")).toContain("Applied 2 translation(s)");
   });
 
   it("previews an apply with --dry-run without writing any files", async () => {
@@ -146,7 +146,7 @@ describe("CLI apply and patch-font", () => {
       ["apply", gamePath, translationsPath, "--mode", "patch", "--units", unitsPath, "--out", outDir, "--dry-run"],
       {
         stdout: (text) => output.push(text),
-        stderr: () => undefined
+        stderr: (text) => output.push(text)
       }
     );
 

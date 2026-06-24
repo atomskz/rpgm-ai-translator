@@ -47,9 +47,9 @@ export async function applyCommand(args: string[], io: CliIO): Promise<number> {
     ? filterTranslationsWithoutValidationErrors(translations, (await readReportFile(reportPath)).validationIssues)
     : translations;
   if (reportPath) {
-    io.stdout(`Using report filter: ${translationsToApply.length}/${translations.length} validation-safe translations.\n`);
+    io.stderr(`Using report filter: ${translationsToApply.length}/${translations.length} validation-safe translations.\n`);
   }
-  io.stdout(`${applyOptions.dryRun ? "[dry run] Previewing" : "Applying"} translations in ${applyOptions.mode} mode...\n`);
+  io.stderr(`${applyOptions.dryRun ? "[dry run] Previewing" : "Applying"} translations in ${applyOptions.mode} mode...\n`);
   const result = unitsPath
     ? await writePatch(projectPath, await readTranslationUnitsFile(unitsPath), translationsToApply, applyOptions)
     : await new RpgMakerMvMzExtractor().applyTranslations(projectPath, translationsToApply, applyOptions);
@@ -67,18 +67,18 @@ export async function applyCommand(args: string[], io: CliIO): Promise<number> {
     );
   }
   if (applyOptions.mode === "patch" && applyOptions.outDir && fontPath && !applyOptions.dryRun) {
-    io.stdout("Applying font patch...\n");
+    io.stderr("Applying font patch...\n");
     await applyFontPatch(projectPath, applyOptions.outDir, { fontPath, numberFontPath });
   }
   // Print a human-readable summary instead of the raw result JSON, which a
   // non-programmer cannot read; the file output is the artifact that matters.
   if (applyOptions.dryRun) {
-    io.stdout(
+    io.stderr(
       `[dry run] Would write ${result.filesWritten.length} file(s), apply ${result.unitsApplied} unit(s), skip ${result.skipped}. No files were written.\n`
     );
   } else {
     const backup = result.backupDir ? ` Backup: ${result.backupDir}.` : "";
-    io.stdout(
+    io.stderr(
       `Applied ${result.unitsApplied} translation(s) to ${result.filesWritten.length} file(s); skipped ${result.skipped}.${backup}\n`
     );
   }

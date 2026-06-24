@@ -450,6 +450,24 @@ describe("RpgMakerMvMzExtractor", () => {
     expect(exitCode).toBe(0);
     expect(dialogue.constraints).toMatchObject({ maxLines: 1, maxLength: 40 });
   });
+
+  it("keeps stdout machine-clean when --report is set without --out", async () => {
+    const root = await makeProject("mz");
+    await writeJson(path.join(root, "data", "Actors.json"), [null, { id: 1, name: "Aria" }]);
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+
+    const exitCode = await runCli(["extract", root, "--report", path.join(root, "report.json")], {
+      stdout: (text) => stdout.push(text),
+      stderr: (text) => stderr.push(text)
+    });
+
+    expect(exitCode).toBe(0);
+    // Piping stdout must yield only the units JSON; the report summary goes to stderr.
+    const units = JSON.parse(stdout.join(""));
+    expect(Array.isArray(units)).toBe(true);
+    expect(stderr.join("")).toContain("Units extracted:");
+  });
 });
 
 async function makeProject(engine: "mv" | "mz"): Promise<string> {

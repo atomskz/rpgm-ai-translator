@@ -39,8 +39,10 @@ export async function validateCommand(args: string[], io: CliIO): Promise<number
   const report = createReport({ units, translations, validationIssues });
   if (out) {
     await writeReportFile(out, report);
-    io.stdout(`${summarizeReport(report)}\n`);
+    io.stderr(`${summarizeReport(report)}\n`);
   } else {
+    // No --out: the report JSON is the machine output, so it is the only thing on
+    // stdout. The blocking-error count below goes to stderr.
     io.stdout(`${JSON.stringify(report, null, 2)}\n`);
   }
   // Exit non-zero when the report contains apply-blocking errors so `validate`

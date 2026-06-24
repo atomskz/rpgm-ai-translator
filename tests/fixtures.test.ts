@@ -14,7 +14,7 @@ describe("synthetic fixtures", () => {
       ["run", gamePath, "--provider", "mock", "--target", "ru", "--include-plugins", "--out", outDir],
       {
         stdout: (text) => output.push(text),
-        stderr: () => undefined
+        stderr: (text) => output.push(text)
       }
     );
 

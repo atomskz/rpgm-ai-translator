@@ -71,6 +71,6 @@ export async function charactersCommand(args: string[], io: CliIO): Promise<numb
           budget
         );
   await writeJson(out, glossary);
-  io.stdout(`Character candidates: ${candidates.length}. Wrote ${Object.keys(glossary).length} character entries.\n`);
+  io.stderr(`Character candidates: ${candidates.length}. Wrote ${Object.keys(glossary).length} character entries.\n`);
   return 0;
 }

@@ -82,7 +82,7 @@ describe("CLI translate", () => {
       ["translate", unitsPath, "--provider", "mock", "--target", "ru", "--batch-size", "1", "--out", outPath],
       {
         stdout: (text) => output.push(text),
-        stderr: () => undefined
+        stderr: (text) => output.push(text)
       }
     );
 
@@ -157,7 +157,7 @@ describe("CLI translate", () => {
       ],
       {
         stdout: (text) => output.push(text),
-        stderr: () => undefined
+        stderr: (text) => output.push(text)
       }
     );
 

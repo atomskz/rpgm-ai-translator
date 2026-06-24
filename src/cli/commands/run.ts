@@ -145,7 +145,7 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
     }
   });
   if (dryRun) {
-    io.stdout(
+    io.stderr(
       `[dry run] Detected ${detected.engine}. Would extract ${units.length} units from ${new Set(units.map((unit) => unit.filePath)).size} files (estimated ~${estimateInputTokens(units)} input tokens) and translate, validate and patch into '${outDir}'. No files were written.\n`
     );
     return 0;
@@ -178,7 +178,7 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   await mkdir(workDir, { recursive: true });
   await mkdir(outDir, { recursive: true });
   await writeTranslationUnitsFile(path.join(workDir, "units.json"), units);
-  io.stdout(
+  io.stderr(
     `Detected ${detected.engine}. Extracted ${units.length} units from ${new Set(units.map((unit) => unit.filePath)).size} files. Work directory: ${workDir}\n`
   );
   if (!resume) {
@@ -194,7 +194,7 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   await writeCheckpointSignatureFile(checkpointMeta, signature);
   const provider = createProvider(providerName, readProviderConfig(args));
   if (rawCheckpointById.size > 0) {
-    io.stdout(`Resuming translation: ${rawCheckpointById.size}/${units.length} units already in checkpoint.\n`);
+    io.stderr(`Resuming translation: ${rawCheckpointById.size}/${units.length} units already in checkpoint.\n`);
   }
   const translatedResults = await translateWithMemory(
     unitsToTranslate,
@@ -229,7 +229,7 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   if (hasFlag(args, "--review")) {
     const reviewCheckpointById = checkpointedTranslationsById(units, await readTranslationResultsJsonlFile(reviewCheckpointPath));
     if (reviewCheckpointById.size > 0) {
-      io.stdout(`Resuming review: ${reviewCheckpointById.size}/${units.length} units already in checkpoint.\n`);
+      io.stderr(`Resuming review: ${reviewCheckpointById.size}/${units.length} units already in checkpoint.\n`);
     }
     const unitsToReview = units.filter((unit) => !reviewCheckpointById.has(unit.id));
     const reviewResult = await reviewTranslations(
@@ -250,19 +250,19 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
     );
     translations = reviewResult.translations;
     await writeTranslationResultsFile(path.join(workDir, "translations.reviewed.json"), translations);
-    io.stdout(`Reviewed: ${reviewResult.reviewed}, failed: ${reviewResult.failed}, skipped: ${reviewResult.skipped}\n`);
+    io.stderr(`Reviewed: ${reviewResult.reviewed}, failed: ${reviewResult.failed}, skipped: ${reviewResult.skipped}\n`);
   }
-  io.stdout("Validating translations...\n");
+  io.stderr("Validating translations...\n");
   let validationIssues = validateTranslationResults(units, translations, new DefaultValidator(glossary));
   if (repairEnabled) {
     const repairCheckpointById = checkpointedTranslationsById(units, await readTranslationResultsJsonlFile(repairCheckpointPath));
     if (repairCheckpointById.size > 0) {
       translations = mergeCheckpointTranslations(units, translations, repairCheckpointById);
       validationIssues = validateTranslationResults(units, translations, new DefaultValidator(glossary));
-      io.stdout(`Resuming repair: ${repairCheckpointById.size} units already in checkpoint.\n`);
+      io.stderr(`Resuming repair: ${repairCheckpointById.size} units already in checkpoint.\n`);
     }
     for (let attempt = 1; attempt <= repairAttempts && validationIssues.length > 0; attempt += 1) {
-      io.stdout(`Repairing validation issues, attempt ${attempt}/${repairAttempts} (${validationIssues.length} issues)...\n`);
+      io.stderr(`Repairing validation issues, attempt ${attempt}/${repairAttempts} (${validationIssues.length} issues)...\n`);
       const repairResult = await repairTranslations(units, translations, validationIssues, provider, {
         ...providerOptions,
         glossary,
@@ -276,10 +276,10 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
         }
       });
       translations = repairResult.translations;
-      io.stdout(
+      io.stderr(
         `Repair attempt ${attempt}/${repairAttempts}: repaired ${repairResult.repaired}, translated ${repairResult.translated}, reviewed ${repairResult.reviewed}, failed ${repairResult.failed}, skipped ${repairResult.skipped}\n`
       );
-      io.stdout("Revalidating translations...\n");
+      io.stderr("Revalidating translations...\n");
       validationIssues = validateTranslationResults(units, translations, new DefaultValidator(glossary));
       if (repairResult.repaired === 0) {
         break;
@@ -287,7 +287,7 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
     }
   }
   const safeTranslations = filterTranslationsWithoutValidationErrors(translations, validationIssues);
-  io.stdout(`Applying patch with ${safeTranslations.length}/${translations.length} validation-safe translations...\n`);
+  io.stderr(`Applying patch with ${safeTranslations.length}/${translations.length} validation-safe translations...\n`);
   await new RpgMakerMvMzExtractor(detector).applyTranslations(projectPath, safeTranslations, {
     mode: "patch",
     outDir,
@@ -296,14 +296,14 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
     onWarning: (warning) => io.stderr(`Warning: ${warning}\n`)
   });
   if (fontPath) {
-    io.stdout("Applying font patch...\n");
+    io.stderr("Applying font patch...\n");
     await applyFontPatch(projectPath, outDir, { fontPath, numberFontPath });
   }
-  io.stdout("Writing translations...\n");
+  io.stderr("Writing translations...\n");
   await writeTranslationResultsFile(path.join(workDir, "translations.json"), translations);
   const report = createReport({ units, translations, validationIssues, engine: detected.engine, warnings: extractionWarnings });
-  io.stdout("Writing report...\n");
+  io.stderr("Writing report...\n");
   await writeReportFile(path.join(workDir, "report.json"), report);
-  io.stdout(`${summarizeReport(report)}\n`);
+  io.stderr(`${summarizeReport(report)}\n`);
   return 0;
 }

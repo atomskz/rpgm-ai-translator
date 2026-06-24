@@ -218,7 +218,7 @@ describe("patch writer", () => {
     const output: string[] = [];
     const exitCode = await runCli(["apply", root, translationsPath, "--mode", "patch", "--out", outDir, "--report", reportPath], {
       stdout: (text) => output.push(text),
-      stderr: () => undefined
+      stderr: (text) => output.push(text)
     });
 
     const patched = JSON.parse(await readFile(path.join(outDir, "data", "Actors.json"), "utf8"));

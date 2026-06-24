@@ -75,9 +75,9 @@ export async function reviewCommand(args: string[], io: CliIO): Promise<number> 
     io.stderr("Warning: review checkpoint parameters (language/model/glossary) changed; discarding it and reviewing fresh.\n");
   }
   if (resumed) {
-    io.stdout(`Loaded review checkpoint: ${checkpointById.size}/${units.length} translated units from ${checkpointPath}\n`);
+    io.stderr(`Loaded review checkpoint: ${checkpointById.size}/${units.length} translated units from ${checkpointPath}\n`);
   }
-  io.stdout(`Writing review checkpoint: ${checkpointPath}\n`);
+  io.stderr(`Writing review checkpoint: ${checkpointPath}\n`);
   const result = await reviewTranslations(unitsToReview, translationsWithCheckpoint, createProvider(providerName, readProviderConfig(args)), {
     ...providerOptions,
     glossary,
@@ -85,10 +85,10 @@ export async function reviewCommand(args: string[], io: CliIO): Promise<number> 
     onProgress: createProgressLogger(io),
     onBatchResults: async (batchResults) => {
       await appendTranslationResultsJsonlFile(checkpointPath, batchResults);
-      io.stdout(`Review checkpoint saved: ${batchResults.length} results.\n`);
+      io.stderr(`Review checkpoint saved: ${batchResults.length} results.\n`);
     }
   });
   await writeTranslationResultsFile(out, result.translations);
-  io.stdout(`Reviewed: ${result.reviewed}, failed: ${result.failed}, skipped: ${result.skipped}\n`);
+  io.stderr(`Reviewed: ${result.reviewed}, failed: ${result.failed}, skipped: ${result.skipped}\n`);
   return 0;
 }

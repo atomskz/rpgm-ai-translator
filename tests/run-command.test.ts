@@ -55,7 +55,7 @@ describe("run command", () => {
     const output: string[] = [];
     const exitCode = await runCli(["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir], {
       stdout: (text) => output.push(text),
-      stderr: () => undefined
+      stderr: (text) => output.push(text)
     });
 
     const workDir = `${outDir}-work`;
@@ -120,7 +120,7 @@ describe("run command", () => {
     const output: string[] = [];
     const exitCode = await runCli(["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--dry-run"], {
       stdout: (text) => output.push(text),
-      stderr: () => undefined
+      stderr: (text) => output.push(text)
     });
 
     expect(exitCode).toBe(0);
@@ -233,7 +233,7 @@ describe("run command", () => {
       ["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--memory", memoryPath, "--repair"],
       {
         stdout: (text) => output.push(text),
-        stderr: () => undefined
+        stderr: (text) => output.push(text)
       }
     );
 
@@ -260,7 +260,7 @@ describe("run command", () => {
     const output: string[] = [];
     const exitCode = await runCli(
       ["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--memory", memoryPath, "--repair", "--attempts", "2"],
-      { stdout: (text) => output.push(text), stderr: () => undefined }
+      { stdout: (text) => output.push(text), stderr: (text) => output.push(text) }
     );
 
     // The alias mapped to --repair-attempts, so the progress shows two passes.
@@ -368,7 +368,7 @@ describe("run command", () => {
     const output: string[] = [];
     const exitCode = await runCli(["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--review"], {
       stdout: (text) => output.push(text),
-      stderr: () => undefined
+      stderr: (text) => output.push(text)
     });
 
     const patched = JSON.parse(await readFile(path.join(outDir, "data", "Map001.json"), "utf8"));

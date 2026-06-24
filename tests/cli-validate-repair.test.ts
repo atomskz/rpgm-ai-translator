@@ -16,7 +16,7 @@ describe("CLI validate and repair", () => {
 
     const exitCode = await runCli(["validate", unitsPath, translationsPath, "--out", reportPath], {
       stdout: (text) => output.push(text),
-      stderr: () => undefined
+      stderr: (text) => output.push(text)
     });
 
     const report = JSON.parse(await readFile(reportPath, "utf8"));
@@ -27,6 +27,26 @@ describe("CLI validate and repair", () => {
       "UNKNOWN_TRANSLATION_ID",
       "MISSING_TRANSLATION"
     ]);
+  });
+
+  it("prints only the report JSON to stdout when no --out is given", async () => {
+    const root = await createCliTempDir("rpgm-cli-validate-stream-");
+    const unitsPath = path.join(root, "units.json");
+    const translationsPath = path.join(root, "translations.json");
+    await writeJsonFixture(unitsPath, [actorNameUnit()]);
+    await writeJsonFixture(translationsPath, [{ id: "Actors.1.name", source: "Aria", translation: "Ария" }]);
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+
+    const exitCode = await runCli(["validate", unitsPath, translationsPath], {
+      stdout: (text) => stdout.push(text),
+      stderr: (text) => stderr.push(text)
+    });
+
+    expect(exitCode).toBe(0);
+    // Piping stdout must yield only the machine report, with nothing mixed in.
+    const report = JSON.parse(stdout.join(""));
+    expect(report.validationIssues).toEqual([]);
   });
 
   it("exits 0 when no apply-blocking errors are found", async () => {
@@ -113,7 +133,7 @@ describe("CLI validate and repair", () => {
       ],
       {
         stdout: (text) => output.push(text),
-        stderr: () => undefined
+        stderr: (text) => output.push(text)
       }
     );
 

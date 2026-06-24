@@ -32,7 +32,9 @@ export async function maybeWriteReport(
   }
 
   await writeReportFile(reportPath, report);
-  io.stdout(`${summarizeReport(report)}\n`);
+  // The report file is the machine artifact; the summary is human, so it goes to
+  // stderr and never mixes into a piped machine payload (e.g. extract's units).
+  io.stderr(`${summarizeReport(report)}\n`);
 }
 
 export async function writeJson(filePath: string, value: unknown): Promise<void> {

@@ -34,7 +34,7 @@ describe("CLI review and characters", () => {
       ["review", unitsPath, translationsPath, "--provider", "mock", "--target", "ru", "--out", outPath],
       {
         stdout: (text) => output.push(text),
-        stderr: () => undefined
+        stderr: (text) => output.push(text)
       }
     );
 
@@ -163,7 +163,7 @@ describe("CLI review and characters", () => {
       ["characters", unitsPath, "--translations", translationsPath, "--provider", "mock", "--out", outPath],
       {
         stdout: (text) => output.push(text),
-        stderr: () => undefined
+        stderr: (text) => output.push(text)
       }
     );
 
