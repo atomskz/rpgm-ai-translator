@@ -93,7 +93,7 @@ export { createProvider, type ProviderName, type ProviderConfig } from "./provid
 export type { RpgMakerPlugin } from "./core/plugins/index.js";
 
 // Configuration loaders.
-export { type AppConfig, defaultConfig, loadGlossary, loadCharacterGlossary } from "./config/index.js";
+export { loadGlossary, loadCharacterGlossary } from "./config/index.js";
 export {
   loadProjectConfig,
   mergeConfigIntoArgs,

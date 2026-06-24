@@ -23,4 +23,7 @@ export * from "./types/translation.js";
 export * from "./types/validation.js";
 export * from "./types/options.js";
 export * from "./types/reports.js";
+// Extractor, LLMProvider and EngineDetector are intentional public extension
+// points: a consumer implements them to add a provider or engine, so they are
+// part of the supported type surface rather than an accidental leak.
 export * from "./types/interfaces.js";

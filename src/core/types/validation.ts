@@ -23,6 +23,9 @@ export type ValidationIssue = {
   id?: string;
   severity: "info" | "warning" | "error";
   code:
+    // Carried on imported translation results (no bundled provider emits it; the
+    // DeepSeek provider reports a parse failure as PROVIDER_RESPONSE_SCHEMA_ERROR).
+    // The validator preserves it and repair re-translates it.
     | "INVALID_JSON"
     | "ID_MISMATCH"
     | "UNKNOWN_TRANSLATION_ID"

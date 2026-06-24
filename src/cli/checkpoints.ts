@@ -37,7 +37,6 @@ export function defaultCheckpointPath(outPath: string): string {
 // resume; a mismatch means the checkpoint must be discarded, not reused.
 export type CheckpointSignature = {
   targetLanguage: string;
-  sourceLanguage: string;
   provider: string;
   model: string;
   glossaryHash: string;
@@ -45,13 +44,12 @@ export type CheckpointSignature = {
 
 export function checkpointSignature(
   providerName: string,
-  options: { targetLanguage?: string; sourceLanguage?: string; model?: string },
+  options: { targetLanguage?: string; model?: string },
   glossary?: Glossary,
   characterGlossary?: CharacterGlossary
 ): CheckpointSignature {
   return {
     targetLanguage: options.targetLanguage ?? "",
-    sourceLanguage: options.sourceLanguage ?? "",
     provider: providerName,
     model: options.model ?? "",
     glossaryHash: hashCacheKey({ glossary: glossary ?? null, characterGlossary: characterGlossary ?? null })
@@ -61,7 +59,6 @@ export function checkpointSignature(
 export function checkpointSignaturesEqual(a: CheckpointSignature, b: CheckpointSignature): boolean {
   return (
     a.targetLanguage === b.targetLanguage &&
-    a.sourceLanguage === b.sourceLanguage &&
     a.provider === b.provider &&
     a.model === b.model &&
     a.glossaryHash === b.glossaryHash
@@ -87,7 +84,6 @@ export async function readCheckpointSignatureFile(metaPath: string): Promise<Che
     const parsed = JSON.parse(raw) as Partial<CheckpointSignature>;
     if (
       typeof parsed.targetLanguage === "string" &&
-      typeof parsed.sourceLanguage === "string" &&
       typeof parsed.provider === "string" &&
       typeof parsed.model === "string" &&
       typeof parsed.glossaryHash === "string"
@@ -140,10 +136,14 @@ export async function resolveCheckpoint(params: {
       results = await readTranslationResultsJsonlFile(checkpointOption);
       resumed = true;
     }
+    // Stamp the signature only for an explicit checkpoint, which is the only one
+    // resumed (and therefore signature-checked) on a later run.
+    await writeCheckpointSignatureFile(checkpointMetaPath(checkpointPath), signature);
   } else {
+    // A derived checkpoint is reset every run and never resumed across runs, so a
+    // signature beside it would only ever be written, never read.
     await resetTranslationResultsJsonlFile(derivedPath);
   }
-  await writeCheckpointSignatureFile(checkpointMetaPath(checkpointPath), signature);
   return { checkpointPath, results, stale, resumed };
 }
 

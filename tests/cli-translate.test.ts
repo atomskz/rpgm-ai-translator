@@ -96,6 +96,23 @@ describe("CLI translate", () => {
     expect(results).toHaveLength(2);
   });
 
+  it("does not write a signature file for a derived checkpoint", async () => {
+    const root = await createCliTempDir("rpgm-cli-derived-meta-");
+    const unitsPath = path.join(root, "units.json");
+    const outPath = path.join(root, "translations.json");
+    await writeJsonFixture(unitsPath, [actorNameUnit()]);
+
+    const exitCode = await runCli(["translate", unitsPath, "--provider", "mock", "--target", "ru", "--out", outPath], {
+      stdout: () => undefined,
+      stderr: () => undefined
+    });
+
+    expect(exitCode).toBe(0);
+    // A derived checkpoint is reset every run and never resumed, so its signature
+    // would be write-only; it must not be created.
+    await expect(readFile(`${path.join(root, "translations.jsonl")}.meta.json`, "utf8")).rejects.toThrow();
+  });
+
   it("resumes from an explicit JSONL checkpoint", async () => {
     const root = await createCliTempDir("rpgm-cli-translate-resume-");
     const unitsPath = path.join(root, "units.json");
