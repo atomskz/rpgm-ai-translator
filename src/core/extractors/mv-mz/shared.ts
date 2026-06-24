@@ -124,7 +124,10 @@ export function isSafeRuntimeText(value: string): boolean {
   if (/^\$game[A-Za-z]+\./.test(trimmed) || /^(?:true|false|null)$/i.test(trimmed)) {
     return false;
   }
-  if (/^[\w./-]+\.(?:png|jpg|jpeg|webp|ogg|m4a|mp3|wav)$/i.test(trimmed)) {
+  // Asset reference (an image/audio path), not translatable text. Allow spaces and
+  // backslash separators so a path like `img\face 1.png` is recognized and not
+  // extracted as a translatable string.
+  if (/^[\w./\\ -]+\.(?:png|jpg|jpeg|webp|ogg|m4a|mp3|wav)$/i.test(trimmed)) {
     return false;
   }
   return containsTranslatableLetter(trimmed);

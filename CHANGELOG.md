@@ -17,6 +17,9 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Recognize asset references that contain spaces or backslash separators (for
+  example `img\face 1.png`) as non-translatable, so they are no longer extracted as
+  translatable strings.
 - Reject an in-place `--backup` directory that overlaps the game (the project root
   or its `data`/`js` folders), so the backup's rename-swap cannot clobber the very
   files it is meant to preserve. The default hidden backup directory is unaffected.
