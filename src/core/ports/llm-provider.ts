@@ -17,27 +17,13 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { CharacterCandidate, CharacterGlossary } from "./glossary.js";
-import type {
-  ApplyOptions,
-  ApplyResult,
-  CharacterInferenceOptions,
-  ExtractOptions,
-  ReviewOptions,
-  TranslateOptions
-} from "./options.js";
-import type { ReviewUnit, TranslationResult, TranslationUnit } from "./translation.js";
-
-export interface Extractor {
-  extract(projectPath: string, options?: ExtractOptions): Promise<TranslationUnit[]>;
-  applyTranslations(
-    projectPath: string,
-    translations: TranslationResult[],
-    options: ApplyOptions
-  ): Promise<ApplyResult>;
-}
+import type { CharacterCandidate, CharacterGlossary } from "../types/glossary.js";
+import type { CharacterInferenceOptions, ReviewOptions, TranslateOptions } from "../types/options.js";
+import type { ReviewUnit, TranslationResult, TranslationUnit } from "../types/translation.js";
 
 /**
+ * Port implemented by an LLM provider adapter (DeepSeek, mock, ...).
+ *
  * Retry contract: a provider owns retrying its own transient failures (e.g. its
  * HTTP client retries timeouts, rate limits and 5xx, honoring `retryAttempts`)
  * and MUST NOT retry authentication or billing errors. On failure it returns
@@ -48,16 +34,7 @@ export interface Extractor {
  */
 export interface LLMProvider {
   readonly name: string;
-  translateBatch(
-    batch: TranslationUnit[],
-    options: TranslateOptions
-  ): Promise<TranslationResult[]>;
-  reviewBatch(
-    batch: ReviewUnit[],
-    options: ReviewOptions
-  ): Promise<TranslationResult[]>;
-  inferCharacters(
-    candidates: CharacterCandidate[],
-    options: CharacterInferenceOptions
-  ): Promise<CharacterGlossary>;
+  translateBatch(batch: TranslationUnit[], options: TranslateOptions): Promise<TranslationResult[]>;
+  reviewBatch(batch: ReviewUnit[], options: ReviewOptions): Promise<TranslationResult[]>;
+  inferCharacters(candidates: CharacterCandidate[], options: CharacterInferenceOptions): Promise<CharacterGlossary>;
 }

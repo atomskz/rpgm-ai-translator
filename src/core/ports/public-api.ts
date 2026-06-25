@@ -17,15 +17,8 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export type EngineId = "rpgmaker-mv" | "rpgmaker-mz";
-export type DetectedEngineId = EngineId | "unknown";
-
-export type DetectedEngine = {
-  engine: DetectedEngineId;
-  rootPath: string;
-  projectPath: string;
-  dataPath?: string;
-  pluginsPath?: string;
-  confidence: "high" | "medium" | "low";
-  reasons: string[];
-};
+// The ports other layers implement: engine adapters implement Extractor/
+// EngineDetector, provider adapters implement LLMProvider. Core depends on these
+// abstractions, never on a concrete adapter.
+export type { LLMProvider } from "./llm-provider.js";
+export type { EngineDetector, Extractor } from "./engine.js";

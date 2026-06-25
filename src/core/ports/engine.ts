@@ -17,15 +17,21 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export type EngineId = "rpgmaker-mv" | "rpgmaker-mz";
-export type DetectedEngineId = EngineId | "unknown";
+import type { DetectedEngine } from "../types/engine.js";
+import type { ApplyOptions, ApplyResult, ExtractOptions } from "../types/options.js";
+import type { TranslationResult, TranslationUnit } from "../types/translation.js";
 
-export type DetectedEngine = {
-  engine: DetectedEngineId;
-  rootPath: string;
-  projectPath: string;
-  dataPath?: string;
-  pluginsPath?: string;
-  confidence: "high" | "medium" | "low";
-  reasons: string[];
-};
+/** Port implemented by an engine adapter to detect a supported game project. */
+export interface EngineDetector {
+  detect(projectPath: string): Promise<DetectedEngine>;
+}
+
+/** Port implemented by an engine adapter to extract translatable units and write them back. */
+export interface Extractor {
+  extract(projectPath: string, options?: ExtractOptions): Promise<TranslationUnit[]>;
+  applyTranslations(
+    projectPath: string,
+    translations: TranslationResult[],
+    options: ApplyOptions
+  ): Promise<ApplyResult>;
+}

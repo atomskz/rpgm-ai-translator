@@ -23,7 +23,7 @@ export * from "./translation.js";
 export * from "./validation.js";
 export * from "./options.js";
 export * from "./reports.js";
-// Extractor, LLMProvider and EngineDetector are intentional public extension
-// points: a consumer implements them to add a provider or engine, so they are
-// part of the supported type surface rather than an accidental leak.
-export * from "./interfaces.js";
+// The ports (Extractor, LLMProvider, EngineDetector) are public extension points:
+// a consumer implements them to add a provider or engine. They live in core/ports;
+// re-exported here so the shared type surface stays a single import.
+export type * from "../ports/public-api.js";
