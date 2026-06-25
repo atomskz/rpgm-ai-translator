@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { loadGlossary } from "../../config/public-api.js";
 import { loadCharacterGlossary } from "../../config/public-api.js";
@@ -30,7 +30,7 @@ import {
 } from "../../engines/rpgmaker-mvmz/public-api.js";
 import { estimateInputTokens, TokenBudget } from "../../core/cost.js";
 import { acquireDirectoryLock, LOCK_FILENAME, withDirectoryLock } from "../../core/locks.js";
-import { isNonEmptyDirectory } from "../../core/utils/fs.js";
+import { isNonEmptyDirectory, writeFileAtomic } from "../../core/utils/fs.js";
 import { hashCacheKey } from "../../core/utils/hash.js";
 import { JsonlTranslationMemory } from "../../core/memory/public-api.js";
 import { translateWithMemory } from "../../core/memory/public-api.js";
@@ -166,6 +166,10 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   const rawCheckpointPath = path.join(workDir, "translations.raw.jsonl");
   const reviewCheckpointPath = path.join(workDir, "translations.reviewed.jsonl");
   const repairCheckpointPath = path.join(workDir, "translations.repaired.jsonl");
+  // How many repair attempts a prior (possibly crashed) run already completed for
+  // this signature. Persisted so a resume continues the budget instead of
+  // restarting at attempt 1, which could spend well past --repair-attempts.
+  const repairProgressPath = path.join(workDir, "repair-progress.json");
   // Discard checkpoints from a run with different parameters (target language,
   // model, provider or glossary); resuming them would ship stale output such as
   // the previous language. A missing signature (an older work dir) is treated as
@@ -238,7 +242,8 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
     await Promise.all([
       resetTranslationResultsJsonlFile(rawCheckpointPath),
       resetTranslationResultsJsonlFile(reviewCheckpointPath),
-      resetTranslationResultsJsonlFile(repairCheckpointPath)
+      resetTranslationResultsJsonlFile(repairCheckpointPath),
+      rm(repairProgressPath, { force: true })
     ]);
     // A different game must not reuse the prior game's translation memory either.
     // Only the work-dir default memory is cleared; an explicit --memory the user
@@ -320,7 +325,15 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
       validationIssues = validateTranslationResults(units, translations, new DefaultValidator(glossary));
       io.stderr(`Resuming repair: ${repairCheckpointById.size} units already in checkpoint.\n`);
     }
-    for (let attempt = 1; attempt <= repairAttempts && validationIssues.length > 0; attempt += 1) {
+    // Continue the attempt budget from where a prior crashed run left off, so a
+    // resume cannot run --repair-attempts more passes on top of what was already
+    // spent. A fresh signature reset the counter above; a clean finish clears it
+    // below, so only an interrupted loop leaves it set.
+    const attemptsCompleted = resume ? await readRepairAttemptsCompleted(repairProgressPath) : 0;
+    if (attemptsCompleted > 0) {
+      io.stderr(`Resuming repair: ${attemptsCompleted} attempt(s) already completed in a prior run.\n`);
+    }
+    for (let attempt = attemptsCompleted + 1; attempt <= repairAttempts && validationIssues.length > 0; attempt += 1) {
       // Estimate this repair attempt (the units carrying the targeted issues)
       // against tokens already spent, failing before the pass if it would overrun.
       const repairUnitIds = new Set(validationIssues.map((issue) => issue.id));
@@ -342,12 +355,18 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
       io.stderr(
         `Repair attempt ${attempt}/${repairAttempts}: repaired ${repairResult.repaired}, translated ${repairResult.translated}, reviewed ${repairResult.reviewed}, failed ${repairResult.failed}, skipped ${repairResult.skipped}\n`
       );
+      // Record the completed attempt before the convergence check so a crash on the
+      // next pass resumes from here.
+      await writeRepairAttemptsCompleted(repairProgressPath, attempt);
       io.stderr("Revalidating translations...\n");
       validationIssues = validateTranslationResults(units, translations, new DefaultValidator(glossary));
       if (repairResult.repaired === 0) {
         break;
       }
     }
+    // The repair budget for this run is fully accounted for; clear the counter so a
+    // later deliberate re-run of the same game gets the full --repair-attempts again.
+    await rm(repairProgressPath, { force: true });
   }
   const safeTranslations = filterTranslationsWithoutValidationErrors(translations, validationIssues);
   io.stderr(`Applying patch with ${safeTranslations.length}/${translations.length} validation-safe translations...\n`);
@@ -394,4 +413,21 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
     return 2;
   }
   return 0;
+}
+
+// Reads the count of repair attempts a prior run for this work dir already
+// completed. A missing, unreadable, or malformed file reads as zero, so a corrupt
+// progress file at worst grants the full attempt budget rather than failing the run.
+async function readRepairAttemptsCompleted(progressPath: string): Promise<number> {
+  try {
+    const parsed = JSON.parse(await readFile(progressPath, "utf8")) as { attemptsCompleted?: unknown };
+    const value = parsed.attemptsCompleted;
+    return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function writeRepairAttemptsCompleted(progressPath: string, attemptsCompleted: number): Promise<void> {
+  await writeFileAtomic(progressPath, `${JSON.stringify({ attemptsCompleted })}\n`);
 }

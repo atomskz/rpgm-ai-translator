@@ -16,6 +16,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Persist how many repair attempts a `run --repair` already completed so resuming
+  an interrupted run continues the `--repair-attempts` budget instead of restarting
+  at attempt 1 — which could spend (and bill) well past the requested cap. The
+  counter is reset when a run starts fresh and cleared on a clean finish, so a
+  later deliberate re-run still gets the full budget.
 - Serialize patch writes with a per-directory lock so two concurrent `apply`/`run`
   invocations can no longer interleave their staged writes and rollbacks into the
   same patch output directory (or, for in-place mode, the same game directory) and
