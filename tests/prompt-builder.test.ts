@@ -8,8 +8,8 @@ import {
   buildTranslationMessages,
   buildTranslationSystemPrompt,
   filterGlossaryForBatch
-} from "../src/providers/prompt-builder.js";
-import type { Glossary, TranslationUnit } from "../src/core/types.js";
+} from "../src/providers/prompt-builder/prompt-builder.js";
+import type { Glossary, TranslationUnit } from "../src/core/types/types.js";
 
 describe("prompt builder", () => {
   it("builds a safety-focused system prompt without source data", () => {

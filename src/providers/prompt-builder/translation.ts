@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { Glossary, TranslateOptions, TranslationUnit } from "../../core/types.js";
+import type { Glossary, TranslateOptions, TranslationUnit } from "../../core/types/types.js";
 import { filterGlossaryForBatch } from "./glossary.js";
 import { buildTranslationSystemPrompt } from "./system-prompts.js";
 import type { ChatMessage } from "./types.js";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { collectRevalidatedBatch } from "../src/core/revalidation/index.js";
-import type { TranslationResult } from "../src/core/types.js";
+import { collectRevalidatedBatch } from "../src/core/revalidation.js";
+import type { TranslationResult } from "../src/core/types/types.js";
 
 function result(id: string, overrides: Partial<TranslationResult> = {}): TranslationResult {
   return {

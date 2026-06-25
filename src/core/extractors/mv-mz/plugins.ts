@@ -17,12 +17,12 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { TranslationUnit } from "../../types.js";
+import type { TranslationUnit } from "../../types/types.js";
 import {
   isSafeTranslatablePluginParameter,
   parsePluginsJs,
   pluginParameterPath
-} from "../../plugins/index.js";
+} from "../../plugins.js";
 import { extractEncodedJsonStrings } from "./encoded-json.js";
 import {
   type DraftBase,

@@ -17,8 +17,8 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { isRetryableProviderError, withRetry } from "../retry/index.js";
-import type { LLMProvider, TranslateOptions, TranslationResult, TranslationUnit } from "../types.js";
+import { isRetryableProviderError, withRetry } from "../retry.js";
+import type { LLMProvider, TranslateOptions, TranslationResult, TranslationUnit } from "../types/types.js";
 
 export async function translateBatchWithRetry(
   batch: TranslationUnit[],

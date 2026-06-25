@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { TokenUsage, TranslationResult, TranslationUnit } from "../types.js";
+import type { TokenUsage, TranslationResult, TranslationUnit } from "./types/types.js";
 
 // Rough heuristics for a pre-flight estimate. Token counts vary by tokenizer and
 // language, so this is intentionally approximate: ~4 characters per token plus a

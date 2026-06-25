@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { MockProvider } from "../src/providers/mock/index.js";
-import type { TranslationUnit } from "../src/core/types.js";
+import { MockProvider } from "../src/providers/mock.js";
+import type { TranslationUnit } from "../src/core/types/types.js";
 
 describe("MockProvider", () => {
   it("returns predictable translations for each unit", async () => {

@@ -26,7 +26,7 @@ import type {
   TranslationResult,
   TranslationUnit,
   ValidationIssue
-} from "../../core/types.js";
+} from "../../core/types/types.js";
 import { DeepSeekProviderError, providerIssue } from "./errors.js";
 import type { ChatCompletionResponse, ModelTranslationPayload } from "./types.js";
 

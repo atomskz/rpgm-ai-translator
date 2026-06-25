@@ -17,13 +17,13 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { createReport, summarizeReport, writeReportFile } from "../../core/reports/index.js";
+import { createReport, summarizeReport, writeReportFile } from "../../core/reports/reports.js";
 import {
   readTranslationResultsFile,
   readTranslationUnitsFile
-} from "../../core/translation-units/index.js";
-import { DefaultValidator, validateTranslationResults } from "../../core/validators/index.js";
-import { loadGlossary } from "../../config/index.js";
+} from "../../core/translation-units/io.js";
+import { DefaultValidator, validateTranslationResults } from "../../core/validators/validators.js";
+import { loadGlossary } from "../../config/glossary.js";
 import { readOption, requirePositional } from "../options.js";
 import type { CliIO } from "../types.js";
 

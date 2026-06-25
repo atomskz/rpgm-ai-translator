@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { protectPlaceholders, restorePlaceholders } from "../src/core/placeholders";
+import { protectPlaceholders, restorePlaceholders } from "../src/core/placeholders.js";
 
 describe("placeholder protection", () => {
   it("protects and restores RPG Maker control codes and format tokens", () => {

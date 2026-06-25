@@ -27,7 +27,7 @@ import type {
   TranslateOptions,
   TranslationResult,
   TranslationUnit
-} from "../../core/types.js";
+} from "../core/types/types.js";
 
 export class MockProvider implements LLMProvider {
   readonly name = "mock";

@@ -17,9 +17,9 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { DEFAULT_RETRY_ATTEMPTS, sleep } from "../../core/retry/index.js";
-import type { TranslateOptions } from "../../core/types.js";
-import type { ChatMessage } from "../prompt-builder.js";
+import { DEFAULT_RETRY_ATTEMPTS, sleep } from "../../core/retry.js";
+import type { TranslateOptions } from "../../core/types/types.js";
+import type { ChatMessage } from "../prompt-builder/prompt-builder.js";
 import {
   DEFAULT_BASE_URL,
   DEFAULT_MAX_TOKENS,

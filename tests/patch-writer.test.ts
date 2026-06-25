@@ -2,10 +2,10 @@ import { chmod, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
-import { RpgMakerMvMzExtractor } from "../src/core/extractors";
-import { writePatch } from "../src/core/patch-writer/index";
-import { parsePluginsJs, replacePluginsArray } from "../src/core/plugins/index";
-import type { TranslationResult, TranslationUnit } from "../src/core/types";
+import { RpgMakerMvMzExtractor } from "../src/core/extractors/rpgmaker-mv-mz.js";
+import { writePatch } from "../src/core/patch-writer.js";
+import { parsePluginsJs, replacePluginsArray } from "../src/core/plugins.js";
+import type { TranslationResult, TranslationUnit } from "../src/core/types/types.js";
 
 describe("patch writer", () => {
   it("writes translated JSON to a patch directory without changing source files", async () => {

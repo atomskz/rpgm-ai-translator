@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeBatchSize, splitBatch } from "../src/core/batching/index.js";
+import { normalizeBatchSize, splitBatch } from "../src/core/batching.js";
 
 describe("normalizeBatchSize", () => {
   it("falls back on a missing, non-positive or non-finite size", () => {

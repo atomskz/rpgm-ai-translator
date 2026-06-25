@@ -19,30 +19,32 @@
 
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
-import { loadCharacterGlossary, loadGlossary } from "../../config/index.js";
-import { MvMzEngineDetector } from "../../core/engine-detector/index.js";
-import { RpgMakerMvMzExtractor } from "../../core/extractors/index.js";
-import { applyFontPatch } from "../../core/font-patch/index.js";
-import { estimateInputTokens, TokenBudget } from "../../core/cost/index.js";
-import { acquireDirectoryLock } from "../../core/locks/index.js";
-import { JsonlTranslationMemory, translateWithMemory } from "../../core/memory/index.js";
-import { assertPatchOutputOutsideGame, writePatch } from "../../core/patch-writer/index.js";
-import { repairTranslations } from "../../core/repair/index.js";
-import { createReport, summarizeReport, writeReportFile } from "../../core/reports/index.js";
-import { reviewTranslations } from "../../core/review/index.js";
+import { loadGlossary } from "../../config/glossary.js";
+import { loadCharacterGlossary } from "../../config/characters.js";
+import { MvMzEngineDetector } from "../../core/engine-detector.js";
+import { RpgMakerMvMzExtractor } from "../../core/extractors/rpgmaker-mv-mz.js";
+import { applyFontPatch } from "../../core/font-patch.js";
+import { estimateInputTokens, TokenBudget } from "../../core/cost.js";
+import { acquireDirectoryLock } from "../../core/locks.js";
+import { JsonlTranslationMemory } from "../../core/memory/jsonl.js";
+import { translateWithMemory } from "../../core/memory/pipeline.js";
+import { assertPatchOutputOutsideGame, writePatch } from "../../core/patch-writer.js";
+import { repairTranslations } from "../../core/repair.js";
+import { createReport, summarizeReport, writeReportFile } from "../../core/reports/reports.js";
+import { reviewTranslations } from "../../core/review.js";
 import {
   appendTranslationResultsJsonlFile,
   readTranslationResultsJsonlFile,
   resetTranslationResultsJsonlFile,
   writeTranslationResultsFile,
   writeTranslationUnitsFile
-} from "../../core/translation-units/index.js";
+} from "../../core/translation-units/io.js";
 import {
   DefaultValidator,
   filterTranslationsWithoutValidationErrors,
   validateTranslationResults
-} from "../../core/validators/index.js";
-import { createProvider } from "../../providers/index.js";
+} from "../../core/validators/validators.js";
+import { createProvider } from "../../providers/providers.js";
 import {
   assertProviderReady,
   hasFlag,
@@ -67,7 +69,7 @@ import {
   writeCheckpointSignatureFile
 } from "../checkpoints.js";
 import { createProgressLogger } from "../progress.js";
-import type { TranslationResult } from "../../core/types.js";
+import type { TranslationResult } from "../../core/types/types.js";
 import type { CliIO } from "../types.js";
 
 export async function runCommand(args: string[], io: CliIO): Promise<number> {

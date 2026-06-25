@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { aggregateTokenUsage, estimateInputTokens, TokenBudget } from "../src/core/cost/index.js";
-import type { TranslationResult, TranslationUnit } from "../src/core/types.js";
+import { aggregateTokenUsage, estimateInputTokens, TokenBudget } from "../src/core/cost.js";
+import type { TranslationResult, TranslationUnit } from "../src/core/types/types.js";
 
 function unit(source: string, normalizedSource?: string): TranslationUnit {
   return {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createProgressLogger } from "../src/cli/progress.js";
 import { summarizeBatchFailures } from "../src/core/reports/failures.js";
 import type { CliIO } from "../src/cli/types.js";
-import type { TranslationResult } from "../src/core/types.js";
+import type { TranslationResult } from "../src/core/types/types.js";
 
 function failed(id: string, code: string, message: string): TranslationResult {
   return {

@@ -17,8 +17,8 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { ValidationIssue } from "../../types.js";
-import { protectPlaceholders } from "../../placeholders/index.js";
+import type { ValidationIssue } from "../../types/types.js";
+import { protectPlaceholders } from "../../placeholders.js";
 
 export function issue(
   id: string,

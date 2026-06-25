@@ -18,8 +18,8 @@
  */
 
 import { readFile } from "node:fs/promises";
-import type { EngineId, TranslationReport, TranslationResult, TranslationUnit, ValidationIssue } from "../types.js";
-import { aggregateTokenUsage } from "../cost/index.js";
+import type { EngineId, TranslationReport, TranslationResult, TranslationUnit, ValidationIssue } from "../types/types.js";
+import { aggregateTokenUsage } from "../cost.js";
 import { writeFileAtomic } from "../utils/fs.js";
 import { hashCacheKey } from "../utils/hash.js";
 

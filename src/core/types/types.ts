@@ -17,4 +17,13 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export * from "./io.js";
+export * from "./engine.js";
+export * from "./glossary.js";
+export * from "./translation.js";
+export * from "./validation.js";
+export * from "./options.js";
+export * from "./reports.js";
+// Extractor, LLMProvider and EngineDetector are intentional public extension
+// points: a consumer implements them to add a provider or engine, so they are
+// part of the supported type surface rather than an accidental leak.
+export * from "./interfaces.js";

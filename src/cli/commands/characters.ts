@@ -21,13 +21,13 @@ import {
   candidatesToDraftGlossary,
   extractCharacterCandidates,
   inferCharacterGlossary
-} from "../../core/characters/index.js";
+} from "../../core/characters.js";
 import {
   readTranslationResultsFile,
   readTranslationUnitsFile
-} from "../../core/translation-units/index.js";
-import { TokenBudget } from "../../core/cost/index.js";
-import { createProvider } from "../../providers/index.js";
+} from "../../core/translation-units/io.js";
+import { TokenBudget } from "../../core/cost.js";
+import { createProvider } from "../../providers/providers.js";
 import { writeJson } from "../file-utils.js";
 import {
   assertProviderReady,

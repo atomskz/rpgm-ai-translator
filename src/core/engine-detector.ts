@@ -18,8 +18,8 @@
  */
 
 import path from "node:path";
-import type { DetectedEngine, DetectedEngineId, EngineDetector } from "../types.js";
-import { isDirectory, pathExists, readJsonFile } from "../utils/fs.js";
+import type { DetectedEngine, DetectedEngineId, EngineDetector } from "./types/types.js";
+import { isDirectory, pathExists, readJsonFile } from "./utils/fs.js";
 
 export class MvMzEngineDetector implements EngineDetector {
   async detect(projectPath: string): Promise<DetectedEngine> {

@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { BatchFailureSummary, TranslationResult } from "../types.js";
+import type { BatchFailureSummary, TranslationResult } from "../types/types.js";
 
 // Aggregate the distinct failure reasons across a batch's results so progress
 // output can name the cause (auth, network, schema...) instead of just a count.

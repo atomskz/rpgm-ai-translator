@@ -19,8 +19,8 @@
 
 import { copyFile, mkdir } from "node:fs/promises";
 import path from "node:path";
-import { MvMzEngineDetector } from "../engine-detector/index.js";
-import { pathExists, readJsonFile, writeFileAtomic, writeJsonFile } from "../utils/fs.js";
+import { MvMzEngineDetector } from "./engine-detector.js";
+import { pathExists, readJsonFile, writeFileAtomic, writeJsonFile } from "./utils/fs.js";
 
 type SystemJson = {
   advanced?: {

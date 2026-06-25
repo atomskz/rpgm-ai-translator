@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
-import type { TranslationResult, TranslationUnit } from "../../src/core/types.js";
+import type { TranslationResult, TranslationUnit } from "../../src/core/types/types.js";
 
 export async function createCliTempDir(prefix: string): Promise<string> {
   return mkdtemp(path.join(tmpdir(), prefix));

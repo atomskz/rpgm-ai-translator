@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { ValidationIssue } from "../../core/types.js";
+import type { ValidationIssue } from "../../core/types/types.js";
 import type { DeepSeekResponse } from "./types.js";
 
 export class DeepSeekProviderError extends Error {

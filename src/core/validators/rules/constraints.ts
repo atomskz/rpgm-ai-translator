@@ -17,8 +17,8 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { TranslationResult, TranslationUnit, ValidationIssue } from "../../types.js";
-import { visibleText } from "../../placeholders/index.js";
+import type { TranslationResult, TranslationUnit, ValidationIssue } from "../../types/types.js";
+import { visibleText } from "../../placeholders.js";
 import { displayWidth, issue } from "./shared.js";
 
 export function validateConstraints(unit: TranslationUnit, result: TranslationResult): ValidationIssue[] {

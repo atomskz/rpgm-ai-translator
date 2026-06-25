@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { DeepSeekProvider } from "../src/providers/deepseek/index.js";
+import { DeepSeekProvider } from "../src/providers/deepseek/deepseek.js";
 import { backoffDelay, retryAfterMs } from "../src/providers/deepseek/client.js";
-import { aggregateTokenUsage } from "../src/core/cost/index.js";
-import type { TranslationUnit } from "../src/core/types.js";
+import { aggregateTokenUsage } from "../src/core/cost.js";
+import type { TranslationUnit } from "../src/core/types/types.js";
 
 type FetchInit = {
   body: string;

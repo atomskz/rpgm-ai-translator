@@ -17,4 +17,16 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export { RpgMakerMvMzExtractor } from "./rpgmaker-mv-mz.js";
+export type { ChatMessage } from "./types.js";
+export {
+  buildCharacterInferenceSystemPrompt,
+  buildReviewSystemPrompt,
+  buildTranslationSystemPrompt
+} from "./system-prompts.js";
+export { filterGlossaryForBatch, filterGlossaryForReviewBatch } from "./glossary.js";
+// Only the message builders are exported: they are the single entry point that
+// filters the glossary once per batch. The *UserPayload builders are internal and
+// expect that already-filtered glossary, so they are not re-exported here.
+export { buildTranslationMessages } from "./translation.js";
+export { buildReviewMessages } from "./review.js";
+export { buildCharacterInferenceMessages, buildCharacterInferenceUserPayload } from "./characters.js";

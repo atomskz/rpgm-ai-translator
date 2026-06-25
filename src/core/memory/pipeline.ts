@@ -17,9 +17,9 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { normalizeBatchSize } from "../batching/index.js";
+import { normalizeBatchSize } from "../batching.js";
 import { summarizeBatchFailures } from "../reports/failures.js";
-import type { LLMProvider, TranslateOptions, TranslationMetadata, TranslationResult, TranslationUnit } from "../types.js";
+import type { LLMProvider, TranslateOptions, TranslationMetadata, TranslationResult, TranslationUnit } from "../types/types.js";
 import { hashCacheKey } from "../utils/hash.js";
 import { translateBatchWithRetry } from "./retry.js";
 import type { MemoryEntry, TranslationMemory } from "./types.js";

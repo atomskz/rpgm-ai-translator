@@ -17,16 +17,17 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { estimateInputTokens, TokenBudget } from "../../core/cost/index.js";
-import { JsonlTranslationMemory, translateWithMemory } from "../../core/memory/index.js";
-import { createReport } from "../../core/reports/index.js";
+import { estimateInputTokens, TokenBudget } from "../../core/cost.js";
+import { JsonlTranslationMemory } from "../../core/memory/jsonl.js";
+import { translateWithMemory } from "../../core/memory/pipeline.js";
+import { createReport } from "../../core/reports/reports.js";
 import {
   appendTranslationResultsJsonlFile,
   readTranslationUnitsFile,
   writeTranslationResultsFile
-} from "../../core/translation-units/index.js";
-import { loadGlossary } from "../../config/index.js";
-import { createProvider } from "../../providers/index.js";
+} from "../../core/translation-units/io.js";
+import { loadGlossary } from "../../config/glossary.js";
+import { createProvider } from "../../providers/providers.js";
 import {
   checkpointedTranslationsById,
   checkpointSignature,
@@ -45,7 +46,7 @@ import {
   requirePositional
 } from "../options.js";
 import { createProgressLogger } from "../progress.js";
-import type { TranslationResult } from "../../core/types.js";
+import type { TranslationResult } from "../../core/types/types.js";
 import type { CliIO } from "../types.js";
 
 export async function translateCommand(args: string[], io: CliIO): Promise<number> {

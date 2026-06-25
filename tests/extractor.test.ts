@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
-import { RpgMakerMvMzExtractor } from "../src/core/extractors/index.js";
+import { RpgMakerMvMzExtractor } from "../src/core/extractors/rpgmaker-mv-mz.js";
 import { runCli } from "../src/cli/app.js";
 import { hashSource } from "../src/core/utils/hash.js";
 

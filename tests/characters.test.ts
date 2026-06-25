@@ -3,9 +3,9 @@ import {
   candidatesToDraftGlossary,
   extractCharacterCandidates,
   inferCharacterGlossary
-} from "../src/core/characters/index.js";
-import { TokenBudget } from "../src/core/cost/index.js";
-import type { LLMProvider, TranslationUnit } from "../src/core/types.js";
+} from "../src/core/characters.js";
+import { TokenBudget } from "../src/core/cost.js";
+import type { LLMProvider, TranslationUnit } from "../src/core/types/types.js";
 
 describe("character candidates", () => {
   it("extracts actors and speakers while skipping technical event names", () => {

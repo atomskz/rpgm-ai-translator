@@ -2,8 +2,8 @@ import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
-import { createReport, readReportFile, summarizeReport, writeReportFile } from "../src/core/reports/index.js";
-import type { TranslationResult, TranslationUnit, ValidationIssue } from "../src/core/types.js";
+import { createReport, readReportFile, summarizeReport, writeReportFile } from "../src/core/reports/reports.js";
+import type { TranslationResult, TranslationUnit, ValidationIssue } from "../src/core/types/types.js";
 
 describe("reports", () => {
   it("builds JSON reports from units, translations and validation issues", () => {

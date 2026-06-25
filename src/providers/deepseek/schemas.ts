@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { CharacterGlossary, ProviderUsage } from "../../core/types.js";
+import type { CharacterGlossary, ProviderUsage } from "../../core/types/types.js";
 import { DeepSeekProviderError } from "./errors.js";
 import type { ChatCompletionResponse, ModelCharactersPayload, ModelTranslationPayload } from "./types.js";
 

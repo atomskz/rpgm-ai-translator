@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { protectPlaceholders } from "../src/core/placeholders/index.js";
+import { protectPlaceholders } from "../src/core/placeholders.js";
 import {
   DefaultValidator,
   filterTranslationsWithoutValidationErrors,
   introducedErrorCode,
   validateTranslationResults
-} from "../src/core/validators/index.js";
-import type { Glossary, TranslationResult, TranslationUnit, ValidationIssue } from "../src/core/types.js";
+} from "../src/core/validators/validators.js";
+import type { Glossary, TranslationResult, TranslationUnit, ValidationIssue } from "../src/core/types/types.js";
 
 describe("DefaultValidator", () => {
   it("reports id mismatches", () => {

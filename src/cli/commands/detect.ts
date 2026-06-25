@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { MvMzEngineDetector } from "../../core/engine-detector/index.js";
+import { MvMzEngineDetector } from "../../core/engine-detector.js";
 import { requirePositional } from "../options.js";
 import type { CliIO } from "../types.js";
 

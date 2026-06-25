@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { ApplyOptions, ExtractOptions, TranslateOptions, ValidationIssue } from "../core/types.js";
+import type { ApplyOptions, ExtractOptions, TranslateOptions, ValidationIssue } from "../core/types/types.js";
 
 // Marks errors caused by bad command-line input (missing/unknown/invalid
 // arguments) so the CLI can attach the command usage and a --help hint, as

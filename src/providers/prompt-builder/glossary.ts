@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { Glossary, ReviewUnit, TranslationUnit } from "../../core/types.js";
+import type { Glossary, ReviewUnit, TranslationUnit } from "../../core/types/types.js";
 import { glossaryTermMatches } from "../../core/utils/text.js";
 
 // Even after relevance filtering, a large glossary against a batch of common terms

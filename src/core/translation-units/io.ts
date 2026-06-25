@@ -28,7 +28,7 @@ import type {
   TranslationResult,
   TranslationUnit,
   ValidationIssue
-} from "../types.js";
+} from "../types/types.js";
 import { writeFileAtomic } from "../utils/fs.js";
 
 export type ImportedTranslation = {

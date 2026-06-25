@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { applyFontPatch } from "../../core/font-patch/index.js";
+import { applyFontPatch } from "../../core/font-patch.js";
 import { readFontOptions, requireOption, requirePositional } from "../options.js";
 import type { CliIO } from "../types.js";
 

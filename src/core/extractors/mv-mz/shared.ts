@@ -18,8 +18,8 @@
  */
 
 import path from "node:path";
-import type { EngineId, TranslationCategory, TranslationUnit } from "../../types.js";
-import { protectPlaceholders } from "../../placeholders/index.js";
+import type { EngineId, TranslationCategory, TranslationUnit } from "../../types/types.js";
+import { protectPlaceholders } from "../../placeholders.js";
 import { hashSource } from "../../utils/hash.js";
 import { containsTranslatableLetter } from "../../utils/text.js";
 

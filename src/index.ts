@@ -23,27 +23,27 @@
 // through a wildcard re-export.
 
 // Types: the full shared type surface (the type modules contain no runtime values).
-export type * from "./core/types.js";
+export type * from "./core/types/types.js";
 
 // Engine detection, extraction and patching.
-export { MvMzEngineDetector } from "./core/engine-detector/index.js";
-export { RpgMakerMvMzExtractor } from "./core/extractors/index.js";
-export { assertPatchOutputOutsideGame, writePatch } from "./core/patch-writer/index.js";
-export { applyFontPatch, type FontPatchOptions, type FontPatchResult } from "./core/font-patch/index.js";
+export { MvMzEngineDetector } from "./core/engine-detector.js";
+export { RpgMakerMvMzExtractor } from "./core/extractors/rpgmaker-mv-mz.js";
+export { assertPatchOutputOutsideGame, writePatch } from "./core/patch-writer.js";
+export { applyFontPatch, type FontPatchOptions, type FontPatchResult } from "./core/font-patch.js";
 
 // Placeholder protection (control-code round-tripping).
 export {
   protectPlaceholders,
   restorePlaceholders,
   type PlaceholderProtectionResult
-} from "./core/placeholders/index.js";
+} from "./core/placeholders.js";
 
 // Validation and reporting.
 export {
   DefaultValidator,
   validateTranslationResults,
   filterTranslationsWithoutValidationErrors
-} from "./core/validators/index.js";
+} from "./core/validators/validators.js";
 export {
   REPORT_SCHEMA_VERSION,
   createReport,
@@ -53,7 +53,7 @@ export {
   reportUnitsFingerprint,
   summarizeReport,
   type ReportInput
-} from "./core/reports/index.js";
+} from "./core/reports/reports.js";
 
 // Translation-unit and result file I/O.
 export {
@@ -66,34 +66,32 @@ export {
   appendTranslationResultsJsonlFile,
   readTranslationResultsJsonlFile,
   type ImportedTranslation
-} from "./core/translation-units/index.js";
+} from "./core/translation-units/io.js";
 
 // Translation memory and pipeline passes.
-export {
-  JsonlTranslationMemory,
-  translateWithMemory,
-  type MemoryEntry,
-  type TranslationMemory
-} from "./core/memory/index.js";
-export { reviewTranslations, type ReviewPassResult } from "./core/review/index.js";
-export { repairTranslations, type RepairOptions, type RepairResult } from "./core/repair/index.js";
+export { JsonlTranslationMemory } from "./core/memory/jsonl.js";
+export { translateWithMemory } from "./core/memory/pipeline.js";
+export type { MemoryEntry, TranslationMemory } from "./core/memory/types.js";
+export { reviewTranslations, type ReviewPassResult } from "./core/review.js";
+export { repairTranslations, type RepairOptions, type RepairResult } from "./core/repair.js";
 export {
   extractCharacterCandidates,
   inferCharacterGlossary,
   candidatesToDraftGlossary,
   type CharacterExtractionOptions
-} from "./core/characters/index.js";
+} from "./core/characters.js";
 
 // Providers.
-export { MockProvider } from "./providers/mock/index.js";
-export { DeepSeekProvider, type DeepSeekProviderConfig } from "./providers/deepseek/index.js";
-export { createProvider, type ProviderName, type ProviderConfig } from "./providers/index.js";
+export { MockProvider } from "./providers/mock.js";
+export { DeepSeekProvider, type DeepSeekProviderConfig } from "./providers/deepseek/deepseek.js";
+export { createProvider, type ProviderName, type ProviderConfig } from "./providers/providers.js";
 
 // Plugin parsing types (the manipulation helpers stay internal to the patch writer).
-export type { RpgMakerPlugin } from "./core/plugins/index.js";
+export type { RpgMakerPlugin } from "./core/plugins.js";
 
 // Configuration loaders.
-export { loadGlossary, loadCharacterGlossary } from "./config/index.js";
+export { loadGlossary } from "./config/glossary.js";
+export { loadCharacterGlossary } from "./config/characters.js";
 export {
   loadProjectConfig,
   mergeConfigIntoArgs,

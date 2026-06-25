@@ -2,7 +2,7 @@ import { mkdtemp, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
-import { acquireDirectoryLock } from "../src/core/locks/index.js";
+import { acquireDirectoryLock } from "../src/core/locks.js";
 
 const LOCK_FILENAME = ".rpgm-run.lock";
 

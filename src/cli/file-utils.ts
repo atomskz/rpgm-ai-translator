@@ -17,8 +17,8 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { summarizeReport, writeReportFile } from "../core/reports/index.js";
-import type { createReport } from "../core/reports/index.js";
+import { summarizeReport, writeReportFile } from "../core/reports/reports.js";
+import type { createReport } from "../core/reports/reports.js";
 import { writeFileAtomic } from "../core/utils/fs.js";
 import type { CliIO } from "./types.js";
 

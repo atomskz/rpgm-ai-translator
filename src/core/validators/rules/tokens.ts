@@ -17,8 +17,8 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { TranslationResult, TranslationUnit, ValidationIssue } from "../../types.js";
-import { restorePlaceholders } from "../../placeholders/index.js";
+import type { TranslationResult, TranslationUnit, ValidationIssue } from "../../types/types.js";
+import { restorePlaceholders } from "../../placeholders.js";
 import { extractProseNumbers, extractTechnicalTokens, extractVariables, issue, sameMultiset } from "./shared.js";
 
 export function validateNumbers(unit: TranslationUnit, result: TranslationResult): ValidationIssue[] {

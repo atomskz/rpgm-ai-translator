@@ -25,12 +25,12 @@ import type {
   TranslationResult,
   TranslationUnit,
   ValidationIssue
-} from "../types.js";
-import { splitBatch } from "../batching/index.js";
-import { summarizeBatchFailures } from "../reports/failures.js";
-import { isRetryableProviderError, withProviderRetry } from "../retry/index.js";
-import { collectRevalidatedBatch } from "../revalidation/index.js";
-import { DefaultValidator, introducedErrorCode } from "../validators/index.js";
+} from "./types/types.js";
+import { splitBatch } from "./batching.js";
+import { summarizeBatchFailures } from "./reports/failures.js";
+import { isRetryableProviderError, withProviderRetry } from "./retry.js";
+import { collectRevalidatedBatch } from "./revalidation.js";
+import { DefaultValidator, introducedErrorCode } from "./validators/validators.js";
 
 export type ReviewPassResult = {
   translations: TranslationResult[];

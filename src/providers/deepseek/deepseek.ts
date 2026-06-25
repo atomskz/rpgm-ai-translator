@@ -27,12 +27,12 @@ import type {
   TranslateOptions,
   TranslationResult,
   TranslationUnit
-} from "../../core/types.js";
+} from "../../core/types/types.js";
 import {
   buildCharacterInferenceMessages,
   buildReviewMessages,
   buildTranslationMessages
-} from "../prompt-builder.js";
+} from "../prompt-builder/prompt-builder.js";
 import { DeepSeekClient } from "./client.js";
 import { DEFAULT_MODEL } from "./defaults.js";
 import {

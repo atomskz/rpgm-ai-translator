@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { BatchFailureSummary, TranslateOptions } from "../core/types.js";
+import type { BatchFailureSummary, TranslateOptions } from "../core/types/types.js";
 import type { CliIO } from "./types.js";
 
 // Trim long provider messages so a failure summary stays a single tidy line.

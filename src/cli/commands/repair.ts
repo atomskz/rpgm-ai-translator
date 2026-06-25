@@ -17,17 +17,18 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { repairTranslations } from "../../core/repair/index.js";
-import { readReportFile, reportUnitsFingerprint } from "../../core/reports/index.js";
+import { repairTranslations } from "../../core/repair.js";
+import { readReportFile, reportUnitsFingerprint } from "../../core/reports/reports.js";
 import {
   appendTranslationResultsJsonlFile,
   readTranslationResultsFile,
   readTranslationUnitsFile,
   writeTranslationResultsFile
-} from "../../core/translation-units/index.js";
-import { DefaultValidator, validateTranslationResults } from "../../core/validators/index.js";
-import { loadCharacterGlossary, loadGlossary } from "../../config/index.js";
-import { createProvider } from "../../providers/index.js";
+} from "../../core/translation-units/io.js";
+import { DefaultValidator, validateTranslationResults } from "../../core/validators/validators.js";
+import { loadGlossary } from "../../config/glossary.js";
+import { loadCharacterGlossary } from "../../config/characters.js";
+import { createProvider } from "../../providers/providers.js";
 import {
   checkpointedTranslationsById,
   checkpointSignature,
@@ -47,7 +48,7 @@ import {
   requirePositional
 } from "../options.js";
 import { createProgressLogger } from "../progress.js";
-import type { TranslationResult, ValidationIssue } from "../../core/types.js";
+import type { TranslationResult, ValidationIssue } from "../../core/types/types.js";
 import type { CliIO } from "../types.js";
 
 export async function repairCommand(args: string[], io: CliIO): Promise<number> {

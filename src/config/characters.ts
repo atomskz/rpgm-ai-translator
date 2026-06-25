@@ -18,7 +18,7 @@
  */
 
 import { readFile } from "node:fs/promises";
-import type { CharacterGender, CharacterGlossary, CharacterKind } from "../core/types.js";
+import type { CharacterGender, CharacterGlossary, CharacterKind } from "../core/types/types.js";
 
 const GENDERS: CharacterGender[] = ["male", "female", "neutral", "unknown"];
 const KINDS: CharacterKind[] = ["person", "place", "group", "creature", "object", "unknown"];
