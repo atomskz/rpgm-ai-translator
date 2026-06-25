@@ -57,6 +57,18 @@ export async function applyCommand(args: string[], io: CliIO): Promise<number> {
   const { fontPath, numberFontPath } = readFontOptions(args);
   const reportPath = readOption(args, "--report");
   const unitsPath = readOption(args, "--units");
+  // --font/--number-font only take effect when applying a font into a patch folder
+  // (--mode patch --out). Setting them in in-place mode (or without --out) silently
+  // shipped a game with no font change, so reject it as a usage error.
+  if ((fontPath != null || numberFontPath != null) && !(applyOptions.mode === "patch" && applyOptions.outDir)) {
+    throw new UsageError("--font and --number-font apply only in --mode patch together with --out.");
+  }
+  // With --units the constraints come from the saved units file; apply does not
+  // re-extract, so --dialogue-max-length has no effect. Warn rather than silently
+  // ignore it, so a user who expected a different line budget knows it was unused.
+  if (unitsPath && readOption(args, "--dialogue-max-length") != null) {
+    io.stderr("Warning: --dialogue-max-length is ignored with --units; the line-length constraints come from the units file.\n");
+  }
   const translations = await readTranslationResultsFile(translationsPath);
   const translationsToApply = reportPath
     ? filterTranslationsWithoutValidationErrors(translations, (await readReportFile(reportPath)).validationIssues)

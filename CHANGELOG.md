@@ -62,6 +62,10 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Changed
 
+- `apply` now rejects `--font`/`--number-font` outside `--mode patch` with `--out`
+  (previously a silent no-op that shipped a game with no font change) and warns
+  that `--dialogue-max-length` is ignored when `--units` is given (the constraints
+  come from the saved units file, since apply does not re-extract).
 - Scope the project-config `out` key to `run`, `apply`, and `patch-font` (where
   it consistently means the patch output directory) instead of injecting it into
   every command. `out` names a different artifact for each manual-pipeline command

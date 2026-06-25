@@ -116,6 +116,45 @@ describe("CLI apply and patch-font", () => {
     expect(sourceActors[1].name).toBe("Aria");
   });
 
+  it("rejects --font outside patch mode instead of silently ignoring it", async () => {
+    const root = await createCliTempDir("rpgm-cli-apply-font-noop-");
+    const gamePath = path.join(root, "game");
+    const translationsPath = path.join(root, "translations.json");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await writeJsonFixture(path.join(gamePath, "data", "Actors.json"), [null, { name: "Aria" }]);
+    await writeJsonFixture(translationsPath, [translatedResult()]);
+
+    const errors: string[] = [];
+    const exitCode = await runCli(
+      ["apply", gamePath, translationsPath, "--mode", "in-place", "--font", path.join(root, "font.ttf")],
+      { stdout: () => undefined, stderr: (text) => errors.push(text) }
+    );
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("")).toContain("--font and --number-font apply only in --mode patch");
+  });
+
+  it("warns that --dialogue-max-length is ignored when applying with --units", async () => {
+    const root = await createCliTempDir("rpgm-cli-apply-dml-");
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "patch");
+    const unitsPath = path.join(root, "units.json");
+    const translationsPath = path.join(root, "translations.json");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await writeJsonFixture(path.join(gamePath, "data", "Actors.json"), [null, { name: "Aria" }]);
+    await writeJsonFixture(unitsPath, [actorNameUnit({ normalizedSource: undefined, hash: "hash-aria" })]);
+    await writeJsonFixture(translationsPath, [translatedResult()]);
+
+    const errors: string[] = [];
+    const exitCode = await runCli(
+      ["apply", gamePath, translationsPath, "--mode", "patch", "--units", unitsPath, "--out", outDir, "--dialogue-max-length", "30"],
+      { stdout: () => undefined, stderr: (text) => errors.push(text) }
+    );
+
+    expect(exitCode).toBe(0);
+    expect(errors.join("")).toContain("--dialogue-max-length is ignored with --units");
+  });
+
   it("refuses a non-empty patch --out without --force, then overwrites with it", async () => {
     const root = await createCliTempDir("rpgm-cli-apply-force-");
     const gamePath = path.join(root, "game");
