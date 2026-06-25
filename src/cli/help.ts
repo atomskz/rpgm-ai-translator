@@ -134,7 +134,7 @@ export function commandHelp(command: string): string {
 }
 
 export function helpText(): string {
-  return `rpgm-ai-translator 0.1.6
+  return `rpgm-ai-translator 0.1.7
 AI-assisted translation pipeline for RPG Maker MV/MZ games.
 
 Usage:
