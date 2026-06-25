@@ -55,6 +55,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Internal
 
+- Add a CLI behavior test suite: a per-command `--help` matrix (usage to stdout,
+  exit 0, clean stderr) that fails if a new command ships without per-command
+  help, the exit-code contract (0 success, 1 unknown command / missing argument,
+  2 apply-blocking validation), stdout/stderr stream separation for `extract`, and
+  config precedence (config value applied, explicit CLI flag overrides it).
 - Add a byte-for-byte golden test of the patch writer's output — indentation, BOM,
   CRLF/LF line endings, trailing newline, minified files, and the `plugins.js`
   header and array round-trip — so any future change that reshapes a shipped patch
