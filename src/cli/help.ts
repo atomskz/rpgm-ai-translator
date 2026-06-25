@@ -26,6 +26,15 @@ type CommandHelpMeta = {
 };
 
 const COMMAND_HELP: Record<string, CommandHelpMeta> = {
+  init: {
+    usage: "init [--out <config>] [--force]",
+    summary: "Scaffold a project config, .env.example and example glossary/character files.",
+    notes: [
+      "--out sets the config path (default: ./rpgm-ai-translator.json).",
+      "--force overwrites an existing scaffold; without it init refuses to clobber your config.",
+      "No API key is ever written: set DEEPSEEK_API_KEY in .env (copied from .env.example)."
+    ]
+  },
   detect: { usage: "detect <game>", summary: "Detect the RPG Maker engine and project paths." },
   extract: { usage: "extract <game> [options]", summary: "Extract translation units from RPG Maker JSON data." },
   translate: { usage: "translate <units.json> [options]", summary: "Translate extracted units through a provider." },
@@ -143,6 +152,9 @@ Usage:
   rpgm-ai-translator --help
 
 Commands:
+  init
+      Scaffold a project config, .env.example and example glossary/character files.
+
   detect <game>
       Detect RPG Maker engine and project paths.
 

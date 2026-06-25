@@ -40,6 +40,7 @@ export type CommandOptionSpec = {
 // a command runs, so a typo silently falls back to a default no longer. Also the
 // single source of truth for which flags per-command help lists.
 export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
+  init: { valueOptions: ["--out"], booleanFlags: ["--force"], maxPositionals: 0 },
   detect: { valueOptions: [], booleanFlags: [], maxPositionals: 1 },
   extract: {
     valueOptions: ["--out", "--report", "--dialogue-max-length"],

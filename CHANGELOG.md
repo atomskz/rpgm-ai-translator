@@ -6,6 +6,13 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Add an `init` command that scaffolds onboarding: it writes a
+  `rpgm-ai-translator.json` project config with safe defaults, a `.env.example`
+  with an empty `DEEPSEEK_API_KEY=` placeholder (never a real key), and copies the
+  example glossary/character files as editable starting points. `--out` chooses
+  the config path; `--force` overwrites an existing scaffold (without it, `init`
+  refuses to clobber your config). stdout lists the created files; the next-step
+  hint goes to stderr.
 - Echo the resolved target language (`Target language: <code>`) on every
   translating command (`translate`, `characters`, `review`, `repair`, `run`),
   marking it `(default)` when it fell back to the built-in `ru`. `run`

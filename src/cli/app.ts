@@ -20,6 +20,7 @@
 import { applyCommand } from "./commands/apply.js";
 import { charactersCommand } from "./commands/characters.js";
 import { detectCommand } from "./commands/detect.js";
+import { initCommand } from "./commands/init.js";
 import { extractCommand } from "./commands/extract.js";
 import { patchFontCommand } from "./commands/patch-font.js";
 import { repairCommand } from "./commands/repair.js";
@@ -37,6 +38,7 @@ export type { CliIO } from "./types.js";
 export { helpText } from "./help.js";
 
 const COMMANDS = new Map<string, CommandHandler>([
+  ["init", initCommand],
   ["detect", detectCommand],
   ["extract", extractCommand],
   ["translate", translateCommand],
