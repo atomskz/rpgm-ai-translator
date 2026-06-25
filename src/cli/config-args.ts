@@ -47,6 +47,11 @@ export function mergeConfigIntoArgs(command: string, args: string[], config: Pro
   const injected: string[] = [];
 
   for (const field of CONFIG_FIELD_SPECS) {
+    // A path-scoped key (e.g. `out`) only injects into the commands it is meant
+    // for, so a single config value cannot redirect an unrelated command's output.
+    if (field.commands && !field.commands.includes(command)) {
+      continue;
+    }
     const value = config[field.key];
     if (value == null || presentCanonical.has(canonicalOf(field.flag))) {
       continue;

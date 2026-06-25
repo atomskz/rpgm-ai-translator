@@ -65,7 +65,17 @@ export type ProjectConfig = {
 // string[] of validation issue codes (the only multi-shape field).
 type ConfigFieldType = "string" | "number" | "boolean" | "codes";
 
-export type ConfigFieldSpec = { key: keyof ProjectConfig; flag: string; type: ConfigFieldType };
+// `commands`, when present, restricts which commands a config key is injected
+// into (default: every command that accepts the flag). It scopes a path-typed key
+// like `out` whose target artifact differs per command — extract writes units,
+// validate a report, run/apply a patch — so one config value cannot silently
+// redirect an unrelated command's output to the wrong file.
+export type ConfigFieldSpec = {
+  key: keyof ProjectConfig;
+  flag: string;
+  type: ConfigFieldType;
+  commands?: readonly string[];
+};
 
 // Single source of truth for the config-key -> CLI-flag mapping. Non-boolean
 // fields inject `--flag <value>`; boolean fields inject `--flag` only when true
@@ -82,7 +92,11 @@ export const CONFIG_FIELD_SPECS: readonly ConfigFieldSpec[] = [
   { key: "maxTokens", flag: "--max-tokens", type: "number" },
   { key: "maxTokensBudget", flag: "--max-tokens-budget", type: "number" },
   { key: "retryAttempts", flag: "--retry-attempts", type: "number" },
-  { key: "out", flag: "--out", type: "string" },
+  // `out` means the patch output directory for these commands; for the manual
+  // pipeline (extract/translate/validate/review/repair/characters) it is a
+  // different artifact each, so config does not inject it there — pass --out
+  // explicitly per step instead of silently writing to the patch directory.
+  { key: "out", flag: "--out", type: "string", commands: ["run", "apply", "patch-font"] },
   { key: "workDir", flag: "--work-dir", type: "string" },
   { key: "memory", flag: "--memory", type: "string" },
   { key: "glossary", flag: "--glossary", type: "string" },

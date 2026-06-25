@@ -20,6 +20,14 @@ A config value is only applied when the matching flag is absent from the command
 line, so an explicit flag always wins. Config affects only the commands that
 accept the corresponding flag (for example, `provider` is ignored by `detect`).
 
+`out` is special: it names a different artifact for each command — `extract`
+writes `units.json`, `validate` a report, `translate`/`review`/`repair` a
+translations file, and `run`/`apply` a patch directory. To stop a single config
+value from silently redirecting an unrelated command's output, config `out` is
+injected only into `run`, `apply`, and `patch-font` (where it consistently means
+the patch directory). For the manual pipeline commands, pass `--out` explicitly
+per step.
+
 Boolean options can be enabled from config (`"review": true`) but there is no
 `--no-*` form, so config cannot turn a boolean off — omit it or set `false`.
 
@@ -48,7 +56,7 @@ Keys mirror the CLI flag names (camelCase). All are optional.
 | `maxTokens` | `--max-tokens` | number |
 | `maxTokensBudget` | `--max-tokens-budget` | number |
 | `retryAttempts` | `--retry-attempts` | number |
-| `out` | `--out` | string |
+| `out` | `--out` | string (only `run`/`apply`/`patch-font`) |
 | `workDir` | `--work-dir` | string |
 | `memory` | `--memory` | string |
 | `glossary` | `--glossary` | string |

@@ -108,6 +108,21 @@ describe("mergeConfigIntoArgs", () => {
     expect(merged).toEqual(["./game"]);
   });
 
+  it("injects a config `out` into run (patch directory) but not into extract", () => {
+    // `out` means the patch directory for run; injecting it into extract would
+    // silently redirect units.json there, so it must be scoped away from extract.
+    const intoRun = mergeConfigIntoArgs("run", ["./game"], { out: "./out/patch" });
+    expect(intoRun[intoRun.indexOf("--out") + 1]).toBe("./out/patch");
+
+    const intoExtract = mergeConfigIntoArgs("extract", ["./game"], { out: "./out/patch" });
+    expect(intoExtract).not.toContain("--out");
+  });
+
+  it("still injects a config `out` into apply", () => {
+    const merged = mergeConfigIntoArgs("apply", ["units.json", "translations.json"], { out: "./out/patch" });
+    expect(merged[merged.indexOf("--out") + 1]).toBe("./out/patch");
+  });
+
   it("never injects a false boolean and has no --no- form", () => {
     const merged = mergeConfigIntoArgs("run", ["./game", "--out", "./out"], { review: false });
     expect(merged).not.toContain("--review");

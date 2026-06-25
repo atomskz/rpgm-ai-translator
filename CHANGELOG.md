@@ -30,6 +30,13 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Changed
 
+- Scope the project-config `out` key to `run`, `apply`, and `patch-font` (where
+  it consistently means the patch output directory) instead of injecting it into
+  every command. `out` names a different artifact for each manual-pipeline command
+  (`extract` writes `units.json`, `validate` a report, `translate`/`review`/`repair`
+  a translations file), so a single config value previously redirected an
+  unrelated command's output to the wrong path; those commands now require an
+  explicit `--out`. An explicit `--out` on the command line is unaffected.
 - `apply` (patch mode) and `run` now refuse to write into a non-empty output
   directory by default and accept a new `--force` flag to override. Patch mode
   writes only the changed files, so overlaying a fresh patch onto a stale one (or
