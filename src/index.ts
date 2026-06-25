@@ -94,8 +94,8 @@ export { loadGlossary } from "./config/public-api.js";
 export { loadCharacterGlossary } from "./config/public-api.js";
 export {
   loadProjectConfig,
-  mergeConfigIntoArgs,
   PROJECT_CONFIG_FILENAME,
   CONFIG_FLAG,
   type ProjectConfig
 } from "./config/public-api.js";
+export { mergeConfigIntoArgs } from "./cli/config-args.js";

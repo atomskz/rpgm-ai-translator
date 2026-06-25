@@ -2,7 +2,8 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
-import { loadProjectConfig, mergeConfigIntoArgs, PROJECT_CONFIG_FILENAME } from "../src/config/public-api.js";
+import { loadProjectConfig, PROJECT_CONFIG_FILENAME } from "../src/config/public-api.js";
+import { mergeConfigIntoArgs } from "../src/cli/config-args.js";
 
 describe("loadProjectConfig", () => {
   it("returns undefined when no default config exists", async () => {

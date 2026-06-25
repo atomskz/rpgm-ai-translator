@@ -19,7 +19,6 @@
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { COMMAND_OPTION_SPECS } from "../cli/options/public-api.js";
 import { isValidationIssueCode } from "../core/validators/public-api.js";
 
 // Default config file name looked up in the working directory when --config is
@@ -66,13 +65,13 @@ export type ProjectConfig = {
 // string[] of validation issue codes (the only multi-shape field).
 type ConfigFieldType = "string" | "number" | "boolean" | "codes";
 
-type ConfigFieldSpec = { key: keyof ProjectConfig; flag: string; type: ConfigFieldType };
+export type ConfigFieldSpec = { key: keyof ProjectConfig; flag: string; type: ConfigFieldType };
 
 // Single source of truth for the config-key -> CLI-flag mapping. Non-boolean
 // fields inject `--flag <value>`; boolean fields inject `--flag` only when true
 // (there is no `--no-*` form, so config can enable a flag but cannot force it
 // off). `type` is also the per-field validation contract for the parsed file.
-const CONFIG_FIELD_SPECS: readonly ConfigFieldSpec[] = [
+export const CONFIG_FIELD_SPECS: readonly ConfigFieldSpec[] = [
   { key: "provider", flag: "--provider", type: "string" },
   { key: "baseUrl", flag: "--base-url", type: "string" },
   { key: "model", flag: "--model", type: "string" },
@@ -212,47 +211,4 @@ function describeJsonType(value: unknown): string {
     return "null";
   }
   return Array.isArray(value) ? "array" : typeof value;
-}
-
-// Inject config-provided defaults into argv for the given command. Only flags
-// the command actually accepts are added, and only when not already present, so
-// an explicit CLI flag always wins over config.
-export function mergeConfigIntoArgs(command: string, args: string[], config: ProjectConfig | undefined): string[] {
-  if (!config) {
-    return args;
-  }
-  const spec = COMMAND_OPTION_SPECS[command];
-  if (!spec) {
-    return args;
-  }
-  const valueOptions = new Set<string>(spec.valueOptions);
-  const booleanFlags = new Set<string>(spec.booleanFlags);
-  const present = new Set(args.filter((token) => token.startsWith("--")));
-  const injected: string[] = [];
-
-  for (const field of CONFIG_FIELD_SPECS) {
-    const value = config[field.key];
-    if (value == null || present.has(field.flag)) {
-      continue;
-    }
-    if (field.type === "boolean") {
-      if (value === true && booleanFlags.has(field.flag)) {
-        injected.push(field.flag);
-      }
-      continue;
-    }
-    if (!valueOptions.has(field.flag)) {
-      continue;
-    }
-    injected.push(field.flag, formatValue(value));
-  }
-
-  return injected.length > 0 ? [...args, ...injected] : args;
-}
-
-function formatValue(value: ProjectConfig[keyof ProjectConfig]): string {
-  if (Array.isArray(value)) {
-    return value.join(",");
-  }
-  return String(value);
 }
