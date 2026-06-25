@@ -4,6 +4,13 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ## Unreleased
 
+### Internal
+
+- Add a byte-for-byte golden test of the patch writer's output — indentation, BOM,
+  CRLF/LF line endings, trailing newline, minified files, and the `plugins.js`
+  header and array round-trip — so any future change that reshapes a shipped patch
+  fails the test suite.
+
 ### Changed
 
 - `apply` (patch mode) and `run` now refuse to write into a non-empty output
