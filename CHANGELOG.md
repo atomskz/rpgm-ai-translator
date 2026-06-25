@@ -6,6 +6,13 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Add a `config` command. `config validate` loads and type-checks the project
+  config, exits non-zero on a malformed file (naming the problem), and lists
+  unknown keys with a did-you-mean suggestion; `config print` shows the loaded
+  config, and `config print <command>` shows exactly which flags config injects
+  into that command (reflecting the `out` scoping and flag aliases) — so a
+  dropped or mistyped key is visible without running a real command. The unknown
+  config-key warning now also suggests the closest key during normal runs.
 - Add a `doctor` command that runs preflight checks before a paid run: the
   provider is supported, `DEEPSEEK_API_KEY` is set (for deepseek), an optional
   game path is a recognized RPG Maker project, and the provider answers a single

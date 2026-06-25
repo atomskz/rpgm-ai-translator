@@ -19,6 +19,7 @@
 
 import { applyCommand } from "./commands/apply.js";
 import { charactersCommand } from "./commands/characters.js";
+import { configCommand } from "./commands/config.js";
 import { detectCommand } from "./commands/detect.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { initCommand } from "./commands/init.js";
@@ -41,6 +42,7 @@ export { helpText } from "./help.js";
 const COMMANDS = new Map<string, CommandHandler>([
   ["init", initCommand],
   ["doctor", doctorCommand],
+  ["config", configCommand],
   ["detect", detectCommand],
   ["extract", extractCommand],
   ["translate", translateCommand],
@@ -100,6 +102,14 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
     if (args.includes("--help") || args.includes("-h")) {
       io.stdout(commandHelp(command));
       return 0;
+    }
+
+    // The `config` command inspects the project config itself (including reporting
+    // a malformed file), so skip the usual pre-load+merge that would otherwise
+    // abort here on a bad config before `config validate` could run.
+    if (command === "config") {
+      validateCommandArgs(command, args);
+      return await handler(args, io);
     }
 
     // Project config fills in flags the user did not pass; explicit CLI flags

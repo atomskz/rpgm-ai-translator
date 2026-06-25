@@ -48,6 +48,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
     booleanFlags: [],
     maxPositionals: 1
   },
+  config: { valueOptions: [], booleanFlags: [], maxPositionals: 2 },
   detect: { valueOptions: [], booleanFlags: [], maxPositionals: 1 },
   extract: {
     valueOptions: ["--out", "--report", "--dialogue-max-length"],

@@ -169,7 +169,10 @@ function parseProjectConfig(raw: string, filePath: string, onWarning: (message: 
   for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
     const spec = CONFIG_FIELD_BY_KEY.get(key);
     if (!spec) {
-      onWarning(`Unknown config key '${key}' in '${filePath}' (ignored).`);
+      const suggestion = suggestConfigKey(key);
+      onWarning(
+        `Unknown config key '${key}' in '${filePath}' (ignored).${suggestion ? ` Did you mean '${suggestion}'?` : ""}`
+      );
       continue;
     }
     if (value == null) {
@@ -225,4 +228,37 @@ function describeJsonType(value: unknown): string {
     return "null";
   }
   return Array.isArray(value) ? "array" : typeof value;
+}
+
+// Suggest the closest known config key for a likely typo (e.g. `temprature` ->
+// `temperature`), so the unknown-key warning and `config validate` can point at
+// the intended key instead of just ignoring it.
+export function suggestConfigKey(key: string): string | undefined {
+  let best: string | undefined;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const spec of CONFIG_FIELD_SPECS) {
+    const distance = levenshteinDistance(key, spec.key);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = spec.key;
+    }
+  }
+  return best !== undefined && bestDistance <= 3 ? best : undefined;
+}
+
+function levenshteinDistance(a: string, b: string): number {
+  const matrix = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0));
+  for (let i = 0; i <= a.length; i += 1) {
+    matrix[i][0] = i;
+  }
+  for (let j = 0; j <= b.length; j += 1) {
+    matrix[0][j] = j;
+  }
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
+    }
+  }
+  return matrix[a.length][b.length];
 }
