@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSafeRuntimeText } from "../src/core/extractors/mv-mz/shared.js";
+import { isSafeRuntimeText } from "../src/engines/rpgmaker-mvmz/extract/shared.js";
 
 describe("isSafeRuntimeText", () => {
   it("treats asset paths with spaces or backslashes as non-translatable", () => {

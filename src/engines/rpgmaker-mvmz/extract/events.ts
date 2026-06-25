@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { ExtractOptions, TranslationUnit } from "../../types/types.js";
+import type { ExtractOptions, TranslationUnit } from "../../../core/types/types.js";
 import { extractPluginCommandText } from "./plugins.js";
 
 // Default max display width (in cells) for a single Show Text dialogue line,

@@ -18,10 +18,10 @@
  */
 
 import path from "node:path";
-import type { EngineId, TranslationCategory, TranslationUnit } from "../../types/types.js";
-import { protectPlaceholders } from "../../placeholders.js";
-import { hashSource } from "../../utils/hash.js";
-import { containsTranslatableLetter } from "../../utils/text.js";
+import type { EngineId, TranslationCategory, TranslationUnit } from "../../../core/types/types.js";
+import { protectPlaceholders } from "../../../core/placeholders.js";
+import { hashSource } from "../../../core/utils/hash.js";
+import { containsTranslatableLetter } from "../../../core/utils/text.js";
 
 export type JsonObject = Record<string, unknown>;
 

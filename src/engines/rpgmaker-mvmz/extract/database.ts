@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { ExtractOptions, TranslationCategory } from "../../types/types.js";
+import type { ExtractOptions, TranslationCategory } from "../../../core/types/types.js";
 import { extractEventCommandList, extractMap } from "./events.js";
 import {
   type DraftBase,

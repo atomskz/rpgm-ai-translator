@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
-import { MvMzEngineDetector } from "../src/core/engine-detector.js";
+import { MvMzEngineDetector } from "../src/engines/rpgmaker-mvmz/detector.js";
 import { runCli } from "../src/cli/app.js";
 
 describe("MvMzEngineDetector", () => {

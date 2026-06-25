@@ -2,9 +2,9 @@ import { chmod, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
-import { RpgMakerMvMzExtractor } from "../src/core/extractors/rpgmaker-mv-mz.js";
-import { writePatch } from "../src/core/patch-writer.js";
-import { parsePluginsJs, replacePluginsArray } from "../src/core/plugins.js";
+import { RpgMakerMvMzExtractor } from "../src/engines/rpgmaker-mvmz/extractor.js";
+import { writePatch } from "../src/engines/rpgmaker-mvmz/patch-writer.js";
+import { parsePluginsJs, replacePluginsArray } from "../src/engines/rpgmaker-mvmz/plugins-file.js";
 import type { TranslationResult, TranslationUnit } from "../src/core/types/types.js";
 
 describe("patch writer", () => {

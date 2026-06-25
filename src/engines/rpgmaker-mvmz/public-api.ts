@@ -17,13 +17,10 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { MvMzEngineDetector } from "../../engines/rpgmaker-mvmz/detector.js";
-import { requirePositional } from "../options.js";
-import type { CliIO } from "../types.js";
-
-export async function detectCommand(args: string[], io: CliIO): Promise<number> {
-  const projectPath = requirePositional(args, 0, "project path");
-  const detected = await new MvMzEngineDetector().detect(projectPath);
-  io.stdout(`${JSON.stringify(detected, null, 2)}\n`);
-  return 0;
-}
+// Public contract of the RPG Maker MV/MZ engine adapter. Everything outside this
+// folder imports the engine through here, never its internal files.
+export { MvMzEngineDetector } from "./detector.js";
+export { RpgMakerMvMzExtractor } from "./extractor.js";
+export { assertPatchOutputOutsideGame, writePatch } from "./patch-writer.js";
+export { applyFontPatch, type FontPatchOptions, type FontPatchResult } from "./font.js";
+export { parsePluginsJs, replacePluginsArray, type RpgMakerPlugin } from "./plugins-file.js";

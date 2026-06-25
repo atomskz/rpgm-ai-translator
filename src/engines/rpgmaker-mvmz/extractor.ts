@@ -26,13 +26,13 @@ import type {
   Extractor,
   TranslationResult,
   TranslationUnit
-} from "../types/types.js";
-import { MvMzEngineDetector } from "../engine-detector.js";
-import { writePatch } from "../patch-writer.js";
-import { readJsonFile, toPosixPath } from "../utils/fs.js";
-import { extractFromKnownFile } from "./mv-mz/database.js";
-import { extractPluginsJs } from "./mv-mz/plugins.js";
-import { toTranslationUnit } from "./mv-mz/shared.js";
+} from "../../core/types/types.js";
+import { MvMzEngineDetector } from "./detector.js";
+import { writePatch } from "./patch-writer.js";
+import { readJsonFile, toPosixPath } from "../../core/utils/fs.js";
+import { extractFromKnownFile } from "./extract/database.js";
+import { extractPluginsJs } from "./extract/plugins.js";
+import { toTranslationUnit } from "./extract/shared.js";
 
 export class RpgMakerMvMzExtractor implements Extractor {
   constructor(private readonly detector = new MvMzEngineDetector()) {}

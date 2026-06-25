@@ -17,9 +17,9 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { detectEol } from "./utils/fs.js";
-import { isUnsafePathSegment } from "./utils/json-path.js";
-import { containsTranslatableLetter } from "./utils/text.js";
+import { detectEol } from "../../core/utils/fs.js";
+import { isUnsafePathSegment } from "../../core/utils/json-path.js";
+import { containsTranslatableLetter } from "../../core/utils/text.js";
 
 export type RpgMakerPlugin = {
   name?: string;

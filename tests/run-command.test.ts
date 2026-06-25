@@ -3,7 +3,7 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli/app.js";
-import { RpgMakerMvMzExtractor } from "../src/core/extractors/rpgmaker-mv-mz.js";
+import { RpgMakerMvMzExtractor } from "../src/engines/rpgmaker-mvmz/extractor.js";
 import { translationCacheKey } from "../src/core/memory/pipeline.js";
 import type { MemoryEntry } from "../src/core/memory/types.js";
 import { hashSource } from "../src/core/utils/hash.js";

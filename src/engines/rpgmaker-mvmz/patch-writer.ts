@@ -19,14 +19,14 @@
 
 import { copyFile, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { ApplyOptions, ApplyResult, TranslationResult, TranslationUnit } from "./types/types.js";
-import { restorePlaceholders } from "./placeholders.js";
+import type { ApplyOptions, ApplyResult, TranslationResult, TranslationUnit } from "../../core/types/types.js";
+import { restorePlaceholders } from "../../core/placeholders.js";
 import {
   getPluginParameter,
   parsePluginsJs,
   replacePluginsArray,
   setPluginParameter
-} from "./plugins.js";
+} from "./plugins-file.js";
 import {
   decodeEncodedJsonSegment,
   getJsonPath,
@@ -34,8 +34,8 @@ import {
   parseJsonPath,
   setJsonPath,
   setJsonPathSegments
-} from "./utils/json-path.js";
-import { detectJsonStyle, pathExists, serializeJson, writeFileAtomic, type JsonStyle } from "./utils/fs.js";
+} from "../../core/utils/json-path.js";
+import { detectJsonStyle, pathExists, serializeJson, writeFileAtomic, type JsonStyle } from "../../core/utils/fs.js";
 
 type PreparedFile = {
   relativeFilePath: string;

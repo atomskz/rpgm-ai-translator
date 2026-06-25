@@ -26,10 +26,10 @@
 export type * from "./core/types/types.js";
 
 // Engine detection, extraction and patching.
-export { MvMzEngineDetector } from "./core/engine-detector.js";
-export { RpgMakerMvMzExtractor } from "./core/extractors/rpgmaker-mv-mz.js";
-export { assertPatchOutputOutsideGame, writePatch } from "./core/patch-writer.js";
-export { applyFontPatch, type FontPatchOptions, type FontPatchResult } from "./core/font-patch.js";
+export { MvMzEngineDetector } from "./engines/rpgmaker-mvmz/detector.js";
+export { RpgMakerMvMzExtractor } from "./engines/rpgmaker-mvmz/extractor.js";
+export { assertPatchOutputOutsideGame, writePatch } from "./engines/rpgmaker-mvmz/patch-writer.js";
+export { applyFontPatch, type FontPatchOptions, type FontPatchResult } from "./engines/rpgmaker-mvmz/font.js";
 
 // Placeholder protection (control-code round-tripping).
 export {
@@ -87,7 +87,7 @@ export { DeepSeekProvider, type DeepSeekProviderConfig } from "./providers/deeps
 export { createProvider, type ProviderName, type ProviderConfig } from "./providers/providers.js";
 
 // Plugin parsing types (the manipulation helpers stay internal to the patch writer).
-export type { RpgMakerPlugin } from "./core/plugins.js";
+export type { RpgMakerPlugin } from "./engines/rpgmaker-mvmz/plugins-file.js";
 
 // Configuration loaders.
 export { loadGlossary } from "./config/glossary.js";
