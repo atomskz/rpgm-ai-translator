@@ -18,7 +18,8 @@
  */
 
 import { isRetryableProviderError, withRetry } from "../retry.js";
-import type { LLMProvider, TranslateOptions, TranslationResult, TranslationUnit } from "../types/types.js";
+import type { LLMProvider } from "../ports/public-api.js";
+import type { TranslateOptions, TranslationResult, TranslationUnit } from "../types/public-api.js";
 
 export async function translateBatchWithRetry(
   batch: TranslationUnit[],

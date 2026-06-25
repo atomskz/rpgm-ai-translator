@@ -11,7 +11,7 @@ import {
   resetTranslationResultsJsonlFile,
   writeTranslationUnitsFile
 } from "../src/core/translation-units.js";
-import type { TranslationUnit } from "../src/core/types/types.js";
+import type { TranslationUnit } from "../src/core/types/public-api.js";
 
 describe("translation unit import/export", () => {
   it("exports units as JSON", async () => {

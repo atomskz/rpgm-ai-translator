@@ -18,7 +18,7 @@
  */
 
 import { DEFAULT_RETRY_ATTEMPTS, sleep } from "../../core/retry.js";
-import type { TranslateOptions } from "../../core/types/types.js";
+import type { TranslateOptions } from "../../core/types/public-api.js";
 import type { ChatMessage } from "../prompt-builder/public-api.js";
 import {
   DEFAULT_BASE_URL,

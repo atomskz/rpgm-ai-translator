@@ -19,7 +19,7 @@
 
 import { copyFile, mkdir, realpath, rm } from "node:fs/promises";
 import path from "node:path";
-import type { ApplyOptions, ApplyResult } from "../../../core/types/types.js";
+import type { ApplyOptions, ApplyResult } from "../../../core/types/public-api.js";
 import { pathExists } from "../../../core/utils/fs.js";
 import {
   atomicReplaceFile,

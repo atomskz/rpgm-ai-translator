@@ -23,7 +23,9 @@
 // through a wildcard re-export.
 
 // Types: the full shared type surface (the type modules contain no runtime values).
-export type * from "./core/types/types.js";
+export type * from "./core/types/public-api.js";
+// Ports: extension points a consumer implements to add a provider or engine.
+export type * from "./core/ports/public-api.js";
 
 // Engine detection, extraction and patching.
 export {

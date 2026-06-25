@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DeepSeekProvider } from "../src/providers/deepseek/public-api.js";
 import { backoffDelay, retryAfterMs } from "../src/providers/deepseek/client.js";
 import { aggregateTokenUsage } from "../src/core/cost.js";
-import type { TranslationUnit } from "../src/core/types/types.js";
+import type { TranslationUnit } from "../src/core/types/public-api.js";
 
 type FetchInit = {
   body: string;

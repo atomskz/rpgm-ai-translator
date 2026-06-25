@@ -17,8 +17,8 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import type { LLMProvider } from "../core/ports/public-api.js";
 import type {
-  LLMProvider,
   CharacterCandidate,
   CharacterGlossary,
   CharacterInferenceOptions,
@@ -27,7 +27,7 @@ import type {
   TranslateOptions,
   TranslationResult,
   TranslationUnit
-} from "../core/types/types.js";
+} from "../core/types/public-api.js";
 
 export class MockProvider implements LLMProvider {
   readonly name = "mock";

@@ -23,7 +23,7 @@ export * from "./translation.js";
 export * from "./validation.js";
 export * from "./options.js";
 export * from "./reports.js";
-// The ports (Extractor, LLMProvider, EngineDetector) are public extension points:
-// a consumer implements them to add a provider or engine. They live in core/ports;
-// re-exported here so the shared type surface stays a single import.
-export type * from "../ports/public-api.js";
+// The vocabulary is the innermost layer and depends on nothing — not even the
+// ports defined over it. Consumers import the ports (Extractor, LLMProvider,
+// EngineDetector) from core/ports/public-api directly; the two surfaces stay
+// separate so this barrel never gains a back-edge to the interfaces above it.

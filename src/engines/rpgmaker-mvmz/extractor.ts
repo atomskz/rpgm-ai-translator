@@ -19,14 +19,14 @@
 
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import type { Extractor } from "../../core/ports/public-api.js";
 import type {
   ApplyOptions,
   ApplyResult,
   ExtractOptions,
-  Extractor,
   TranslationResult,
   TranslationUnit
-} from "../../core/types/types.js";
+} from "../../core/types/public-api.js";
 import { MvMzEngineDetector } from "./detector.js";
 import { writePatch } from "./patch/public-api.js";
 import { readJsonFile, toPosixPath } from "../../core/utils/fs.js";

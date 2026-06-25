@@ -17,14 +17,14 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import type { LLMProvider } from "../ports/public-api.js";
 import type {
   CharacterCandidate,
   CharacterGlossary,
-  LLMProvider,
   CharacterInferenceOptions,
   TranslationResult,
   TranslationUnit
-} from "../types/types.js";
+} from "../types/public-api.js";
 import { normalizeBatchSize } from "../batching.js";
 import type { TokenBudget } from "../cost.js";
 import { isRetryableProviderError, withProviderRetry } from "../retry.js";

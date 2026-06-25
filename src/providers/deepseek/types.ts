@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { CharacterGlossary, ProviderUsage } from "../../core/types/types.js";
+import type { CharacterGlossary, ProviderUsage } from "../../core/types/public-api.js";
 
 export type FetchLike = (url: string, init: DeepSeekRequestInit) => Promise<DeepSeekResponse>;
 

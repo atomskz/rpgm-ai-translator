@@ -3,7 +3,7 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import { createReport, readReportFile, summarizeReport, writeReportFile } from "../src/core/reports/public-api.js";
-import type { TranslationResult, TranslationUnit, ValidationIssue } from "../src/core/types/types.js";
+import type { TranslationResult, TranslationUnit, ValidationIssue } from "../src/core/types/public-api.js";
 
 describe("reports", () => {
   it("builds JSON reports from units, translations and validation issues", () => {

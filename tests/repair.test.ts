@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { repairTranslations } from "../src/core/pipeline/public-api.js";
-import type { LLMProvider, ReviewOptions, ReviewUnit, TranslationResult, TranslationUnit } from "../src/core/types/types.js";
+import type { LLMProvider, ReviewOptions, ReviewUnit, TranslationResult, TranslationUnit } from "../src/core/types/public-api.js";
 
 describe("repairTranslations", () => {
   it("retranslates missing translations and reviews issue-specific translated entries", async () => {

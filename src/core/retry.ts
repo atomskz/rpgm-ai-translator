@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { ValidationIssue } from "./types/types.js";
+import type { ValidationIssue } from "./types/public-api.js";
 
 // Single source of truth for the default provider retry attempts, shared by the
 // DeepSeek client (the real retry layer) and this wrapper so they cannot drift.

@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { TranslationCategory, TranslationUnit } from "../types/types.js";
+import type { TranslationCategory, TranslationUnit } from "../types/public-api.js";
 
 export type MemoryEntry = {
   source: string;

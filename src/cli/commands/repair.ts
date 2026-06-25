@@ -48,7 +48,7 @@ import {
   requirePositional
 } from "../options/public-api.js";
 import { createProgressLogger } from "../progress.js";
-import type { TranslationResult, ValidationIssue } from "../../core/types/types.js";
+import type { TranslationResult, ValidationIssue } from "../../core/types/public-api.js";
 import type { CliIO } from "../types.js";
 
 export async function repairCommand(args: string[], io: CliIO): Promise<number> {

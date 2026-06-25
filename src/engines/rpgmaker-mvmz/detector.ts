@@ -18,7 +18,8 @@
  */
 
 import path from "node:path";
-import type { DetectedEngine, DetectedEngineId, EngineDetector } from "../../core/types/types.js";
+import type { EngineDetector } from "../../core/ports/public-api.js";
+import type { DetectedEngine, DetectedEngineId } from "../../core/types/public-api.js";
 import { isDirectory, pathExists, readJsonFile } from "../../core/utils/fs.js";
 
 export class MvMzEngineDetector implements EngineDetector {

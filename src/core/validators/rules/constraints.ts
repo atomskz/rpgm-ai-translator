@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { TranslationResult, TranslationUnit, ValidationIssue } from "../../types/types.js";
+import type { TranslationResult, TranslationUnit, ValidationIssue } from "../../types/public-api.js";
 import { visibleText } from "../../placeholders.js";
 import { displayWidth, issue } from "./shared.js";
 

@@ -22,7 +22,7 @@ import {
   readTranslationResultsJsonlFile,
   resetTranslationResultsJsonlFile
 } from "../core/translation-units.js";
-import type { CharacterGlossary, Glossary, TranslationResult, TranslationUnit } from "../core/types/types.js";
+import type { CharacterGlossary, Glossary, TranslationResult, TranslationUnit } from "../core/types/public-api.js";
 import { writeFileAtomic } from "../core/utils/fs.js";
 import { hashCacheKey } from "../core/utils/hash.js";
 

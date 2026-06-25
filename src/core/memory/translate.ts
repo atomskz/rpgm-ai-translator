@@ -19,7 +19,8 @@
 
 import { normalizeBatchSize } from "../batching.js";
 import { summarizeBatchFailures } from "../reports/public-api.js";
-import type { LLMProvider, TranslateOptions, TranslationMetadata, TranslationResult, TranslationUnit } from "../types/types.js";
+import type { LLMProvider } from "../ports/public-api.js";
+import type { TranslateOptions, TranslationMetadata, TranslationResult, TranslationUnit } from "../types/public-api.js";
 import { hashCacheKey } from "../utils/hash.js";
 import { translateBatchWithRetry } from "./retry.js";
 import type { MemoryEntry, TranslationMemory } from "./types.js";

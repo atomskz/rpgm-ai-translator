@@ -72,7 +72,7 @@ import {
   writeCheckpointSignatureFile
 } from "../checkpoints.js";
 import { createProgressLogger } from "../progress.js";
-import type { TranslationResult } from "../../core/types/types.js";
+import type { TranslationResult } from "../../core/types/public-api.js";
 import type { CliIO } from "../types.js";
 
 export async function runCommand(args: string[], io: CliIO): Promise<number> {

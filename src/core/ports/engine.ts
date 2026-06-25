@@ -17,9 +17,14 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { DetectedEngine } from "../types/engine.js";
-import type { ApplyOptions, ApplyResult, ExtractOptions } from "../types/options.js";
-import type { TranslationResult, TranslationUnit } from "../types/translation.js";
+import type {
+  ApplyOptions,
+  ApplyResult,
+  DetectedEngine,
+  ExtractOptions,
+  TranslationResult,
+  TranslationUnit
+} from "../types/public-api.js";
 
 /** Port implemented by an engine adapter to detect a supported game project. */
 export interface EngineDetector {

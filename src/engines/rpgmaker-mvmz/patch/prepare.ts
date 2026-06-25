@@ -19,7 +19,7 @@
 
 import { readFile, realpath } from "node:fs/promises";
 import path from "node:path";
-import type { TranslationResult, TranslationUnit } from "../../../core/types/types.js";
+import type { TranslationResult, TranslationUnit } from "../../../core/types/public-api.js";
 import { restorePlaceholders } from "../../../core/placeholders.js";
 import { detectJsonStyle, type JsonStyle } from "../../../core/utils/fs.js";
 import { getJsonPath, setJsonPath } from "../../../core/utils/json-path.js";

@@ -5,7 +5,7 @@ import {
   inferCharacterGlossary
 } from "../src/core/pipeline/public-api.js";
 import { TokenBudget } from "../src/core/cost.js";
-import type { LLMProvider, TranslationUnit } from "../src/core/types/types.js";
+import type { LLMProvider, TranslationUnit } from "../src/core/types/public-api.js";
 
 describe("character candidates", () => {
   it("extracts actors and speakers while skipping technical event names", () => {

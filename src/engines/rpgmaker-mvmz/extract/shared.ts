@@ -18,7 +18,7 @@
  */
 
 import path from "node:path";
-import type { EngineId, TranslationCategory, TranslationUnit } from "../../../core/types/types.js";
+import type { EngineId, TranslationCategory, TranslationUnit } from "../../../core/types/public-api.js";
 import { protectPlaceholders } from "../../../core/placeholders.js";
 import { hashSource } from "../../../core/utils/hash.js";
 import { containsTranslatableLetter } from "../../../core/utils/text.js";

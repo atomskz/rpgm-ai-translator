@@ -13,6 +13,7 @@ const FACADE_MODULE_DIRS = [
   "pipeline",
   "ports",
   "reports",
+  "types",
   "validators",
   "rpgmaker-mvmz",
   "patch",

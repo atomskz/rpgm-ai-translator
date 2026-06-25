@@ -18,7 +18,7 @@
  */
 
 import path from "node:path";
-import type { ApplyOptions, ApplyResult, TranslationResult, TranslationUnit } from "../../../core/types/types.js";
+import type { ApplyOptions, ApplyResult, TranslationResult, TranslationUnit } from "../../../core/types/public-api.js";
 import { assertBackupDirSafe, assertPatchOutputOutsideGame } from "./paths.js";
 import { prepareFiles, type PreparedFileSet } from "./prepare.js";
 import { writeInPlaceFiles, writePatchFiles } from "./publish.js";

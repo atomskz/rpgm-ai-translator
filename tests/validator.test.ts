@@ -6,7 +6,7 @@ import {
   introducedErrorCode,
   validateTranslationResults
 } from "../src/core/validators/public-api.js";
-import type { Glossary, TranslationResult, TranslationUnit, ValidationIssue } from "../src/core/types/types.js";
+import type { Glossary, TranslationResult, TranslationUnit, ValidationIssue } from "../src/core/types/public-api.js";
 
 describe("DefaultValidator", () => {
   it("reports id mismatches", () => {

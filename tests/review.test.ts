@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { reviewTranslations } from "../src/core/pipeline/public-api.js";
-import type { LLMProvider, ReviewOptions, ReviewUnit, TranslationResult, TranslationUnit } from "../src/core/types/types.js";
+import type { LLMProvider, ReviewOptions, ReviewUnit, TranslationResult, TranslationUnit } from "../src/core/types/public-api.js";
 
 describe("reviewTranslations", () => {
   it("reviews translated dialogue and keeps unrelated translations unchanged", async () => {

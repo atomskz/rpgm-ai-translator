@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { LLMProvider } from "../core/types/types.js";
+import type { LLMProvider } from "../core/ports/public-api.js";
 import { DeepSeekProvider } from "./deepseek/public-api.js";
 import { MockProvider } from "./mock.js";
 

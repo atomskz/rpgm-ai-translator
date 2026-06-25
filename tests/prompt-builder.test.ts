@@ -9,7 +9,7 @@ import {
   buildTranslationSystemPrompt,
   filterGlossaryForBatch
 } from "../src/providers/prompt-builder/public-api.js";
-import type { Glossary, TranslationUnit } from "../src/core/types/types.js";
+import type { Glossary, TranslationUnit } from "../src/core/types/public-api.js";
 
 describe("prompt builder", () => {
   it("builds a safety-focused system prompt without source data", () => {

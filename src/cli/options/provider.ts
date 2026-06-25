@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { TranslateOptions } from "../../core/types/types.js";
+import type { TranslateOptions } from "../../core/types/public-api.js";
 import { readNonNegativeIntegerOption, readNumberOption, readOption, readPositiveIntegerOption } from "./readers.js";
 import { UsageError } from "./usage-error.js";
 

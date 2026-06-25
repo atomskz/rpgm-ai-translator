@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { TranslationCategory, TranslationUnit } from "../../../core/types/types.js";
+import type { TranslationCategory, TranslationUnit } from "../../../core/types/public-api.js";
 import { encodeArrayIndexSegment, encodeObjectKeySegment } from "../../../core/utils/json-path.js";
 import {
   type DraftBase,

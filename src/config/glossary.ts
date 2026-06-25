@@ -18,7 +18,7 @@
  */
 
 import { readFile } from "node:fs/promises";
-import type { Glossary, GlossaryMode } from "../core/types/types.js";
+import type { Glossary, GlossaryMode } from "../core/types/public-api.js";
 
 const MODES: GlossaryMode[] = ["keep", "translate", "transliterate", "custom"];
 

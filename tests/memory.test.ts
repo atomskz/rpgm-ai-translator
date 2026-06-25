@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { JsonlTranslationMemory } from "../src/core/memory/public-api.js";
 import { translateWithMemory } from "../src/core/memory/public-api.js";
 import { hashSource } from "../src/core/utils/hash.js";
-import type { LLMProvider, TranslateOptions, TranslationResult, TranslationUnit } from "../src/core/types/types.js";
+import type { LLMProvider, TranslateOptions, TranslationResult, TranslationUnit } from "../src/core/types/public-api.js";
 
 describe("translation memory", () => {
   it("stores and retrieves JSONL entries", async () => {
