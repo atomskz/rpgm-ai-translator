@@ -18,8 +18,8 @@
  */
 
 import type { ValidationIssue } from "../../core/types/types.js";
+import { isValidationIssueCode } from "../../core/validators/public-api.js";
 import { UsageError } from "./usage-error.js";
-import { isValidationIssueCode } from "./validation-codes.js";
 
 export function readOption(args: string[], name: string): string | undefined {
   const index = args.indexOf(name);

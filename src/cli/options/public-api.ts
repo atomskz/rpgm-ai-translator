@@ -20,7 +20,6 @@
 // Public contract of CLI option parsing and command-argument validation.
 export * from "./usage-error.js";
 export * from "./readers.js";
-export * from "./validation-codes.js";
 export * from "./provider.js";
 export * from "./apply.js";
 export * from "./command-args.js";
