@@ -2,8 +2,8 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
-import { loadGlossary } from "../src/config/glossary.js";
-import { loadCharacterGlossary } from "../src/config/characters.js";
+import { loadGlossary } from "../src/config/public-api.js";
+import { loadCharacterGlossary } from "../src/config/public-api.js";
 
 describe("glossary loading", () => {
   it("loads valid glossary JSON", async () => {

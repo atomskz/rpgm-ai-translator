@@ -24,9 +24,9 @@ import {
   readTranslationUnitsFile,
   writeTranslationResultsFile
 } from "../../core/translation-units.js";
-import { loadGlossary } from "../../config/glossary.js";
-import { loadCharacterGlossary } from "../../config/characters.js";
-import { createProvider } from "../../providers/providers.js";
+import { loadGlossary } from "../../config/public-api.js";
+import { loadCharacterGlossary } from "../../config/public-api.js";
+import { createProvider } from "../../providers/public-api.js";
 import {
   checkpointedTranslationsById,
   checkpointSignature,

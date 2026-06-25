@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MockProvider } from "../src/providers/mock.js";
+import { MockProvider } from "../src/providers/public-api.js";
 import type { TranslationUnit } from "../src/core/types/types.js";
 
 describe("MockProvider", () => {

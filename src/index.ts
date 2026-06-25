@@ -82,20 +82,20 @@ export {
 } from "./core/pipeline/characters.js";
 
 // Providers.
-export { MockProvider } from "./providers/mock.js";
-export { DeepSeekProvider, type DeepSeekProviderConfig } from "./providers/deepseek/deepseek.js";
-export { createProvider, type ProviderName, type ProviderConfig } from "./providers/providers.js";
+export { MockProvider } from "./providers/public-api.js";
+export { DeepSeekProvider, type DeepSeekProviderConfig } from "./providers/public-api.js";
+export { createProvider, type ProviderName, type ProviderConfig } from "./providers/public-api.js";
 
 // Plugin parsing types (the manipulation helpers stay internal to the patch writer).
 export type { RpgMakerPlugin } from "./engines/rpgmaker-mvmz/plugins-file.js";
 
 // Configuration loaders.
-export { loadGlossary } from "./config/glossary.js";
-export { loadCharacterGlossary } from "./config/characters.js";
+export { loadGlossary } from "./config/public-api.js";
+export { loadCharacterGlossary } from "./config/public-api.js";
 export {
   loadProjectConfig,
   mergeConfigIntoArgs,
   PROJECT_CONFIG_FILENAME,
   CONFIG_FLAG,
   type ProjectConfig
-} from "./config/project.js";
+} from "./config/public-api.js";

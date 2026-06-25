@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createProvider } from "../src/providers/providers.js";
+import { createProvider } from "../src/providers/public-api.js";
 
 describe("createProvider", () => {
   it("creates the mock and deepseek providers", () => {

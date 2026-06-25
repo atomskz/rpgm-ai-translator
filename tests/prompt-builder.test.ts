@@ -8,7 +8,7 @@ import {
   buildTranslationMessages,
   buildTranslationSystemPrompt,
   filterGlossaryForBatch
-} from "../src/providers/prompt-builder/prompt-builder.js";
+} from "../src/providers/prompt-builder/public-api.js";
 import type { Glossary, TranslationUnit } from "../src/core/types/types.js";
 
 describe("prompt builder", () => {

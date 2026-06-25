@@ -27,7 +27,7 @@ import { reviewCommand } from "./commands/review.js";
 import { runCommand } from "./commands/run.js";
 import { translateCommand } from "./commands/translate.js";
 import { validateCommand } from "./commands/validate.js";
-import { loadProjectConfig, mergeConfigIntoArgs } from "../config/project.js";
+import { loadProjectConfig, mergeConfigIntoArgs } from "../config/public-api.js";
 import { commandHelp, commandUsage, helpText } from "./help.js";
 import { GLOBAL_BOOLEAN_FLAGS, GLOBAL_VALUE_OPTIONS, readOption, UsageError, validateCommandArgs } from "./options.js";
 import type { CliIO, CommandHandler } from "./types.js";

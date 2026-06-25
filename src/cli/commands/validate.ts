@@ -23,7 +23,7 @@ import {
   readTranslationUnitsFile
 } from "../../core/translation-units.js";
 import { DefaultValidator, validateTranslationResults } from "../../core/validators/validators.js";
-import { loadGlossary } from "../../config/glossary.js";
+import { loadGlossary } from "../../config/public-api.js";
 import { readOption, requirePositional } from "../options.js";
 import type { CliIO } from "../types.js";
 

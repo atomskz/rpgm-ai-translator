@@ -27,7 +27,7 @@ import {
   readTranslationUnitsFile
 } from "../../core/translation-units.js";
 import { TokenBudget } from "../../core/cost.js";
-import { createProvider } from "../../providers/providers.js";
+import { createProvider } from "../../providers/public-api.js";
 import { writeJson } from "../file-utils.js";
 import {
   assertProviderReady,

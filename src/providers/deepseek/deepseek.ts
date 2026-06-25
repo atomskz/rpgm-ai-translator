@@ -32,7 +32,7 @@ import {
   buildCharacterInferenceMessages,
   buildReviewMessages,
   buildTranslationMessages
-} from "../prompt-builder/prompt-builder.js";
+} from "../prompt-builder/public-api.js";
 import { DeepSeekClient } from "./client.js";
 import { DEFAULT_MODEL } from "./defaults.js";
 import {
