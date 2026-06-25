@@ -167,6 +167,48 @@ describe("RpgMakerMvMzExtractor", () => {
     });
   });
 
+  it("extracts Troops.json names and in-battle event dialogue", async () => {
+    const root = await makeProject("mz");
+    await writeJson(path.join(root, "data", "Troops.json"), [
+      null,
+      null,
+      null,
+      null,
+      null,
+      {
+        id: 5,
+        name: "Goblin Ambush",
+        members: [{ enemyId: 1, x: 100, y: 200 }],
+        pages: [
+          {
+            list: [
+              { code: 101, parameters: ["", 0, 0, 2, "Goblin"] },
+              { code: 401, parameters: ["You walked into our trap!"] },
+              { code: 0, parameters: [] }
+            ]
+          }
+        ]
+      }
+    ]);
+
+    const units = await new RpgMakerMvMzExtractor().extract(root);
+    const byId = new Map(units.map((unit) => [unit.id, unit]));
+
+    // The troop name and the battle Show Text line are both extracted, with the
+    // page/list path the apply step matches against.
+    expect(byId.get("Troops.5.name")).toMatchObject({
+      source: "Goblin Ambush",
+      filePath: "data/Troops.json",
+      jsonPath: "5.name",
+      category: "name"
+    });
+    expect(byId.get("Troops.5.pages.0.list.1.parameters.0")).toMatchObject({
+      source: "You walked into our trap!",
+      filePath: "data/Troops.json",
+      category: "dialogue"
+    });
+  });
+
   it("extracts map and common event command text with event context", async () => {
     const root = await makeProject("mz");
     await writeJson(path.join(root, "data", "Map001.json"), {

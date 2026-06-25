@@ -6,6 +6,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Extract `Troops.json` — troop names and in-battle event command lists (boss and
+  battle `Show Text`, choices, plugin commands) per page. These were silently
+  dropped because `Troops.json` had no field mapping, so battle dialogue went
+  untranslated; it now extracts with stable ids such as
+  `Troops.5.pages.0.list.1.parameters.0` that `apply` writes back.
 - Add a `config` command. `config validate` loads and type-checks the project
   config, exits non-zero on a malformed file (naming the problem), and lists
   unknown keys with a did-you-mean suggestion; `config print` shows the loaded

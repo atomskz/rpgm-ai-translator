@@ -80,6 +80,39 @@ function extractArrayFile(
     return units;
   }
 
+  // Troops carry a name plus one battle-event command list per page (the same
+  // shape as a map event), so boss/battle Show Text and troop names — previously
+  // dropped because Troops.json had no field map — are extracted here.
+  if (fileName === "Troops.json") {
+    rows.forEach((row, rowIndex) => {
+      if (!isObject(row)) {
+        return;
+      }
+      const context = { eventId: numberOrUndefined(row.id), eventName: stringOrUndefined(row.name) };
+      const name = row.name;
+      if (isTranslatableString(name) && isSafeRuntimeText(name)) {
+        units.push(makeDraft(base, `${rowIndex}.name`, name, "name", context));
+      }
+      const pages = row.pages;
+      if (Array.isArray(pages)) {
+        pages.forEach((page, pageIndex) => {
+          if (!isObject(page)) {
+            return;
+          }
+          units.push(
+            ...extractEventCommandList(page.list, {
+              ...base,
+              prefix: `${rowIndex}.pages.${pageIndex}.list`,
+              context,
+              includeComments: base.extractOptions.includeEventComments ?? false
+            })
+          );
+        });
+      }
+    });
+    return units;
+  }
+
   for (const [rowIndex, row] of rows.entries()) {
     if (!isObject(row)) {
       continue;
