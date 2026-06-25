@@ -66,20 +66,20 @@ export {
   appendTranslationResultsJsonlFile,
   readTranslationResultsJsonlFile,
   type ImportedTranslation
-} from "./core/translation-units/io.js";
+} from "./core/translation-units.js";
 
 // Translation memory and pipeline passes.
 export { JsonlTranslationMemory } from "./core/memory/jsonl.js";
-export { translateWithMemory } from "./core/memory/pipeline.js";
+export { translateWithMemory } from "./core/memory/translate.js";
 export type { MemoryEntry, TranslationMemory } from "./core/memory/types.js";
-export { reviewTranslations, type ReviewPassResult } from "./core/review.js";
-export { repairTranslations, type RepairOptions, type RepairResult } from "./core/repair.js";
+export { reviewTranslations, type ReviewPassResult } from "./core/pipeline/review.js";
+export { repairTranslations, type RepairOptions, type RepairResult } from "./core/pipeline/repair.js";
 export {
   extractCharacterCandidates,
   inferCharacterGlossary,
   candidatesToDraftGlossary,
   type CharacterExtractionOptions
-} from "./core/characters.js";
+} from "./core/pipeline/characters.js";
 
 // Providers.
 export { MockProvider } from "./providers/mock.js";

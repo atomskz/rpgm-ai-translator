@@ -21,7 +21,7 @@ import { readFile } from "node:fs/promises";
 import {
   readTranslationResultsJsonlFile,
   resetTranslationResultsJsonlFile
-} from "../core/translation-units/io.js";
+} from "../core/translation-units.js";
 import type { CharacterGlossary, Glossary, TranslationResult, TranslationUnit } from "../core/types/types.js";
 import { writeFileAtomic } from "../core/utils/fs.js";
 import { hashCacheKey } from "../core/utils/hash.js";

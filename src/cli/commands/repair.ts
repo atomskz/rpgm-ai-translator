@@ -17,14 +17,14 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { repairTranslations } from "../../core/repair.js";
+import { repairTranslations } from "../../core/pipeline/repair.js";
 import { readReportFile, reportUnitsFingerprint } from "../../core/reports/reports.js";
 import {
   appendTranslationResultsJsonlFile,
   readTranslationResultsFile,
   readTranslationUnitsFile,
   writeTranslationResultsFile
-} from "../../core/translation-units/io.js";
+} from "../../core/translation-units.js";
 import { DefaultValidator, validateTranslationResults } from "../../core/validators/validators.js";
 import { loadGlossary } from "../../config/glossary.js";
 import { loadCharacterGlossary } from "../../config/characters.js";

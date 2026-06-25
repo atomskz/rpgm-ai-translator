@@ -24,10 +24,10 @@ import type {
   CharacterInferenceOptions,
   TranslationResult,
   TranslationUnit
-} from "./types/types.js";
-import { normalizeBatchSize } from "./batching.js";
-import type { TokenBudget } from "./cost.js";
-import { isRetryableProviderError, withProviderRetry } from "./retry.js";
+} from "../types/types.js";
+import { normalizeBatchSize } from "../batching.js";
+import type { TokenBudget } from "../cost.js";
+import { isRetryableProviderError, withProviderRetry } from "../retry.js";
 
 export type CharacterExtractionOptions = {
   includeDialogueMentions?: boolean;

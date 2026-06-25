@@ -19,13 +19,13 @@
 
 import { estimateInputTokens, TokenBudget } from "../../core/cost.js";
 import { JsonlTranslationMemory } from "../../core/memory/jsonl.js";
-import { translateWithMemory } from "../../core/memory/pipeline.js";
+import { translateWithMemory } from "../../core/memory/translate.js";
 import { createReport } from "../../core/reports/reports.js";
 import {
   appendTranslationResultsJsonlFile,
   readTranslationUnitsFile,
   writeTranslationResultsFile
-} from "../../core/translation-units/io.js";
+} from "../../core/translation-units.js";
 import { loadGlossary } from "../../config/glossary.js";
 import { createProvider } from "../../providers/providers.js";
 import {

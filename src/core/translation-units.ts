@@ -28,8 +28,8 @@ import type {
   TranslationResult,
   TranslationUnit,
   ValidationIssue
-} from "../types/types.js";
-import { writeFileAtomic } from "../utils/fs.js";
+} from "./types/types.js";
+import { writeFileAtomic } from "./utils/fs.js";
 
 export type ImportedTranslation = {
   id: string;

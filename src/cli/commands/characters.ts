@@ -21,11 +21,11 @@ import {
   candidatesToDraftGlossary,
   extractCharacterCandidates,
   inferCharacterGlossary
-} from "../../core/characters.js";
+} from "../../core/pipeline/characters.js";
 import {
   readTranslationResultsFile,
   readTranslationUnitsFile
-} from "../../core/translation-units/io.js";
+} from "../../core/translation-units.js";
 import { TokenBudget } from "../../core/cost.js";
 import { createProvider } from "../../providers/providers.js";
 import { writeJson } from "../file-utils.js";

@@ -21,7 +21,7 @@ import { createReport, summarizeReport, writeReportFile } from "../../core/repor
 import {
   readTranslationResultsFile,
   readTranslationUnitsFile
-} from "../../core/translation-units/io.js";
+} from "../../core/translation-units.js";
 import { DefaultValidator, validateTranslationResults } from "../../core/validators/validators.js";
 import { loadGlossary } from "../../config/glossary.js";
 import { readOption, requirePositional } from "../options.js";

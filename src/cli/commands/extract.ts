@@ -19,7 +19,7 @@
 
 import { RpgMakerMvMzExtractor } from "../../engines/rpgmaker-mvmz/extractor.js";
 import { createReport } from "../../core/reports/reports.js";
-import { writeTranslationUnitsFile } from "../../core/translation-units/io.js";
+import { writeTranslationUnitsFile } from "../../core/translation-units.js";
 import { maybeWriteReport } from "../file-utils.js";
 import { readExtractOptions, readOption, requirePositional } from "../options.js";
 import type { CliIO } from "../types.js";

@@ -27,18 +27,18 @@ import { applyFontPatch } from "../../engines/rpgmaker-mvmz/font.js";
 import { estimateInputTokens, TokenBudget } from "../../core/cost.js";
 import { acquireDirectoryLock } from "../../core/locks.js";
 import { JsonlTranslationMemory } from "../../core/memory/jsonl.js";
-import { translateWithMemory } from "../../core/memory/pipeline.js";
+import { translateWithMemory } from "../../core/memory/translate.js";
 import { assertPatchOutputOutsideGame, writePatch } from "../../engines/rpgmaker-mvmz/patch-writer.js";
-import { repairTranslations } from "../../core/repair.js";
+import { repairTranslations } from "../../core/pipeline/repair.js";
 import { createReport, summarizeReport, writeReportFile } from "../../core/reports/reports.js";
-import { reviewTranslations } from "../../core/review.js";
+import { reviewTranslations } from "../../core/pipeline/review.js";
 import {
   appendTranslationResultsJsonlFile,
   readTranslationResultsJsonlFile,
   resetTranslationResultsJsonlFile,
   writeTranslationResultsFile,
   writeTranslationUnitsFile
-} from "../../core/translation-units/io.js";
+} from "../../core/translation-units.js";
 import {
   DefaultValidator,
   filterTranslationsWithoutValidationErrors,

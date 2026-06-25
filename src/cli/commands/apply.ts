@@ -23,7 +23,7 @@ import { readReportFile } from "../../core/reports/reports.js";
 import {
   readTranslationResultsFile,
   readTranslationUnitsFile
-} from "../../core/translation-units/io.js";
+} from "../../core/translation-units.js";
 import { filterTranslationsWithoutValidationErrors } from "../../core/validators/validators.js";
 import { RpgMakerMvMzExtractor } from "../../engines/rpgmaker-mvmz/extractor.js";
 import { readApplyOptions, readFontOptions, readOption, requirePositional, UsageError } from "../options.js";

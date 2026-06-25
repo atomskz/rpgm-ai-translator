@@ -10,7 +10,7 @@ import {
   readTranslationUnitsFile,
   resetTranslationResultsJsonlFile,
   writeTranslationUnitsFile
-} from "../src/core/translation-units/io.js";
+} from "../src/core/translation-units.js";
 import type { TranslationUnit } from "../src/core/types/types.js";
 
 describe("translation unit import/export", () => {

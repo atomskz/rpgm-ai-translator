@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collectRevalidatedBatch } from "../src/core/revalidation.js";
+import { collectRevalidatedBatch } from "../src/core/pipeline/revalidation.js";
 import type { TranslationResult } from "../src/core/types/types.js";
 
 function result(id: string, overrides: Partial<TranslationResult> = {}): TranslationResult {
