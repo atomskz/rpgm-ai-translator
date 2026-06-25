@@ -17,10 +17,6 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Public contract of the RPG Maker MV/MZ engine adapter. Everything outside this
-// folder imports the engine through here, never its internal files.
-export { MvMzEngineDetector } from "./detector.js";
-export { RpgMakerMvMzExtractor } from "./extractor.js";
-export { assertPatchOutputOutsideGame, writePatch } from "./patch/public-api.js";
-export { applyFontPatch, type FontPatchOptions, type FontPatchResult } from "./font.js";
-export { parsePluginsJs, replacePluginsArray, type RpgMakerPlugin } from "./plugins-file.js";
+// Public contract of the patch writer.
+export { writePatch } from "./writer.js";
+export { assertPatchOutputOutsideGame } from "./paths.js";

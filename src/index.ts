@@ -28,7 +28,7 @@ export type * from "./core/types/types.js";
 // Engine detection, extraction and patching.
 export { MvMzEngineDetector } from "./engines/rpgmaker-mvmz/detector.js";
 export { RpgMakerMvMzExtractor } from "./engines/rpgmaker-mvmz/extractor.js";
-export { assertPatchOutputOutsideGame, writePatch } from "./engines/rpgmaker-mvmz/patch-writer.js";
+export { assertPatchOutputOutsideGame, writePatch } from "./engines/rpgmaker-mvmz/patch/public-api.js";
 export { applyFontPatch, type FontPatchOptions, type FontPatchResult } from "./engines/rpgmaker-mvmz/font.js";
 
 // Placeholder protection (control-code round-tripping).

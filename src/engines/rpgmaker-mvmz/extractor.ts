@@ -28,7 +28,7 @@ import type {
   TranslationUnit
 } from "../../core/types/types.js";
 import { MvMzEngineDetector } from "./detector.js";
-import { writePatch } from "./patch-writer.js";
+import { writePatch } from "./patch/public-api.js";
 import { readJsonFile, toPosixPath } from "../../core/utils/fs.js";
 import { extractFromKnownFile } from "./extract/database.js";
 import { extractPluginsJs } from "./extract/plugins.js";

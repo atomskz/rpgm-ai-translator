@@ -18,7 +18,7 @@
  */
 
 import { applyFontPatch } from "../../engines/rpgmaker-mvmz/font.js";
-import { writePatch } from "../../engines/rpgmaker-mvmz/patch-writer.js";
+import { writePatch } from "../../engines/rpgmaker-mvmz/patch/public-api.js";
 import { readReportFile } from "../../core/reports/public-api.js";
 import {
   readTranslationResultsFile,
