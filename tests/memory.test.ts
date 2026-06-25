@@ -295,6 +295,22 @@ describe("translation memory", () => {
     expect(provider.calls).toHaveLength(1);
     expect(results[0]).toMatchObject({ id: "Actors.1.name", status: "failed" });
   });
+
+  it("degrades a non-Error provider rejection to a failed result with the stringified cause", async () => {
+    const provider = new NonErrorFailingProvider();
+
+    const results = await translateWithMemory([unit("Actors.1.name", "Aria")], provider, {
+      targetLanguage: "ru",
+      retryAttempts: 0,
+      retryDelayMs: 0
+    });
+
+    expect(results[0]).toMatchObject({
+      id: "Actors.1.name",
+      status: "failed",
+      issues: [expect.objectContaining({ code: "MISSING_TRANSLATION", message: expect.stringContaining("stringly-typed failure") })]
+    });
+  });
 });
 
 class CountingProvider implements LLMProvider {
@@ -342,6 +358,16 @@ class AuthFailingProvider extends CountingProvider {
   override async translateBatch(batch: TranslationUnit[]): Promise<TranslationResult[]> {
     this.calls.push(batch.map((unit) => unit.id));
     throw Object.assign(new Error("invalid api key"), { issueCode: "PROVIDER_AUTH_ERROR" });
+  }
+}
+
+class NonErrorFailingProvider extends CountingProvider {
+  override async translateBatch(batch: TranslationUnit[]): Promise<TranslationResult[]> {
+    this.calls.push(batch.map((unit) => unit.id));
+    // A provider that rejects with a non-Error value; the failure path must
+    // stringify it rather than read `.message` off a non-Error.
+    const failure = "stringly-typed failure";
+    throw failure;
   }
 }
 
