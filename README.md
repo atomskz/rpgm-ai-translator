@@ -185,7 +185,8 @@ Key flags:
   response token limit (defaults `0.3` and `8192`). The translate pass disables
   thinking; the reasoning review/repair passes default to `32000` — see
   [Reasoning passes and `max_tokens`](#reasoning-passes-and-max_tokens).
-- `--base-url <url>` — target any OpenAI-compatible endpoint, including a local one.
+- `--base-url <url>` — target any OpenAI-compatible endpoint, including a local
+  one; see [Local Or OpenAI-Compatible LLM](#local-or-openai-compatible-llm---base-url).
 - `--max-tokens-budget <n>` — abort the run before it exceeds a token budget.
 
 Checkpoints: when `--out` is set, `translate` writes a JSONL checkpoint after each
@@ -195,6 +196,66 @@ each run — a standalone `translate` does not resume from it. To resume, pass
 `--checkpoint <file>`: existing translated entries in that file are reused and
 only missing units are sent to the provider. (The `run` pipeline manages and
 resumes its own per-stage checkpoints in the work directory.)
+
+### Local Or OpenAI-Compatible LLM (`--base-url`)
+
+Any command that takes `--provider deepseek` can target an OpenAI-compatible
+Chat Completions endpoint instead of DeepSeek — including a local model served by
+[Ollama](https://ollama.com), [LM Studio](https://lmstudio.ai), `llama.cpp`, or
+vLLM. Point `--base-url` at the server's `/v1` root and pass the model it serves.
+
+The client adapts its request shape to a **dialect**:
+
+- `deepseek` (default for the DeepSeek endpoint) sends DeepSeek's proprietary
+  `thinking` field on the review/repair passes.
+- `openai` sends only plain OpenAI Chat Completions fields. A generic or local
+  endpoint rejects the `thinking` field, so this dialect is selected
+  automatically whenever `--base-url` is not the DeepSeek endpoint.
+
+You normally do not need to set the dialect; override it with
+`--api-dialect deepseek|openai|auto` only for an unusual setup (for example a
+DeepSeek instance behind a proxy URL, where you would force `--api-dialect deepseek`).
+
+Ollama (serves an OpenAI-compatible API on port 11434):
+
+```bash
+# A key must be set, but a local server ignores its value — use any placeholder.
+export DEEPSEEK_API_KEY=local
+
+node dist/cli/index.js run ./game \
+  --provider deepseek \
+  --base-url http://localhost:11434/v1 \
+  --model qwen2.5:7b \
+  --target ru \
+  --out ./out/patch
+```
+
+LM Studio (default local server on port 1234):
+
+```bash
+export DEEPSEEK_API_KEY=local
+
+node dist/cli/index.js translate ./work/units.json \
+  --provider deepseek \
+  --base-url http://localhost:1234/v1 \
+  --model your-loaded-model \
+  --target ru \
+  --out ./work/translations.raw.json
+```
+
+Run `doctor` first to confirm the endpoint answers before a full run:
+
+```bash
+node dist/cli/index.js doctor ./game \
+  --provider deepseek \
+  --base-url http://localhost:11434/v1 \
+  --model qwen2.5:7b
+```
+
+Local models vary in quality and JSON-formatting reliability; review the output
+and use the validation/repair passes. If a server does not support a structured
+JSON response, prefer a model and server known to honor the OpenAI
+`response_format` option.
 
 ### Generate Character Glossary
 

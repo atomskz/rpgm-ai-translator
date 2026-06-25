@@ -42,6 +42,12 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
   config, and the config-to-argv merge now folds a flag and its alias to one
   canonical form so the two spellings can never collide as a duplicate option.
 
+### Documentation
+
+- Add a "Local Or OpenAI-Compatible LLM" quick start to the README with concrete
+  Ollama and LM Studio `--base-url`/`--model` examples, an explanation of the
+  request dialect, and a `doctor` preflight step.
+
 ### Internal
 
 - Add a byte-for-byte golden test of the patch writer's output — indentation, BOM,
