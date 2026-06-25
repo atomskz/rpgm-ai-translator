@@ -135,4 +135,27 @@ describe("mergeConfigIntoArgs", () => {
     const args = ["./game", "--out", "./out"];
     expect(mergeConfigIntoArgs("run", args, undefined)).toBe(args);
   });
+
+  it("injects repairCodes/repairAttempts into repair via its --codes/--attempts aliases", () => {
+    const merged = mergeConfigIntoArgs("repair", ["units.json", "translations.json", "--report", "r.json", "--out", "o.json"], {
+      repairCodes: ["MAX_LENGTH_EXCEEDED"],
+      repairAttempts: 3
+    });
+    // The config keys map to --repair-codes/--repair-attempts, which repair accepts
+    // only as aliases; they must still be injected so config reaches standalone repair.
+    expect(merged[merged.indexOf("--repair-codes") + 1]).toBe("MAX_LENGTH_EXCEEDED");
+    expect(merged[merged.indexOf("--repair-attempts") + 1]).toBe("3");
+  });
+
+  it("does not inject repair config when the canonical alias flag is already present", () => {
+    const merged = mergeConfigIntoArgs(
+      "repair",
+      ["units.json", "translations.json", "--report", "r.json", "--out", "o.json", "--attempts", "5"],
+      { repairAttempts: 3 }
+    );
+    // An explicit --attempts on the CLI must suppress config's --repair-attempts so
+    // the two spellings cannot both reach validateCommandArgs as a duplicate option.
+    expect(merged).not.toContain("--repair-attempts");
+    expect(merged[merged.indexOf("--attempts") + 1]).toBe("5");
+  });
 });

@@ -82,7 +82,11 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
       "--temperature", "--max-tokens", "--checkpoint", "--glossary", "--characters", "--codes", "--attempts"
     ],
     booleanFlags: [],
-    maxPositionals: 2
+    maxPositionals: 2,
+    // Accept run's flag names (and the config keys repairCodes/repairAttempts,
+    // which inject as --repair-codes/--repair-attempts) so the same config reaches
+    // both commands and muscle memory transfers between them.
+    aliases: { "--repair-codes": "--codes", "--repair-attempts": "--attempts" }
   },
   apply: {
     valueOptions: ["--mode", "--out", "--backup", "--font", "--number-font", "--report", "--units", "--dialogue-max-length"],

@@ -62,8 +62,12 @@ export async function repairCommand(args: string[], io: CliIO): Promise<number> 
   const checkpointOption = readOption(args, "--checkpoint");
   const glossaryPath = readOption(args, "--glossary");
   const charactersPath = readOption(args, "--characters");
-  const issueCodes = readIssueCodesOption(args, "--codes");
-  const attempts = readPositiveIntegerOption(args, "--attempts") ?? 1;
+  // Accept run's --repair-codes/--repair-attempts spellings (and therefore the
+  // repairCodes/repairAttempts config keys, which inject under those names) as
+  // aliases for the canonical --codes/--attempts; the canonical CLI flag wins.
+  const issueCodes = readIssueCodesOption(args, "--codes") ?? readIssueCodesOption(args, "--repair-codes");
+  const attempts =
+    readPositiveIntegerOption(args, "--attempts") ?? readPositiveIntegerOption(args, "--repair-attempts") ?? 1;
   const units = await readTranslationUnitsFile(unitsPath);
   let translations = await readTranslationResultsFile(translationsPath);
   const report = await readReportFile(reportPath);

@@ -152,6 +152,58 @@ describe("CLI validate and repair", () => {
     ]);
   });
 
+  it("accepts run's --repair-codes/--repair-attempts spellings as aliases", async () => {
+    const root = await createCliTempDir("rpgm-cli-repair-aliases-");
+    const unitsPath = path.join(root, "units.json");
+    const translationsPath = path.join(root, "translations.json");
+    const reportPath = path.join(root, "report.json");
+    const outPath = path.join(root, "translations.repaired.json");
+    await writeJsonFixture(unitsPath, [actorNameUnit()]);
+    await writeJsonFixture(translationsPath, []);
+    await writeJsonFixture(reportPath, {
+      engine: "rpgmaker-mv",
+      filesScanned: 1,
+      unitsExtracted: 1,
+      unitsTranslated: 0,
+      fromMemory: 0,
+      failed: 0,
+      validationIssues: [
+        { id: "Actors.1.name", severity: "error", code: "MISSING_TRANSLATION", message: "Missing translation" }
+      ]
+    });
+
+    const output: string[] = [];
+    const exitCode = await runCli(
+      [
+        "repair",
+        unitsPath,
+        translationsPath,
+        "--report",
+        reportPath,
+        "--provider",
+        "mock",
+        "--target",
+        "ru",
+        // The run-style flag names must be honored by standalone repair too.
+        "--repair-attempts",
+        "2",
+        "--repair-codes",
+        "MISSING_TRANSLATION",
+        "--out",
+        outPath
+      ],
+      {
+        stdout: (text) => output.push(text),
+        stderr: (text) => output.push(text)
+      }
+    );
+
+    const repaired = JSON.parse(await readFile(outPath, "utf8"));
+    expect(exitCode).toBe(0);
+    expect(output.join("")).toContain("Repaired: 1");
+    expect(repaired[0].translation).toBe("[ru] Aria");
+  });
+
   it("discards an explicit repair checkpoint when the target language changed", async () => {
     const root = await createCliTempDir("rpgm-cli-repair-stale-");
     const unitsPath = path.join(root, "units.json");

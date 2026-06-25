@@ -4,6 +4,16 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- Accept `--repair-codes` and `--repair-attempts` as aliases for `--codes` and
+  `--attempts` in the standalone `repair` command (mirroring `run`), so the
+  `repairCodes`/`repairAttempts` project-config keys — which inject under the
+  `--repair-*` names — now reach `repair` instead of being silently dropped. An
+  explicit `--codes`/`--attempts` on the command line still takes precedence over
+  config, and the config-to-argv merge now folds a flag and its alias to one
+  canonical form so the two spellings can never collide as a duplicate option.
+
 ### Internal
 
 - Add a byte-for-byte golden test of the patch writer's output — indentation, BOM,

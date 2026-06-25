@@ -32,14 +32,23 @@ export function mergeConfigIntoArgs(command: string, args: string[], config: Pro
   if (!spec) {
     return args;
   }
-  const valueOptions = new Set<string>(spec.valueOptions);
+  // A command may accept a config flag only under an alias (repair takes config's
+  // --repair-codes via the --codes alias). Treat alias keys as accepted, and fold
+  // both spellings to one canonical form so an explicit CLI flag suppresses the
+  // config default no matter which spelling each side used (and so injecting never
+  // produces a duplicate that validateCommandArgs would reject).
+  const aliases = spec.aliases ?? {};
+  const canonicalOf = (flag: string): string => aliases[flag] ?? flag;
+  const valueOptions = new Set<string>([...spec.valueOptions, ...Object.keys(aliases)]);
   const booleanFlags = new Set<string>(spec.booleanFlags);
-  const present = new Set(args.filter((token) => token.startsWith("--")));
+  const presentCanonical = new Set(
+    args.filter((token) => token.startsWith("--")).map((token) => canonicalOf(token))
+  );
   const injected: string[] = [];
 
   for (const field of CONFIG_FIELD_SPECS) {
     const value = config[field.key];
-    if (value == null || present.has(field.flag)) {
+    if (value == null || presentCanonical.has(canonicalOf(field.flag))) {
       continue;
     }
     if (field.type === "boolean") {
