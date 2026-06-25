@@ -302,6 +302,48 @@ describe("run command", () => {
     expect(patched.events[1].pages[0].list[0].parameters[0]).toBe("[fr] Hello.");
   });
 
+  it("does not reuse another game's checkpoints or memory when --out is shared", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-crossgame-"));
+    const gameA = path.join(root, "gameA");
+    const gameB = path.join(root, "gameB");
+    const outDir = path.join(root, "out");
+    for (const [game, line] of [
+      [gameA, "Apple."],
+      [gameB, "Banana."]
+    ] as const) {
+      await mkdir(path.join(game, "data"), { recursive: true });
+      await mkdir(path.join(game, "js"), { recursive: true });
+      await writeFile(path.join(game, "js", "rpg_core.js"), "", "utf8");
+      await writeJson(path.join(game, "data", "Map001.json"), {
+        displayName: "Town",
+        events: [null, { id: 1, name: "NPC", pages: [{ list: [{ code: 401, parameters: [line] }] }] }]
+      });
+    }
+
+    // First game stamps the work dir with its gameId and seeds the memory.
+    await runCli(["run", gameA, "--provider", "mock", "--target", "ru", "--out", outDir], {
+      stdout: () => undefined,
+      stderr: () => undefined
+    });
+
+    // A different game translated into the same --out must reset the shared work
+    // dir instead of resuming game A's checkpoints or reusing its memory.
+    const stderr: string[] = [];
+    const exitCode = await runCli(["run", gameB, "--provider", "mock", "--target", "ru", "--out", outDir], {
+      stdout: () => undefined,
+      stderr: (text) => stderr.push(text)
+    });
+
+    const patched = JSON.parse(await readFile(path.join(outDir, "data", "Map001.json"), "utf8"));
+    const memory = await readFile(path.join(`${outDir}-work`, "translation-memory.jsonl"), "utf8");
+    expect(exitCode).toBe(0);
+    expect(stderr.join("")).toContain("different game");
+    expect(patched.events[1].pages[0].list[0].parameters[0]).toBe("[ru] Banana.");
+    // Game A's memory was cleared, so only game B's source survives in the work dir.
+    expect(memory).toContain("Banana.");
+    expect(memory).not.toContain("Apple.");
+  });
+
   it("estimates the token budget over unresumed units only", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-budget-"));
     const gamePath = path.join(root, "game");

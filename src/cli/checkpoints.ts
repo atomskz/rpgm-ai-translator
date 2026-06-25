@@ -35,24 +35,34 @@ export function defaultCheckpointPath(outPath: string): string {
 // or glossary changed would silently ship stale output (e.g. the previous
 // language). The signature is written beside the checkpoint and compared on
 // resume; a mismatch means the checkpoint must be discarded, not reused.
+//
+// `gameId` identifies the source game (resolved project path + engine). The
+// default work dir is derived from --out alone, so two different games translated
+// into the same --out would otherwise share checkpoints and translation memory;
+// a differing gameId trips the discard path so one game's output never bleeds
+// into another. It is empty for the unit-file commands (translate/review/repair)
+// that operate on a units.json rather than a game directory.
 export type CheckpointSignature = {
   targetLanguage: string;
   provider: string;
   model: string;
   glossaryHash: string;
+  gameId: string;
 };
 
 export function checkpointSignature(
   providerName: string,
   options: { targetLanguage?: string; model?: string },
   glossary?: Glossary,
-  characterGlossary?: CharacterGlossary
+  characterGlossary?: CharacterGlossary,
+  context?: { gameId?: string }
 ): CheckpointSignature {
   return {
     targetLanguage: options.targetLanguage ?? "",
     provider: providerName,
     model: options.model ?? "",
-    glossaryHash: hashCacheKey({ glossary: glossary ?? null, characterGlossary: characterGlossary ?? null })
+    glossaryHash: hashCacheKey({ glossary: glossary ?? null, characterGlossary: characterGlossary ?? null }),
+    gameId: context?.gameId ?? ""
   };
 }
 
@@ -61,7 +71,8 @@ export function checkpointSignaturesEqual(a: CheckpointSignature, b: CheckpointS
     a.targetLanguage === b.targetLanguage &&
     a.provider === b.provider &&
     a.model === b.model &&
-    a.glossaryHash === b.glossaryHash
+    a.glossaryHash === b.glossaryHash &&
+    a.gameId === b.gameId
   );
 }
 
@@ -95,7 +106,13 @@ export async function readCheckpointSignatureFile(metaPath: string): Promise<Che
       typeof parsed.model === "string" &&
       typeof parsed.glossaryHash === "string"
     ) {
-      return { status: "ok", signature: parsed as CheckpointSignature };
+      // gameId was added after the first signature format; a meta written before
+      // it is still valid and reads as an empty gameId (so an upgraded work dir
+      // resumes instead of being discarded as stale).
+      return {
+        status: "ok",
+        signature: { ...(parsed as CheckpointSignature), gameId: typeof parsed.gameId === "string" ? parsed.gameId : "" }
+      };
     }
   } catch {
     return { status: "invalid" };

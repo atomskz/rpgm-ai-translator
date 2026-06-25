@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { mkdir } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { loadGlossary } from "../../config/public-api.js";
 import { loadCharacterGlossary } from "../../config/public-api.js";
@@ -30,6 +30,7 @@ import {
 } from "../../engines/rpgmaker-mvmz/public-api.js";
 import { estimateInputTokens, TokenBudget } from "../../core/cost.js";
 import { acquireDirectoryLock } from "../../core/locks.js";
+import { hashCacheKey } from "../../core/utils/hash.js";
 import { JsonlTranslationMemory } from "../../core/memory/public-api.js";
 import { translateWithMemory } from "../../core/memory/public-api.js";
 import { repairTranslations } from "../../core/pipeline/public-api.js";
@@ -168,8 +169,20 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   // the previous language. A missing signature (an older work dir) is treated as
   // compatible to preserve resume, then stamped for next time.
   const checkpointMeta = path.join(workDir, "checkpoint.meta.json");
-  const signature = checkpointSignature(providerName, providerOptions, glossary, characterGlossary);
+  // Identify the source game so two different games translated into the same --out
+  // (and therefore the same default work dir) cannot resume each other's
+  // checkpoints or reuse each other's memory.
+  const gameId = hashCacheKey({ projectPath: path.resolve(projectPath), engine: detected.engine });
+  const signature = checkpointSignature(providerName, providerOptions, glossary, characterGlossary, { gameId });
   const previousSignature = await readCheckpointSignatureFile(checkpointMeta);
+  // A non-empty stored gameId that differs means this work dir last served another
+  // game; clear its memory too, not just the checkpoints (a pre-gameId meta reads
+  // as "" and is treated as the same game to preserve an upgraded work dir).
+  const gameChanged =
+    previousSignature.status === "ok" &&
+    previousSignature.signature.gameId !== "" &&
+    previousSignature.signature.gameId !== signature.gameId;
+  const usingDefaultMemory = readOption(args, "--memory") == null;
   // Resume only when the signature is absent (older work dir) or matches; a present
   // but unparseable/incomplete signature is treated as stale and the checkpoints
   // are discarded below.
@@ -193,13 +206,21 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   );
   if (!resume) {
     io.stderr(
-      "Warning: run parameters (language/model/glossary) changed since the last run; discarding stale checkpoints and starting fresh.\n"
+      gameChanged
+        ? "Warning: this output directory was last used for a different game; discarding its checkpoints and translation memory and starting fresh.\n"
+        : "Warning: run parameters (language/model/glossary) changed since the last run; discarding stale checkpoints and starting fresh.\n"
     );
     await Promise.all([
       resetTranslationResultsJsonlFile(rawCheckpointPath),
       resetTranslationResultsJsonlFile(reviewCheckpointPath),
       resetTranslationResultsJsonlFile(repairCheckpointPath)
     ]);
+    // A different game must not reuse the prior game's translation memory either.
+    // Only the work-dir default memory is cleared; an explicit --memory the user
+    // chose to share is left alone (its cache key already scopes by language/model).
+    if (gameChanged && usingDefaultMemory) {
+      await rm(memoryPath, { force: true });
+    }
   }
   await writeCheckpointSignatureFile(checkpointMeta, signature);
   const provider = createProvider(providerName, readProviderConfig(args));

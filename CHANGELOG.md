@@ -2,6 +2,20 @@
 
 All notable changes to `rpgm-ai-translator` are documented in this file.
 
+## Unreleased
+
+### Fixed
+
+- Isolate runs by source game so two different games translated into the same
+  `--out` (and therefore the same default work directory) no longer share
+  checkpoints or translation memory. The resumable run signature now includes a
+  game identity (resolved project path and engine); pointing `--out` at a work
+  directory last used for a different game discards that game's checkpoints and
+  its default translation memory and starts fresh, instead of silently resuming
+  the previous game's output. Re-running the same game (including after a
+  language/model change) is unaffected, and an explicit `--memory` you chose to
+  share is never deleted.
+
 ## 0.1.7 - 2026-06-25
 
 ### Changed
