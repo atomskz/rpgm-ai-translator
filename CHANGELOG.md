@@ -16,6 +16,12 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Serialize patch writes with a per-directory lock so two concurrent `apply`/`run`
+  invocations can no longer interleave their staged writes and rollbacks into the
+  same patch output directory (or, for in-place mode, the same game directory) and
+  leave a half-written result. `apply` previously took no lock at all and `run`
+  locked only its work directory, not the patch output. The lock is held only for
+  the write and removed afterwards, so it is never shipped inside a patch.
 - Widen the resumable run signature and the translation-memory key so they cover
   every setting that shapes output, not only language/model/provider/glossary.
   Changing `--temperature`, `--max-tokens`, `--batch-size`, or any extraction flag

@@ -2,6 +2,7 @@ import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli/app.js";
+import { acquireDirectoryLock } from "../src/core/locks.js";
 import { actorNameUnit, createCliTempDir, translatedResult, writeJsonFixture } from "./cli/helpers.js";
 
 describe("CLI apply and patch-font", () => {
@@ -140,6 +141,32 @@ describe("CLI apply and patch-font", () => {
 
     // With --force it proceeds.
     expect(await runCli([...baseArgs, "--force"], { stdout: () => undefined, stderr: () => undefined })).toBe(0);
+  });
+
+  it("refuses to apply while the output directory is locked", async () => {
+    const root = await createCliTempDir("rpgm-cli-apply-lock-");
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "patch");
+    const unitsPath = path.join(root, "units.json");
+    const translationsPath = path.join(root, "translations.json");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await writeJsonFixture(path.join(gamePath, "data", "Actors.json"), [null, { name: "Aria" }]);
+    await writeJsonFixture(unitsPath, [actorNameUnit({ normalizedSource: undefined, hash: "hash-aria" })]);
+    await writeJsonFixture(translationsPath, [translatedResult()]);
+
+    // Hold the out-dir lock under this (live) process, so apply cannot acquire it.
+    const lock = await acquireDirectoryLock(outDir);
+    try {
+      const errors: string[] = [];
+      const exitCode = await runCli(
+        ["apply", gamePath, translationsPath, "--mode", "patch", "--units", unitsPath, "--out", outDir],
+        { stdout: () => undefined, stderr: (text) => errors.push(text) }
+      );
+      expect(exitCode).toBe(1);
+      expect(errors.join("")).toContain("Another run is using");
+    } finally {
+      await lock.release();
+    }
   });
 
   it("rejects an invalid --mode value", async () => {

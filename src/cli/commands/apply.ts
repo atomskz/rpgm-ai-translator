@@ -17,8 +17,9 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import path from "node:path";
 import { applyFontPatch, RpgMakerMvMzExtractor, writePatch } from "../../engines/rpgmaker-mvmz/public-api.js";
-import { LOCK_FILENAME } from "../../core/locks.js";
+import { LOCK_FILENAME, withDirectoryLock } from "../../core/locks.js";
 import { readReportFile } from "../../core/reports/public-api.js";
 import {
   readTranslationResultsFile,
@@ -64,49 +65,62 @@ export async function applyCommand(args: string[], io: CliIO): Promise<number> {
     io.stderr(`Using report filter: ${translationsToApply.length}/${translations.length} validation-safe translations.\n`);
   }
   io.stderr(`${applyOptions.dryRun ? "[dry run] Previewing" : "Applying"} translations in ${applyOptions.mode} mode...\n`);
-  const result = unitsPath
-    ? await writePatch(projectPath, await readTranslationUnitsFile(unitsPath), translationsToApply, applyOptions)
-    : await new RpgMakerMvMzExtractor().applyTranslations(projectPath, translationsToApply, applyOptions);
-  // Without --units, apply re-extracts the game and matches by id. If the saved
-  // translations came from a different extraction (e.g. --include-plugins), ids
-  // will not match and get silently skipped. Warn (and exit non-zero below) on an
-  // id/source mismatch only — a translation that was simply never produced
-  // (failed/empty) is a different problem and must not be blamed on a flag mismatch.
-  const considered = result.unitsApplied + result.skippedUnmatched;
-  if (!unitsPath && result.skippedUnmatched > 0) {
-    const severe = result.skippedUnmatched >= considered / 2;
-    io.stderr(
-      `Warning: skipped ${result.skippedUnmatched}/${considered} translation(s) because their ids did not match the re-extracted units.` +
-        (severe ? " Most translations were dropped." : "") +
-        " If you extracted with different flags (for example --include-plugins or --include-speaker-names), pass --units <units.json> so ids match exactly.\n"
-    );
-  }
-  if (applyOptions.mode === "patch" && applyOptions.outDir && fontPath && !applyOptions.dryRun) {
-    io.stderr("Applying font patch...\n");
-    await applyFontPatch(projectPath, applyOptions.outDir, {
-      fontPath,
-      numberFontPath,
-      onWarning: (warning) => io.stderr(`Warning: ${warning}\n`)
-    });
-  }
-  // Print a human-readable summary instead of the raw result JSON, which a
-  // non-programmer cannot read; the file output is the artifact that matters.
+
+  const applyWrite = async (): Promise<number> => {
+    const result = unitsPath
+      ? await writePatch(projectPath, await readTranslationUnitsFile(unitsPath), translationsToApply, applyOptions)
+      : await new RpgMakerMvMzExtractor().applyTranslations(projectPath, translationsToApply, applyOptions);
+    // Without --units, apply re-extracts the game and matches by id. If the saved
+    // translations came from a different extraction (e.g. --include-plugins), ids
+    // will not match and get silently skipped. Warn (and exit non-zero below) on an
+    // id/source mismatch only — a translation that was simply never produced
+    // (failed/empty) is a different problem and must not be blamed on a flag mismatch.
+    const considered = result.unitsApplied + result.skippedUnmatched;
+    if (!unitsPath && result.skippedUnmatched > 0) {
+      const severe = result.skippedUnmatched >= considered / 2;
+      io.stderr(
+        `Warning: skipped ${result.skippedUnmatched}/${considered} translation(s) because their ids did not match the re-extracted units.` +
+          (severe ? " Most translations were dropped." : "") +
+          " If you extracted with different flags (for example --include-plugins or --include-speaker-names), pass --units <units.json> so ids match exactly.\n"
+      );
+    }
+    if (applyOptions.mode === "patch" && applyOptions.outDir && fontPath && !applyOptions.dryRun) {
+      io.stderr("Applying font patch...\n");
+      await applyFontPatch(projectPath, applyOptions.outDir, {
+        fontPath,
+        numberFontPath,
+        onWarning: (warning) => io.stderr(`Warning: ${warning}\n`)
+      });
+    }
+    // Print a human-readable summary instead of the raw result JSON, which a
+    // non-programmer cannot read; the file output is the artifact that matters.
+    if (applyOptions.dryRun) {
+      io.stderr(
+        `[dry run] Would write ${result.filesWritten.length} file(s), apply ${result.unitsApplied} unit(s), skip ${result.skipped}. No files were written.\n`
+      );
+    } else {
+      const backup = result.backupDir ? ` Backup: ${result.backupDir}.` : "";
+      io.stderr(
+        `Applied ${result.unitsApplied} translation(s) to ${result.filesWritten.length} file(s); skipped ${result.skipped}.${backup}\n`
+      );
+    }
+    // Without --units, an id mismatch can skip most of the translations and write an
+    // almost-empty patch. Exit non-zero on a majority id/source mismatch so a wrapping
+    // script does not mistake it for a successful apply; a partial mismatch (<50%)
+    // still warns and succeeds, and unproduced translations never trip this.
+    if (!unitsPath && !applyOptions.dryRun && considered > 0 && result.skippedUnmatched >= considered / 2) {
+      return 1;
+    }
+    return 0;
+  };
+
+  // Serialize the actual write under a lock on the directory being changed (the
+  // patch --out, or the game root for in-place) so a concurrent apply/run cannot
+  // interleave staged writes and rollbacks. A dry run touches nothing, so it skips
+  // the lock and runs the same work directly.
   if (applyOptions.dryRun) {
-    io.stderr(
-      `[dry run] Would write ${result.filesWritten.length} file(s), apply ${result.unitsApplied} unit(s), skip ${result.skipped}. No files were written.\n`
-    );
-  } else {
-    const backup = result.backupDir ? ` Backup: ${result.backupDir}.` : "";
-    io.stderr(
-      `Applied ${result.unitsApplied} translation(s) to ${result.filesWritten.length} file(s); skipped ${result.skipped}.${backup}\n`
-    );
+    return applyWrite();
   }
-  // Without --units, an id mismatch can skip most of the translations and write an
-  // almost-empty patch. Exit non-zero on a majority id/source mismatch so a wrapping
-  // script does not mistake it for a successful apply; a partial mismatch (<50%)
-  // still warns and succeeds, and unproduced translations never trip this.
-  if (!unitsPath && !applyOptions.dryRun && considered > 0 && result.skippedUnmatched >= considered / 2) {
-    return 1;
-  }
-  return 0;
+  const lockDir = applyOptions.mode === "in-place" ? path.resolve(projectPath) : path.resolve(applyOptions.outDir ?? "");
+  return withDirectoryLock(lockDir, applyWrite);
 }

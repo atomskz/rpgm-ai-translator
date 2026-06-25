@@ -29,7 +29,7 @@ import {
   writePatch
 } from "../../engines/rpgmaker-mvmz/public-api.js";
 import { estimateInputTokens, TokenBudget } from "../../core/cost.js";
-import { acquireDirectoryLock, LOCK_FILENAME } from "../../core/locks.js";
+import { acquireDirectoryLock, LOCK_FILENAME, withDirectoryLock } from "../../core/locks.js";
 import { isNonEmptyDirectory } from "../../core/utils/fs.js";
 import { hashCacheKey } from "../../core/utils/hash.js";
 import { JsonlTranslationMemory } from "../../core/memory/public-api.js";
@@ -353,20 +353,23 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   io.stderr(`Applying patch with ${safeTranslations.length}/${translations.length} validation-safe translations...\n`);
   // Patch from the units already extracted with the full run flags (comments,
   // dialogue length) rather than re-extracting with a narrower set, which dropped
-  // comment translations as id mismatches.
-  await writePatch(projectPath, units, safeTranslations, {
-    mode: "patch",
-    outDir,
-    onWarning: (warning) => io.stderr(`Warning: ${warning}\n`)
-  });
-  if (fontPath) {
-    io.stderr("Applying font patch...\n");
-    await applyFontPatch(projectPath, outDir, {
-      fontPath,
-      numberFontPath,
+  // comment translations as id mismatches. Lock the out dir for the write so a
+  // concurrent run/apply with a different --work-dir cannot interleave into it.
+  await withDirectoryLock(path.resolve(outDir), async () => {
+    await writePatch(projectPath, units, safeTranslations, {
+      mode: "patch",
+      outDir,
       onWarning: (warning) => io.stderr(`Warning: ${warning}\n`)
     });
-  }
+    if (fontPath) {
+      io.stderr("Applying font patch...\n");
+      await applyFontPatch(projectPath, outDir, {
+        fontPath,
+        numberFontPath,
+        onWarning: (warning) => io.stderr(`Warning: ${warning}\n`)
+      });
+    }
+  });
   io.stderr("Writing translations...\n");
   await writeTranslationResultsFile(path.join(workDir, "translations.json"), translations);
   const report = createReport({ units, translations, validationIssues, engine: detected.engine, warnings: extractionWarnings });

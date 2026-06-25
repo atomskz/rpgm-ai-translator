@@ -61,6 +61,28 @@ export async function acquireDirectoryLock(dirPath: string): Promise<DirectoryLo
   };
 }
 
+// Run `fn` while holding an exclusive lock on `dirPath`, releasing it afterwards —
+// and synchronously on SIGINT/SIGTERM so a Ctrl-C during the critical section does
+// not leave a lock owned by a dead pid. Used to serialize patch writes into an
+// output (or in-place game) directory so two concurrent apply/run invocations
+// cannot interleave their staged-write/rollback steps.
+export async function withDirectoryLock<T>(dirPath: string, fn: () => Promise<T>): Promise<T> {
+  const lock = await acquireDirectoryLock(dirPath);
+  const onSignal = (signal: NodeJS.Signals): void => {
+    lock.releaseSync();
+    process.kill(process.pid, signal);
+  };
+  process.once("SIGINT", onSignal);
+  process.once("SIGTERM", onSignal);
+  try {
+    return await fn();
+  } finally {
+    process.removeListener("SIGINT", onSignal);
+    process.removeListener("SIGTERM", onSignal);
+    await lock.release();
+  }
+}
+
 async function createLockFile(lockPath: string): Promise<void> {
   // A starting run may find a stale lock and reclaim it, and another starting run
   // can race for the same one. reclaimStaleLock elects a single winner, so loop a
