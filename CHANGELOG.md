@@ -4,6 +4,16 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ## Unreleased
 
+### Changed
+
+- `apply` (patch mode) and `run` now refuse to write into a non-empty output
+  directory by default and accept a new `--force` flag to override. Patch mode
+  writes only the changed files, so overlaying a fresh patch onto a stale one (or
+  an unrelated directory) silently mixed two generations; refusing avoids that.
+  `run` still freely overwrites an `--out` it produced for the same game, so the
+  normal resume/re-run workflow is unaffected; pointing it at a different game's
+  output requires `--force` (which then resets the shared work directory).
+
 ### Fixed
 
 - Widen the resumable run signature and the translation-memory key so they cover

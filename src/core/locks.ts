@@ -21,7 +21,7 @@ import { rmSync } from "node:fs";
 import { mkdir, open, readFile, rename, rm } from "node:fs/promises";
 import path from "node:path";
 
-const LOCK_FILENAME = ".rpgm-run.lock";
+export const LOCK_FILENAME = ".rpgm-run.lock";
 
 // Per-process counter so each reclaim renames the stale lock to a unique name,
 // even when the same process reclaims more than once.

@@ -101,7 +101,8 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--include-mentions": "Include dialogue name mentions as character candidates.",
   "--review": "Run a second-pass review of dialogue and choices.",
   "--repair": "Enable validation-targeted repair.",
-  "--dry-run": "Report what would be written without creating or modifying files."
+  "--dry-run": "Report what would be written without creating or modifying files.",
+  "--force": "Overwrite a non-empty patch output directory (refused by default to avoid mixing patches)."
 };
 
 export function commandUsage(command: string): string | undefined {

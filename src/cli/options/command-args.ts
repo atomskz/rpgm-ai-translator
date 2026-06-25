@@ -86,7 +86,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   },
   apply: {
     valueOptions: ["--mode", "--out", "--backup", "--font", "--number-font", "--report", "--units", "--dialogue-max-length"],
-    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--dry-run"],
+    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--dry-run", "--force"],
     maxPositionals: 2
   },
   run: {
@@ -95,7 +95,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
       "--max-tokens", "--max-tokens-budget", "--retry-attempts", "--memory", "--glossary", "--characters", "--repair-attempts",
       "--repair-codes", "--font", "--number-font", "--mode", "--backup", "--dialogue-max-length"
     ],
-    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--review", "--repair", "--dry-run"],
+    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--review", "--repair", "--dry-run", "--force"],
     maxPositionals: 1,
     // Accept repair's flag names so muscle memory transfers between the commands.
     aliases: { "--codes": "--repair-codes", "--attempts": "--repair-attempts" }

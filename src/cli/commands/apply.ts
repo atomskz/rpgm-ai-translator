@@ -18,13 +18,15 @@
  */
 
 import { applyFontPatch, RpgMakerMvMzExtractor, writePatch } from "../../engines/rpgmaker-mvmz/public-api.js";
+import { LOCK_FILENAME } from "../../core/locks.js";
 import { readReportFile } from "../../core/reports/public-api.js";
 import {
   readTranslationResultsFile,
   readTranslationUnitsFile
 } from "../../core/translation-units.js";
+import { isNonEmptyDirectory } from "../../core/utils/fs.js";
 import { filterTranslationsWithoutValidationErrors } from "../../core/validators/public-api.js";
-import { readApplyOptions, readFontOptions, readOption, requirePositional, UsageError } from "../options/public-api.js";
+import { hasFlag, readApplyOptions, readFontOptions, readOption, requirePositional, UsageError } from "../options/public-api.js";
 import type { CliIO } from "../types.js";
 
 export async function applyCommand(args: string[], io: CliIO): Promise<number> {
@@ -36,6 +38,20 @@ export async function applyCommand(args: string[], io: CliIO): Promise<number> {
   // with no usage hint. Fail early as a UsageError, like patch-font and run do.
   if (applyOptions.mode === "patch" && !applyOptions.outDir) {
     throw new UsageError("apply in patch mode requires --out <dir>");
+  }
+  // Patch mode writes only the changed files, so writing over a directory that
+  // already holds a patch (or unrelated files) silently mixes two generations.
+  // Refuse a non-empty --out unless --force; the run lock file does not count.
+  if (
+    applyOptions.mode === "patch" &&
+    applyOptions.outDir &&
+    !applyOptions.dryRun &&
+    !hasFlag(args, "--force") &&
+    (await isNonEmptyDirectory(applyOptions.outDir, [LOCK_FILENAME]))
+  ) {
+    throw new UsageError(
+      `Output directory '${applyOptions.outDir}' is not empty. Patch mode writes only changed files, so an existing patch there would be mixed with this one. Use a new --out, or pass --force to overwrite it.`
+    );
   }
   const { fontPath, numberFontPath } = readFontOptions(args);
   const reportPath = readOption(args, "--report");

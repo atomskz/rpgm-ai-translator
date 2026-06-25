@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { access, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { access, mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 let atomicWriteCounter = 0;
@@ -55,6 +55,21 @@ export async function isDirectory(targetPath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// True when the directory exists and holds at least one entry outside `ignore`.
+// A missing path (or one that is not a directory) reads as empty: there is
+// nothing there to be overwritten. Used to refuse writing a sparse patch over an
+// unrelated or stale directory whose leftover files would be silently mixed in.
+export async function isNonEmptyDirectory(targetPath: string, ignore: readonly string[] = []): Promise<boolean> {
+  let entries: string[];
+  try {
+    entries = await readdir(targetPath);
+  } catch {
+    return false;
+  }
+  const ignored = new Set(ignore);
+  return entries.some((name) => !ignored.has(name));
 }
 
 export async function readJsonFile<T = unknown>(filePath: string): Promise<T> {

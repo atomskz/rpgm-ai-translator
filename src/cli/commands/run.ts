@@ -29,7 +29,8 @@ import {
   writePatch
 } from "../../engines/rpgmaker-mvmz/public-api.js";
 import { estimateInputTokens, TokenBudget } from "../../core/cost.js";
-import { acquireDirectoryLock } from "../../core/locks.js";
+import { acquireDirectoryLock, LOCK_FILENAME } from "../../core/locks.js";
+import { isNonEmptyDirectory } from "../../core/utils/fs.js";
 import { hashCacheKey } from "../../core/utils/hash.js";
 import { JsonlTranslationMemory } from "../../core/memory/public-api.js";
 import { translateWithMemory } from "../../core/memory/public-api.js";
@@ -61,7 +62,8 @@ import {
   readPositiveIntegerOption,
   readTranslateCliOptions,
   requirePositional,
-  requireOption
+  requireOption,
+  UsageError
 } from "../options/public-api.js";
 import {
   checkpointedTranslationsById,
@@ -211,6 +213,16 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   // falsely blocked and an over-budget run leaves nothing behind.
   budget?.assertEstimateWithin(estimateInputTokens(unitsToTranslate));
 
+  // A different game (or an unrelated pre-existing directory) sharing this --out
+  // would have its leftover files mixed into the sparse patch. Allow overwriting
+  // only an --out this same game produced (matching gameId); otherwise refuse
+  // unless --force. The run lock file does not count toward "non-empty".
+  const ownsOutDir = previousSignature.status === "ok" && previousSignature.signature.gameId === signature.gameId;
+  if (!hasFlag(args, "--force") && !ownsOutDir && (await isNonEmptyDirectory(outDir, [LOCK_FILENAME]))) {
+    throw new UsageError(
+      `Output directory '${outDir}' already contains files not produced by this game. Patch mode writes only changed files, so they would be mixed with this run. Use a new --out, or pass --force to overwrite it.`
+    );
+  }
   await mkdir(workDir, { recursive: true });
   await mkdir(outDir, { recursive: true });
   await writeTranslationUnitsFile(path.join(workDir, "units.json"), units);

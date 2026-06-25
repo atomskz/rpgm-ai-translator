@@ -302,7 +302,7 @@ describe("run command", () => {
     expect(patched.events[1].pages[0].list[0].parameters[0]).toBe("[fr] Hello.");
   });
 
-  it("does not reuse another game's checkpoints or memory when --out is shared", async () => {
+  it("refuses, then with --force resets, a different game sharing --out", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-crossgame-"));
     const gameA = path.join(root, "gameA");
     const gameB = path.join(root, "gameB");
@@ -320,16 +320,28 @@ describe("run command", () => {
       });
     }
 
-    // First game stamps the work dir with its gameId and seeds the memory.
+    // First game stamps the work dir with its gameId and writes its patch.
     await runCli(["run", gameA, "--provider", "mock", "--target", "ru", "--out", outDir], {
       stdout: () => undefined,
       stderr: () => undefined
     });
 
-    // A different game translated into the same --out must reset the shared work
-    // dir instead of resuming game A's checkpoints or reusing its memory.
+    // A different game into the same, now-populated --out is refused so game A's
+    // patch is not mixed with game B's sparse overlay.
+    const refusalErr: string[] = [];
+    const refused = await runCli(["run", gameB, "--provider", "mock", "--target", "ru", "--out", outDir], {
+      stdout: () => undefined,
+      stderr: (text) => refusalErr.push(text)
+    });
+    const afterRefusal = JSON.parse(await readFile(path.join(outDir, "data", "Map001.json"), "utf8"));
+    expect(refused).toBe(1);
+    expect(refusalErr.join("")).toContain("--force");
+    expect(afterRefusal.events[1].pages[0].list[0].parameters[0]).toBe("[ru] Apple.");
+
+    // With --force the work dir (checkpoints and default memory) is reset and game
+    // B overwrites, with no residue from game A.
     const stderr: string[] = [];
-    const exitCode = await runCli(["run", gameB, "--provider", "mock", "--target", "ru", "--out", outDir], {
+    const exitCode = await runCli(["run", gameB, "--provider", "mock", "--target", "ru", "--out", outDir, "--force"], {
       stdout: () => undefined,
       stderr: (text) => stderr.push(text)
     });
@@ -339,7 +351,6 @@ describe("run command", () => {
     expect(exitCode).toBe(0);
     expect(stderr.join("")).toContain("different game");
     expect(patched.events[1].pages[0].list[0].parameters[0]).toBe("[ru] Banana.");
-    // Game A's memory was cleared, so only game B's source survives in the work dir.
     expect(memory).toContain("Banana.");
     expect(memory).not.toContain("Apple.");
   });

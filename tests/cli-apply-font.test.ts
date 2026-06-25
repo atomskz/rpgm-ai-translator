@@ -115,6 +115,33 @@ describe("CLI apply and patch-font", () => {
     expect(sourceActors[1].name).toBe("Aria");
   });
 
+  it("refuses a non-empty patch --out without --force, then overwrites with it", async () => {
+    const root = await createCliTempDir("rpgm-cli-apply-force-");
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "patch");
+    const unitsPath = path.join(root, "units.json");
+    const translationsPath = path.join(root, "translations.json");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await writeJsonFixture(path.join(gamePath, "data", "Actors.json"), [null, { name: "Aria" }]);
+    await writeJsonFixture(unitsPath, [actorNameUnit({ normalizedSource: undefined, hash: "hash-aria" })]);
+    await writeJsonFixture(translationsPath, [translatedResult()]);
+
+    const baseArgs = ["apply", gamePath, translationsPath, "--mode", "patch", "--units", unitsPath, "--out", outDir];
+    // First apply into a fresh directory succeeds.
+    expect(await runCli(baseArgs, { stdout: () => undefined, stderr: () => undefined })).toBe(0);
+
+    // Re-applying into the now-populated directory is refused so two patches are
+    // not silently overlaid on each other.
+    const errors: string[] = [];
+    const refused = await runCli(baseArgs, { stdout: () => undefined, stderr: (text) => errors.push(text) });
+    expect(refused).toBe(1);
+    expect(errors.join("")).toContain("not empty");
+    expect(errors.join("")).toContain("--force");
+
+    // With --force it proceeds.
+    expect(await runCli([...baseArgs, "--force"], { stdout: () => undefined, stderr: () => undefined })).toBe(0);
+  });
+
   it("rejects an invalid --mode value", async () => {
     const errors: string[] = [];
     const exitCode = await runCli(
