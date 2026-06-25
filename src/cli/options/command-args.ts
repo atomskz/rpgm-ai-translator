@@ -41,6 +41,13 @@ export type CommandOptionSpec = {
 // single source of truth for which flags per-command help lists.
 export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   init: { valueOptions: ["--out"], booleanFlags: ["--force"], maxPositionals: 0 },
+  doctor: {
+    valueOptions: [
+      "--provider", "--base-url", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature", "--max-tokens"
+    ],
+    booleanFlags: [],
+    maxPositionals: 1
+  },
   detect: { valueOptions: [], booleanFlags: [], maxPositionals: 1 },
   extract: {
     valueOptions: ["--out", "--report", "--dialogue-max-length"],

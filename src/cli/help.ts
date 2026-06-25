@@ -35,6 +35,11 @@ const COMMAND_HELP: Record<string, CommandHelpMeta> = {
       "No API key is ever written: set DEEPSEEK_API_KEY in .env (copied from .env.example)."
     ]
   },
+  doctor: {
+    usage: "doctor [game] [options]",
+    summary: "Preflight checks: provider config, API key, game detection, and a minimal probe request.",
+    notes: ["Sends one tiny probe translation to the resolved provider/base-url/model; exits non-zero if any check fails."]
+  },
   detect: { usage: "detect <game>", summary: "Detect the RPG Maker engine and project paths." },
   extract: { usage: "extract <game> [options]", summary: "Extract translation units from RPG Maker JSON data." },
   translate: { usage: "translate <units.json> [options]", summary: "Translate extracted units through a provider." },
@@ -154,6 +159,9 @@ Usage:
 Commands:
   init
       Scaffold a project config, .env.example and example glossary/character files.
+
+  doctor [game]
+      Preflight provider config, API key, game detection and a probe request.
 
   detect <game>
       Detect RPG Maker engine and project paths.

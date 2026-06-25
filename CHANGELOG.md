@@ -6,6 +6,13 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Add a `doctor` command that runs preflight checks before a paid run: the
+  provider is supported, `DEEPSEEK_API_KEY` is set (for deepseek), an optional
+  game path is a recognized RPG Maker project, and the provider answers a single
+  tiny probe translation at the resolved base-url/model. Every check runs (one
+  failure does not hide the rest); per-check pass/fail with remediation goes to
+  stdout and the command exits non-zero if any check fails — so a bad key,
+  unreachable endpoint or wrong game is caught before extraction spend, not during.
 - Add an `init` command that scaffolds onboarding: it writes a
   `rpgm-ai-translator.json` project config with safe defaults, a `.env.example`
   with an empty `DEEPSEEK_API_KEY=` placeholder (never a real key), and copies the
