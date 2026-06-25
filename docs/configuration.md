@@ -48,6 +48,7 @@ Keys mirror the CLI flag names (camelCase). All are optional.
 | --- | --- | --- |
 | `provider` | `--provider` | string |
 | `baseUrl` | `--base-url` | string |
+| `apiDialect` | `--api-dialect` | string (`deepseek` / `openai` / `auto`) |
 | `model` | `--model` | string |
 | `target` | `--target` | string |
 | `batchSize` | `--batch-size` | number |

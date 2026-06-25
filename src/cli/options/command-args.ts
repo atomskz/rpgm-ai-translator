@@ -43,7 +43,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   init: { valueOptions: ["--out"], booleanFlags: ["--force"], maxPositionals: 0 },
   doctor: {
     valueOptions: [
-      "--provider", "--base-url", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature", "--max-tokens"
+      "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature", "--max-tokens"
     ],
     booleanFlags: [],
     maxPositionals: 1
@@ -57,7 +57,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   },
   translate: {
     valueOptions: [
-      "--provider", "--base-url", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
+      "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
       "--max-tokens", "--max-tokens-budget", "--retry-attempts", "--out", "--checkpoint", "--report", "--memory", "--glossary"
     ],
     booleanFlags: [],
@@ -65,7 +65,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   },
   characters: {
     valueOptions: [
-      "--out", "--translations", "--provider", "--base-url", "--target", "--model", "--batch-size",
+      "--out", "--translations", "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size",
       "--timeout-ms", "--temperature", "--max-tokens", "--max-tokens-budget"
     ],
     booleanFlags: ["--draft-only", "--include-mentions"],
@@ -74,7 +74,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   },
   review: {
     valueOptions: [
-      "--provider", "--base-url", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
+      "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
       "--max-tokens", "--out", "--checkpoint", "--glossary", "--characters"
     ],
     booleanFlags: [],
@@ -87,7 +87,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   },
   repair: {
     valueOptions: [
-      "--report", "--out", "--provider", "--base-url", "--target", "--model", "--batch-size", "--timeout-ms",
+      "--report", "--out", "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size", "--timeout-ms",
       "--temperature", "--max-tokens", "--checkpoint", "--glossary", "--characters", "--codes", "--attempts"
     ],
     booleanFlags: [],
@@ -104,7 +104,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   },
   run: {
     valueOptions: [
-      "--out", "--work-dir", "--provider", "--base-url", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
+      "--out", "--work-dir", "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
       "--max-tokens", "--max-tokens-budget", "--retry-attempts", "--memory", "--glossary", "--characters", "--repair-attempts",
       "--repair-codes", "--font", "--number-font", "--mode", "--backup", "--dialogue-max-length"
     ],

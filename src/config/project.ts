@@ -33,6 +33,7 @@ export const PROJECT_CONFIG_FILENAME = "rpgm-ai-translator.json";
 export type ProjectConfig = {
   provider?: string;
   baseUrl?: string;
+  apiDialect?: string;
   model?: string;
   target?: string;
   batchSize?: number;
@@ -84,6 +85,7 @@ export type ConfigFieldSpec = {
 export const CONFIG_FIELD_SPECS: readonly ConfigFieldSpec[] = [
   { key: "provider", flag: "--provider", type: "string" },
   { key: "baseUrl", flag: "--base-url", type: "string" },
+  { key: "apiDialect", flag: "--api-dialect", type: "string" },
   { key: "model", flag: "--model", type: "string" },
   { key: "target", flag: "--target", type: "string" },
   { key: "batchSize", flag: "--batch-size", type: "number" },

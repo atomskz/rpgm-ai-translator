@@ -775,6 +775,93 @@ describe("DeepSeekProvider review and character inference", () => {
     // to a degraded glossary built from the candidates rather than throwing.
     expect(glossary).toBeDefined();
   });
+
+  it("omits the proprietary thinking field for the openai dialect", async () => {
+    const calls: Array<{ url: string; init: FetchInit }> = [];
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      dialect: "openai",
+      fetchFn: async (url, init) => {
+        calls.push({ url, init });
+        return response(200, {
+          choices: [{ message: { content: JSON.stringify({ translations: [{ id: "Actors.1.name", translation: "Ария" }] }) } }]
+        });
+      }
+    });
+
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    const body = JSON.parse(calls[0].init.body);
+    // The DeepSeek-only `thinking` field is what 400s a generic endpoint; it must
+    // be absent for the openai dialect, while temperature/response_format remain.
+    expect(body).not.toHaveProperty("thinking");
+    expect(body).toMatchObject({ temperature: 0.3, response_format: { type: "json_object" } });
+    expect(results[0].status).toBe("translated");
+  });
+
+  it("auto-selects the openai dialect for a custom base URL", async () => {
+    const calls: Array<{ url: string; init: FetchInit }> = [];
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      baseUrl: "http://localhost:11434/v1",
+      fetchFn: async (url, init) => {
+        calls.push({ url, init });
+        return response(200, {
+          choices: [{ message: { content: JSON.stringify({ translations: [{ id: "Actors.1.name", translation: "Ария" }] }) } }]
+        });
+      }
+    });
+
+    await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    expect(calls[0].url).toBe("http://localhost:11434/v1/chat/completions");
+    expect(JSON.parse(calls[0].init.body)).not.toHaveProperty("thinking");
+  });
+
+  it("keeps the deepseek dialect (and thinking) when only an explicit dialect overrides a custom base URL", async () => {
+    const calls: Array<{ url: string; init: FetchInit }> = [];
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      baseUrl: "http://my-proxy.example/v1",
+      dialect: "deepseek",
+      fetchFn: async (url, init) => {
+        calls.push({ url, init });
+        return response(200, {
+          choices: [{ message: { content: JSON.stringify({ translations: [{ id: "Actors.1.name", translation: "Ария" }] }) } }]
+        });
+      }
+    });
+
+    await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    // A DeepSeek instance behind a proxy keeps the proprietary field when forced.
+    expect(JSON.parse(calls[0].init.body)).toMatchObject({ thinking: { type: "disabled" } });
+  });
+
+  it("sends temperature and no thinking on the openai dialect review pass", async () => {
+    const calls: Array<{ url: string; init: FetchInit }> = [];
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      dialect: "openai",
+      fetchFn: async (url, init) => {
+        calls.push({ url, init });
+        return response(200, {
+          choices: [{ message: { content: JSON.stringify({ translations: [{ id: "Actors.1.name", translation: "Ария" }] }) } }]
+        });
+      }
+    });
+
+    await provider.reviewBatch(
+      [{ id: "Actors.1.name", source: "Aria", currentTranslation: "Ария", category: "name" }],
+      { targetLanguage: "ru" }
+    );
+
+    const body = JSON.parse(calls[0].init.body);
+    // Review enables thinking on the deepseek dialect; the openai dialect has no
+    // thinking mode, so it sends temperature and stays at the plain token budget.
+    expect(body).not.toHaveProperty("thinking");
+    expect(body).toMatchObject({ temperature: 0.3, max_tokens: 8192 });
+  });
 });
 
 function unit(): TranslationUnit {

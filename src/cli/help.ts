@@ -96,6 +96,7 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--characters": "Character glossary JSON for review or repair.",
   "--provider": "Translation provider: mock or deepseek (characters also accepts none for a heuristic glossary).",
   "--base-url": "Override the provider base URL (e.g. a local OpenAI-compatible endpoint).",
+  "--api-dialect": "Request shape: deepseek, openai, or auto (default; openai for a custom --base-url).",
   "--target": "Target language code. Default: ru.",
   "--model": "Provider model name.",
   "--batch-size": "Translation units per provider request.",

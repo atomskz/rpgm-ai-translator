@@ -68,6 +68,15 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Make a custom `--base-url` actually work with a generic OpenAI-compatible or
+  local endpoint. The DeepSeek adapter always sent the proprietary `thinking`
+  field, which a generic/local server rejects with a non-retryable 400, so
+  `--base-url` was effectively broken despite being documented. The client now
+  has a dialect: `deepseek` sends the `thinking` field as before, while `openai`
+  omits it and always sends `temperature`. The dialect is auto-selected (`openai`
+  for any non-default `--base-url`, `deepseek` for the DeepSeek endpoint) and can
+  be forced with `--api-dialect deepseek|openai|auto` or the `apiDialect` config
+  key — so a DeepSeek instance behind a proxy can still use the proprietary field.
 - Report an actionable error when a `units` or `translations` file passed to
   `translate`/`review`/`repair`/`validate`/`apply` does not exist, naming the file
   (`Could not read units file '<path>': file not found.`) instead of surfacing a

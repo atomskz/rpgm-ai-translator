@@ -24,11 +24,13 @@ import { MockProvider } from "./mock.js";
 export type ProviderName = "mock" | "deepseek";
 
 // Provider-neutral configuration injected from the CLI. `baseUrl` lets the
-// OpenAI-compatible DeepSeek client target a local or self-hosted endpoint.
+// OpenAI-compatible DeepSeek client target a local or self-hosted endpoint, and
+// `dialect` controls whether DeepSeek-proprietary request fields are sent.
 export type ProviderConfig = {
   apiKey?: string;
   baseUrl?: string;
   model?: string;
+  dialect?: "deepseek" | "openai";
 };
 
 export function createProvider(name: string, config: ProviderConfig = {}): LLMProvider {
@@ -37,7 +39,7 @@ export function createProvider(name: string, config: ProviderConfig = {}): LLMPr
   }
 
   if (name === "deepseek") {
-    return new DeepSeekProvider({ apiKey: config.apiKey, baseUrl: config.baseUrl });
+    return new DeepSeekProvider({ apiKey: config.apiKey, baseUrl: config.baseUrl, dialect: config.dialect });
   }
 
   throw new Error(`Unknown provider '${name}'. Supported providers: mock, deepseek`);

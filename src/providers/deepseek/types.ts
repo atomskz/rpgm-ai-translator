@@ -37,9 +37,15 @@ export type DeepSeekResponse = {
   headers?: { get(name: string): string | null };
 };
 
+// "deepseek" sends DeepSeek's proprietary request fields (the `thinking` switch);
+// "openai" sends only plain OpenAI-compatible Chat Completions fields, so a
+// generic/local endpoint does not 400 on an unknown field.
+export type DeepSeekDialect = "deepseek" | "openai";
+
 export type DeepSeekProviderConfig = {
   apiKey?: string;
   baseUrl?: string;
+  dialect?: DeepSeekDialect;
   fetchFn?: FetchLike;
   maxRetries?: number;
   retryDelayMs?: number;

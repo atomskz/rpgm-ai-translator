@@ -30,6 +30,7 @@ import { createHttpError, DeepSeekProviderError, isNetworkError, isTimeoutError 
 import { isChatCompletionResponse } from "./schemas.js";
 import type {
   ChatCompletionResponse,
+  DeepSeekDialect,
   DeepSeekProviderConfig,
   DeepSeekResponse,
   DeepSeekThinkingMode,
@@ -43,6 +44,7 @@ const MAX_RETRY_DELAY_MS = 60_000;
 export class DeepSeekClient {
   private readonly apiKey?: string;
   private readonly baseUrl: string;
+  private readonly dialect: DeepSeekDialect;
   private readonly fetchFn: FetchLike;
   private readonly maxRetries: number;
   private readonly retryDelayMs: number;
@@ -50,6 +52,10 @@ export class DeepSeekClient {
   constructor(config: DeepSeekProviderConfig = {}) {
     this.apiKey = config.apiKey ?? process.env.DEEPSEEK_API_KEY;
     this.baseUrl = (config.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
+    // Default to the DeepSeek dialect only when talking to DeepSeek itself; a
+    // custom --base-url is assumed OpenAI-compatible (the documented use). An
+    // explicit dialect always wins so a DeepSeek-behind-a-proxy setup still works.
+    this.dialect = config.dialect ?? (this.baseUrl === DEFAULT_BASE_URL.replace(/\/$/, "") ? "deepseek" : "openai");
     this.fetchFn = config.fetchFn ?? ((url, init) => fetch(url, init) as Promise<DeepSeekResponse>);
     this.maxRetries = config.maxRetries ?? DEFAULT_RETRY_ATTEMPTS;
     this.retryDelayMs = config.retryDelayMs ?? 250;
@@ -66,21 +72,28 @@ export class DeepSeekClient {
     thinkingMode: DeepSeekThinkingMode
   ): Promise<ChatCompletionResponse> {
     const url = `${this.baseUrl}/chat/completions`;
-    // When thinking is enabled the chain-of-thought is billed against max_tokens,
-    // so use a larger default; an explicit --max-tokens still takes precedence.
-    const defaultMaxTokens = thinkingMode === "enabled" ? DEFAULT_THINKING_MAX_TOKENS : DEFAULT_MAX_TOKENS;
+    // A DeepSeek reasoning pass (thinking enabled) bills chain-of-thought against
+    // max_tokens, so it needs a larger default. The openai dialect has no thinking
+    // mode, so it never inflates the budget regardless of the requested pass.
+    const reasoning = this.dialect === "deepseek" && thinkingMode === "enabled";
+    const defaultMaxTokens = reasoning ? DEFAULT_THINKING_MAX_TOKENS : DEFAULT_MAX_TOKENS;
     const requestBody: Record<string, unknown> = {
       model,
       messages,
-      thinking: { type: thinkingMode },
       max_tokens: options.maxTokens ?? defaultMaxTokens,
       response_format: { type: "json_object" },
       stream: false
     };
-    // A reasoning pass (thinking enabled) ignores temperature on DeepSeek V4 and
-    // rejects it with a non-retryable 400 on deepseek-reasoner, so only send it on
-    // a non-thinking request where it actually has an effect.
-    if (thinkingMode !== "enabled") {
+    // `thinking` is a DeepSeek-proprietary field; sending it to a generic
+    // OpenAI-compatible (or local) endpoint is a non-retryable 400, so only the
+    // deepseek dialect includes it. This is what makes a custom --base-url work.
+    if (this.dialect === "deepseek") {
+      requestBody.thinking = { type: thinkingMode };
+    }
+    // A reasoning pass ignores temperature on DeepSeek V4 and is rejected by
+    // deepseek-reasoner, so omit it only there; every other request — including
+    // every openai-dialect request — sends it where it has an effect.
+    if (!reasoning) {
       requestBody.temperature = options.temperature ?? DEFAULT_TEMPERATURE;
     }
     const body = JSON.stringify(requestBody);

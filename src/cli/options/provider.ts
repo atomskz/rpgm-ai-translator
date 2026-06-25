@@ -82,8 +82,22 @@ export function readProviderName(args: string[], defaultProvider = "mock"): stri
   return readOption(args, "--provider") ?? defaultProvider;
 }
 
-export function readProviderConfig(args: string[]): { baseUrl?: string } {
-  return { baseUrl: readOption(args, "--base-url") };
+export function readProviderConfig(args: string[]): { baseUrl?: string; dialect?: "deepseek" | "openai" } {
+  return { baseUrl: readOption(args, "--base-url"), dialect: readApiDialect(args) };
+}
+
+// Resolve --api-dialect. "auto" (the default) returns undefined so the provider
+// picks the dialect from the base URL; an explicit value forces it. A custom
+// --base-url is assumed OpenAI-compatible, so a local endpoint works without this.
+function readApiDialect(args: string[]): "deepseek" | "openai" | undefined {
+  const value = readOption(args, "--api-dialect");
+  if (value == null || value === "auto") {
+    return undefined;
+  }
+  if (value !== "deepseek" && value !== "openai") {
+    throw new UsageError("--api-dialect must be one of: deepseek, openai, auto");
+  }
+  return value;
 }
 
 export function readProviderCliOptions(args: string[]): ProviderCliOptions {
