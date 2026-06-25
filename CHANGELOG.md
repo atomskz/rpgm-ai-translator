@@ -49,6 +49,10 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Documentation
 
+- Add a Windows (PowerShell) quick start to the README — single-line and
+  backtick-continued command forms, `$env:`/`setx` for the API key, and a note
+  that Node accepts forward-slash paths — since the other examples assume bash
+  line continuations.
 - Add a "Local Or OpenAI-Compatible LLM" quick start to the README with concrete
   Ollama and LM Studio `--base-url`/`--model` examples, an explanation of the
   request dialect, and a `doctor` preflight step.

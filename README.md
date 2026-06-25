@@ -124,6 +124,39 @@ intermediate artifacts are written to a separate work directory next to it
 Keeping intermediates out of the patch folder means a shipped patch never
 includes your translation memory or reports.
 
+### Windows (PowerShell)
+
+The examples elsewhere in this README use bash line continuations (`\`). In
+PowerShell, either put the whole command on one line or use a backtick (`` ` ``)
+to continue a line. Node accepts forward slashes in paths on Windows, so the
+relative paths below work unchanged.
+
+Mock run (one line):
+
+```powershell
+npm run build
+node dist/cli/index.js run ./examples/mz-sample --provider mock --target ru --include-plugins --repair --out ./out/mz-sample-patch
+```
+
+Real run with DeepSeek — set the API key for the session (do not commit it), then
+run. Backticks continue the command across lines:
+
+```powershell
+$env:DEEPSEEK_API_KEY = "sk-..."
+
+node dist/cli/index.js run ./game `
+  --provider deepseek `
+  --model deepseek-v4-flash `
+  --target ru `
+  --review `
+  --repair `
+  --out ./out/patch
+```
+
+To persist the key across sessions, use `setx DEEPSEEK_API_KEY "sk-..."` once (it
+takes effect in new terminals), or place it in a `.env` file you do not commit.
+Run `node dist/cli/index.js init` to scaffold a config and a `.env.example`.
+
 ## Usage
 
 ### Detect A Game
