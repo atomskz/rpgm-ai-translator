@@ -24,7 +24,7 @@ import {
 } from "../../core/translation-units.js";
 import { DefaultValidator, validateTranslationResults } from "../../core/validators/public-api.js";
 import { loadGlossary } from "../../config/public-api.js";
-import { readOption, requirePositional } from "../options.js";
+import { readOption, requirePositional } from "../options/public-api.js";
 import type { CliIO } from "../types.js";
 
 export async function validateCommand(args: string[], io: CliIO): Promise<number> {

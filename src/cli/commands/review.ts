@@ -42,7 +42,7 @@ import {
   readProviderName,
   requireOption,
   requirePositional
-} from "../options.js";
+} from "../options/public-api.js";
 import { createProgressLogger } from "../progress.js";
 import type { CliIO } from "../types.js";
 

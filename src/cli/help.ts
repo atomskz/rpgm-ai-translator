@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { COMMAND_OPTION_SPECS } from "./options.js";
+import { COMMAND_OPTION_SPECS } from "./options/public-api.js";
 
 type CommandHelpMeta = {
   usage: string;

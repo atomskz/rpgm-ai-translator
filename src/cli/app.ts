@@ -29,7 +29,7 @@ import { translateCommand } from "./commands/translate.js";
 import { validateCommand } from "./commands/validate.js";
 import { loadProjectConfig, mergeConfigIntoArgs } from "../config/public-api.js";
 import { commandHelp, commandUsage, helpText } from "./help.js";
-import { GLOBAL_BOOLEAN_FLAGS, GLOBAL_VALUE_OPTIONS, readOption, UsageError, validateCommandArgs } from "./options.js";
+import { GLOBAL_BOOLEAN_FLAGS, GLOBAL_VALUE_OPTIONS, readOption, UsageError, validateCommandArgs } from "./options/public-api.js";
 import type { CliIO, CommandHandler } from "./types.js";
 
 export type { CliIO } from "./types.js";

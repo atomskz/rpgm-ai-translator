@@ -39,7 +39,7 @@ import {
   readProviderName,
   requirePositional,
   requireOption
-} from "../options.js";
+} from "../options/public-api.js";
 import type { CliIO } from "../types.js";
 
 export async function charactersCommand(args: string[], io: CliIO): Promise<number> {

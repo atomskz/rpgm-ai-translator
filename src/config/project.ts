@@ -19,7 +19,7 @@
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { COMMAND_OPTION_SPECS, isValidationIssueCode } from "../cli/options.js";
+import { COMMAND_OPTION_SPECS, isValidationIssueCode } from "../cli/options/public-api.js";
 
 // Default config file name looked up in the working directory when --config is
 // not given. Absent file is not an error; an explicit --config that is missing

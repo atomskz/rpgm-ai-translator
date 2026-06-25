@@ -58,7 +58,7 @@ import {
   readTranslateCliOptions,
   requirePositional,
   requireOption
-} from "../options.js";
+} from "../options/public-api.js";
 import {
   checkpointedTranslationsById,
   checkpointSignature,

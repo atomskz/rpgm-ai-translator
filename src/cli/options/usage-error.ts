@@ -17,13 +17,12 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { MvMzEngineDetector } from "../../engines/rpgmaker-mvmz/detector.js";
-import { requirePositional } from "../options/public-api.js";
-import type { CliIO } from "../types.js";
-
-export async function detectCommand(args: string[], io: CliIO): Promise<number> {
-  const projectPath = requirePositional(args, 0, "project path");
-  const detected = await new MvMzEngineDetector().detect(projectPath);
-  io.stdout(`${JSON.stringify(detected, null, 2)}\n`);
-  return 0;
+// Marks errors caused by bad command-line input (missing/unknown/invalid
+// arguments) so the CLI can attach the command usage and a --help hint, as
+// opposed to runtime failures where that guidance would be noise.
+export class UsageError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = "UsageError";
+  }
 }

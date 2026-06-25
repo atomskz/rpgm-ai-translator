@@ -44,7 +44,7 @@ import {
   readProviderName,
   readTranslateCliOptions,
   requirePositional
-} from "../options.js";
+} from "../options/public-api.js";
 import { createProgressLogger } from "../progress.js";
 import type { TranslationResult } from "../../core/types/types.js";
 import type { CliIO } from "../types.js";

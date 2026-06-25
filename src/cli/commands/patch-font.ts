@@ -18,7 +18,7 @@
  */
 
 import { applyFontPatch } from "../../engines/rpgmaker-mvmz/font.js";
-import { readFontOptions, requireOption, requirePositional } from "../options.js";
+import { readFontOptions, requireOption, requirePositional } from "../options/public-api.js";
 import type { CliIO } from "../types.js";
 
 export async function patchFontCommand(args: string[], io: CliIO): Promise<number> {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli/app.js";
-import { validateCommandArgs } from "../src/cli/options.js";
+import { validateCommandArgs } from "../src/cli/options/public-api.js";
 
 describe("validateCommandArgs", () => {
   it("suggests the closest option for a typo", () => {

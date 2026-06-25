@@ -21,7 +21,7 @@ import { RpgMakerMvMzExtractor } from "../../engines/rpgmaker-mvmz/extractor.js"
 import { createReport } from "../../core/reports/public-api.js";
 import { writeTranslationUnitsFile } from "../../core/translation-units.js";
 import { maybeWriteReport } from "../file-utils.js";
-import { readExtractOptions, readOption, requirePositional } from "../options.js";
+import { readExtractOptions, readOption, requirePositional } from "../options/public-api.js";
 import type { CliIO } from "../types.js";
 
 export async function extractCommand(args: string[], io: CliIO): Promise<number> {

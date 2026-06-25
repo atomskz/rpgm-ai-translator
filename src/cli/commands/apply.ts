@@ -26,7 +26,7 @@ import {
 } from "../../core/translation-units.js";
 import { filterTranslationsWithoutValidationErrors } from "../../core/validators/public-api.js";
 import { RpgMakerMvMzExtractor } from "../../engines/rpgmaker-mvmz/extractor.js";
-import { readApplyOptions, readFontOptions, readOption, requirePositional, UsageError } from "../options.js";
+import { readApplyOptions, readFontOptions, readOption, requirePositional, UsageError } from "../options/public-api.js";
 import type { CliIO } from "../types.js";
 
 export async function applyCommand(args: string[], io: CliIO): Promise<number> {

@@ -46,7 +46,7 @@ import {
   readPositiveIntegerOption,
   requireOption,
   requirePositional
-} from "../options.js";
+} from "../options/public-api.js";
 import { createProgressLogger } from "../progress.js";
 import type { TranslationResult, ValidationIssue } from "../../core/types/types.js";
 import type { CliIO } from "../types.js";
