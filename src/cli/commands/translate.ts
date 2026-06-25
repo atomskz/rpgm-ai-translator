@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { estimateInputTokens, TokenBudget } from "../../core/cost.js";
+import { estimateTotalTokens, TokenBudget } from "../../core/cost.js";
 import { JsonlTranslationMemory } from "../../core/memory/public-api.js";
 import { translateWithMemory } from "../../core/memory/public-api.js";
 import { createReport } from "../../core/reports/public-api.js";
@@ -81,7 +81,7 @@ export async function translateCommand(args: string[], io: CliIO): Promise<numbe
   const unitsToTranslate = units.filter((unit) => !checkpointById.has(unit.id));
   const tokenBudgetLimit = readPositiveIntegerOption(args, "--max-tokens-budget");
   const budget = tokenBudgetLimit != null ? new TokenBudget(tokenBudgetLimit) : undefined;
-  budget?.assertEstimateWithin(estimateInputTokens(unitsToTranslate));
+  budget?.assertEstimateWithin(estimateTotalTokens(unitsToTranslate, { batchSize: providerOptions.batchSize }));
   if (staleCheckpoint) {
     io.stderr("Warning: checkpoint parameters (language/model/glossary) changed; discarding it and translating fresh.\n");
   }

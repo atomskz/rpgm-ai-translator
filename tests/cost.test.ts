@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregateTokenUsage, estimateInputTokens, TokenBudget } from "../src/core/cost.js";
+import { aggregateTokenUsage, estimateInputTokens, estimateTotalTokens, TokenBudget } from "../src/core/cost.js";
 import type { TranslationResult, TranslationUnit } from "../src/core/types/public-api.js";
 
 function unit(source: string, normalizedSource?: string): TranslationUnit {
@@ -32,6 +32,28 @@ describe("cost estimation", () => {
     const estimate = estimateInputTokens([unit("12345678"), unit("raw", "1234")]);
     // 8/4 + 4/4 = 3 content tokens, plus 2 units * 16 overhead.
     expect(estimate).toBe(3 + 32);
+  });
+
+  it("estimates total tokens above the input-only estimate and as zero for no units", () => {
+    const units = [unit("A wandering knight roams the moonlit road."), unit("The castle gates are sealed.")];
+    const total = estimateTotalTokens(units);
+    // Total folds in the per-batch system prompt and an output multiplier, so it
+    // must sit above the source-only input estimate it is built from.
+    expect(total).toBeGreaterThan(estimateInputTokens(units));
+    expect(estimateTotalTokens([])).toBe(0);
+  });
+
+  it("keeps the total estimate within a sane factor of recorded usage", () => {
+    // A realistic batch: ~60 short dialogue lines. The estimate must land in the
+    // same order of magnitude as the provider's recorded total, so the budget
+    // guard is meaningful instead of undershooting by a large multiplier.
+    const units = Array.from({ length: 60 }, (_, index) => unit(`Dialogue line number ${index} in the scene.`));
+    const estimate = estimateTotalTokens(units, { batchSize: 20 });
+    // Stand-in for a provider that reported ~9000 total tokens across the run.
+    const recordedTotal = 9000;
+    const ratio = estimate / recordedTotal;
+    expect(ratio).toBeGreaterThan(0.25);
+    expect(ratio).toBeLessThan(4);
   });
 
   it("aggregates token usage and returns undefined when none is present", () => {

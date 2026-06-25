@@ -47,6 +47,13 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Make the `--max-tokens-budget` pre-flight check meaningful. The estimate counted
+  only source characters (input), but the budget trips on the provider's reported
+  *total* (input + output) tokens, so the two disagreed by a large multiplier and
+  an over-budget run passed pre-flight only to abort mid-run after spending. The
+  budget guards now estimate total tokens — folding in a per-batch system-prompt
+  overhead and an output multiplier — so they fail before a pass starts when it
+  would overrun. The dry-run preview still reports input tokens.
 - Persist how many repair attempts a `run --repair` already completed so resuming
   an interrupted run continues the `--repair-attempts` budget instead of restarting
   at attempt 1 — which could spend (and bill) well past the requested cap. The

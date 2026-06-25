@@ -17,6 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { normalizeBatchSize } from "./batching.js";
 import type { TokenUsage, TranslationResult, TranslationUnit } from "./types/public-api.js";
 
 // Rough heuristics for a pre-flight estimate. Token counts vary by tokenizer and
@@ -26,12 +27,48 @@ import type { TokenUsage, TranslationResult, TranslationUnit } from "./types/pub
 const CHARS_PER_TOKEN = 4;
 const OVERHEAD_TOKENS_PER_UNIT = 16;
 
-export function estimateInputTokens(units: TranslationUnit[]): number {
+// Per-request fixed cost: the system prompt, JSON-format instructions and the
+// (capped) glossary sent with every batch. Approximate, but enough that the total
+// estimate sits above a real run's input rather than a small fraction of it.
+const SYSTEM_TOKENS_PER_BATCH = 500;
+
+// The model echoes each unit's id and emits a translation that, across languages,
+// runs on the order of the source length. Charge output as a multiple of the
+// source-token count so the total estimate is comparable to the budget, which
+// accumulates the provider's reported total (input + output) tokens.
+const OUTPUT_TOKENS_PER_SOURCE_TOKEN = 1.5;
+
+function sourceTokens(units: TranslationUnit[]): number {
   let characters = 0;
   for (const unit of units) {
     characters += (unit.normalizedSource ?? unit.source).length;
   }
-  return Math.ceil(characters / CHARS_PER_TOKEN) + units.length * OVERHEAD_TOKENS_PER_UNIT;
+  return Math.ceil(characters / CHARS_PER_TOKEN);
+}
+
+// Input-only estimate: the source text plus a per-unit prompt/id overhead. Used
+// for the human-readable "input tokens" preview; the budget guard uses the total
+// estimate below.
+export function estimateInputTokens(units: TranslationUnit[]): number {
+  return sourceTokens(units) + units.length * OVERHEAD_TOKENS_PER_UNIT;
+}
+
+// Estimate the total (input + output) tokens a translate-style pass will spend, so
+// a --max-tokens-budget pre-flight is comparable to what the budget records.
+// estimateInputTokens counted only source characters, undershooting the recorded
+// total (which includes the per-batch system prompt and every output token) by a
+// large multiplier — so the guard let an over-budget run pass pre-flight and then
+// abort mid-run after spending. This folds in the per-batch system/glossary
+// overhead and an output multiplier so the estimate lands within a sane factor of
+// the real total.
+export function estimateTotalTokens(units: TranslationUnit[], options: { batchSize?: number } = {}): number {
+  if (units.length === 0) {
+    return 0;
+  }
+  const batchCount = Math.ceil(units.length / normalizeBatchSize(options.batchSize));
+  const input = estimateInputTokens(units) + batchCount * SYSTEM_TOKENS_PER_BATCH;
+  const output = Math.ceil(sourceTokens(units) * OUTPUT_TOKENS_PER_SOURCE_TOKEN);
+  return input + output;
 }
 
 // Sum the provider-neutral token usage recorded on translation results. Returns
@@ -86,7 +123,7 @@ export class TokenBudget {
   assertEstimateWithin(estimatedTokens: number): void {
     if (estimatedTokens > this.limit) {
       throw new Error(
-        `Estimated ${estimatedTokens} input tokens exceed the --max-tokens-budget of ${this.limit}. Raise the budget or reduce scope.`
+        `Estimated ${estimatedTokens} tokens exceed the --max-tokens-budget of ${this.limit}. Raise the budget or reduce scope.`
       );
     }
   }

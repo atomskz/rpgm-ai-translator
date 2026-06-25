@@ -28,7 +28,7 @@ import {
   RpgMakerMvMzExtractor,
   writePatch
 } from "../../engines/rpgmaker-mvmz/public-api.js";
-import { estimateInputTokens, TokenBudget } from "../../core/cost.js";
+import { estimateInputTokens, estimateTotalTokens, TokenBudget } from "../../core/cost.js";
 import { acquireDirectoryLock, LOCK_FILENAME, withDirectoryLock } from "../../core/locks.js";
 import { isNonEmptyDirectory, writeFileAtomic } from "../../core/utils/fs.js";
 import { hashCacheKey } from "../../core/utils/hash.js";
@@ -220,7 +220,7 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   // Estimate over the units actually being sent (after checkpoint resume), not the
   // full extraction, and before any files are written, so a resumed run is not
   // falsely blocked and an over-budget run leaves nothing behind.
-  budget?.assertEstimateWithin(estimateInputTokens(unitsToTranslate));
+  budget?.assertEstimateWithin(estimateTotalTokens(unitsToTranslate, { batchSize: providerOptions.batchSize }));
 
   // A different game (or an unrelated pre-existing directory) sharing this --out
   // would have its leftover files mixed into the sparse patch. Allow overwriting
@@ -300,7 +300,7 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
     const unitsToReview = units.filter((unit) => !reviewCheckpointById.has(unit.id));
     // Estimate the review pass against the budget already spent on translate, so a
     // run that would overrun fails here instead of mid-review with tokens wasted.
-    budget?.assertProjectedWithin(estimateInputTokens(unitsToReview));
+    budget?.assertProjectedWithin(estimateTotalTokens(unitsToReview, { batchSize: providerOptions.batchSize }));
     const reviewResult = await reviewTranslations(
       unitsToReview,
       mergeCheckpointTranslations(units, translations, reviewCheckpointById),
@@ -342,7 +342,9 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
       // Estimate this repair attempt (the units carrying the targeted issues)
       // against tokens already spent, failing before the pass if it would overrun.
       const repairUnitIds = new Set(validationIssues.map((issue) => issue.id));
-      budget?.assertProjectedWithin(estimateInputTokens(units.filter((unit) => repairUnitIds.has(unit.id))));
+      budget?.assertProjectedWithin(
+        estimateTotalTokens(units.filter((unit) => repairUnitIds.has(unit.id)), { batchSize: providerOptions.batchSize })
+      );
       io.stderr(`Repairing validation issues, attempt ${attempt}/${repairAttempts} (${validationIssues.length} issues)...\n`);
       const repairResult = await repairTranslations(units, translations, validationIssues, provider, {
         ...providerOptions,

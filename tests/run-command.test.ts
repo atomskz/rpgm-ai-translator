@@ -475,7 +475,9 @@ describe("run command", () => {
 
     // Resume the long dialogue from the checkpoint, leaving only the short
     // displayName to translate. The full extraction would exceed the budget, but
-    // the unresumed work fits, so the run must not be falsely blocked.
+    // the unresumed work fits, so the run must not be falsely blocked. The budget
+    // is sized for the total-token estimate (per-batch system overhead + output),
+    // which sits between the unresumed and full-extraction estimates.
     const dialogueId = "Map001.events.1.pages.0.list.0.parameters.0";
     await writeFile(
       path.join(workDir, "translations.raw.jsonl"),
@@ -484,7 +486,7 @@ describe("run command", () => {
     );
 
     const exitCode = await runCli(
-      ["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--max-tokens-budget", "25"],
+      ["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--max-tokens-budget", "550"],
       { stdout: () => undefined, stderr: () => undefined }
     );
 
