@@ -667,6 +667,116 @@ describe("DeepSeek retry backoff", () => {
   });
 });
 
+describe("DeepSeekProvider review and character inference", () => {
+  it("reviews a batch and maps the revised translations back onto the units", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      fetchFn: async () =>
+        response(200, {
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({ translations: [{ id: "Actors.1.name", translation: "Ария (после ревью)" }] })
+              }
+            }
+          ],
+          usage: { total_tokens: 11 }
+        })
+    });
+
+    const results = await provider.reviewBatch(
+      [{ id: "Actors.1.name", source: "Aria", currentTranslation: "Ариа", category: "name" }],
+      { targetLanguage: "ru" }
+    );
+
+    expect(results[0]).toMatchObject({
+      id: "Actors.1.name",
+      translation: "Ария (после ревью)",
+      status: "translated"
+    });
+  });
+
+  it("degrades a review batch to failures when the response schema is wrong", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      fetchFn: async () =>
+        response(200, {
+          choices: [{ message: { content: JSON.stringify({ not: "a translations payload" }) } }],
+          usage: { total_tokens: 5 }
+        })
+    });
+
+    const results = await provider.reviewBatch(
+      [{ id: "Actors.1.name", source: "Aria", currentTranslation: "Ариа", category: "name" }],
+      { targetLanguage: "ru" }
+    );
+
+    expect(results[0]).toMatchObject({ id: "Actors.1.name", status: "failed" });
+  });
+
+  it("infers a character glossary from candidates", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      fetchFn: async () =>
+        response(200, {
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  characters: {
+                    Aria: { gender: "female", type: "person", translation: "Ария", aliases: ["Ari"], confidence: 0.9 }
+                  }
+                })
+              }
+            }
+          ],
+          usage: { total_tokens: 12 }
+        })
+    });
+
+    const glossary = await provider.inferCharacters(
+      [
+        {
+          name: "Aria",
+          sources: ["actor"],
+          occurrences: 3,
+          evidence: [{ unitId: "Actors.1.name", category: "name", source: "Aria" }]
+        }
+      ],
+      { targetLanguage: "ru" }
+    );
+
+    expect(glossary.Aria).toMatchObject({ translation: "Ария", gender: "female", type: "person" });
+  });
+
+  it("degrades to a heuristic glossary when the characters response schema is wrong", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      fetchFn: async () =>
+        response(200, {
+          choices: [{ message: { content: JSON.stringify({ characters: [{ name: "Aria" }] }) } }],
+          usage: { total_tokens: 4 }
+        })
+    });
+
+    const glossary = await provider.inferCharacters(
+      [
+        {
+          name: "Aria",
+          sources: ["actor"],
+          occurrences: 1,
+          evidence: [{ unitId: "Actors.1.name", category: "name", source: "Aria" }]
+        }
+      ],
+      { targetLanguage: "ru" }
+    );
+
+    // An array instead of an object fails the schema; the provider must fall back
+    // to a degraded glossary built from the candidates rather than throwing.
+    expect(glossary).toBeDefined();
+  });
+});
+
 function unit(): TranslationUnit {
   return {
     id: "Actors.1.name",
