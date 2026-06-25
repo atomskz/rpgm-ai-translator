@@ -17,6 +17,21 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
   at least half of its translations; and `review` exits `1` when every batch failed
   and nothing was reviewed.
 
+### Internal
+
+- Reorganized `src/` into a hexagonal (ports-and-adapters) layout: `core` holds the
+  domain and the `LLMProvider`/`Extractor`/`EngineDetector` ports, while
+  `engines/rpgmaker-mvmz`, `providers`, and `config` are adapters that depend only on
+  `core`, and `cli` is the composition root. Each multi-file module is sealed behind a
+  `public-api.ts` facade, and the dependency direction and facade rule are enforced by
+  eslint so a boundary violation fails `lint` and CI. No public API or runtime
+  behavior changed. See [docs/architecture.md](docs/architecture.md).
+- Added v8 test coverage (`npm run coverage`) with a CI-enforced floor in
+  `vitest.config.ts`, plus tests for previously-uncovered failure-recovery paths: the
+  patch writer's rollback on a partial patch and its in-place restore from backup, a
+  non-`Error` provider rejection, and the DeepSeek review and character-inference
+  response handling.
+
 ### Fixed
 
 - Font-patch the correct engine and layout instead of silently no-opping. `patch-font`
