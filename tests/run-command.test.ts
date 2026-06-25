@@ -129,6 +129,48 @@ describe("run command", () => {
     await expect(readFile(path.join(outDir, "units.json"), "utf8")).rejects.toThrow();
   });
 
+  it("echoes the resolved target and warns when --target was not given", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-target-"));
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "out");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await mkdir(path.join(gamePath, "js"), { recursive: true });
+    await writeFile(path.join(gamePath, "js", "rpg_core.js"), "", "utf8");
+    await writeJson(path.join(gamePath, "data", "Actors.json"), [null, { id: 1, name: "Aria" }]);
+
+    const errors: string[] = [];
+    // No --target: it should default to ru, echo "(default)", and warn loudly so the
+    // wrong-language ship is caught before any spend. (Dry-run still echoes first.)
+    const exitCode = await runCli(["run", gamePath, "--provider", "mock", "--out", outDir, "--dry-run"], {
+      stdout: () => undefined,
+      stderr: (text) => errors.push(text)
+    });
+
+    expect(exitCode).toBe(0);
+    expect(errors.join("")).toContain("Target language: ru (default)");
+    expect(errors.join("")).toContain("no --target was given");
+  });
+
+  it("echoes an explicit target without the default warning", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-target-explicit-"));
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "out");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await mkdir(path.join(gamePath, "js"), { recursive: true });
+    await writeFile(path.join(gamePath, "js", "rpg_core.js"), "", "utf8");
+    await writeJson(path.join(gamePath, "data", "Actors.json"), [null, { id: 1, name: "Aria" }]);
+
+    const errors: string[] = [];
+    const exitCode = await runCli(["run", gamePath, "--provider", "mock", "--target", "en", "--out", outDir, "--dry-run"], {
+      stdout: () => undefined,
+      stderr: (text) => errors.push(text)
+    });
+
+    expect(exitCode).toBe(0);
+    expect(errors.join("")).toContain("Target language: en");
+    expect(errors.join("")).not.toContain("no --target was given");
+  });
+
   it("warns that run ignores --mode and --backup", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-mode-"));
     const gamePath = path.join(root, "game");

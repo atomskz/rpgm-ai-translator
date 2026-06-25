@@ -30,6 +30,37 @@ export type TranslateCliOptions = ProviderCliOptions & Pick<TranslateOptions, "r
 
 const SUPPORTED_PROVIDERS = ["mock", "deepseek"] as const;
 
+// Built-in target language used when neither --target nor a config "target" key is
+// given. Kept as one constant so the echo (readTargetLanguage) and the option
+// readers agree on what "defaulted" means.
+export const DEFAULT_TARGET_LANGUAGE = "ru";
+
+// Resolve the target language and whether it came from the user — a --target flag,
+// or a config "target" that mergeConfigIntoArgs already injected as --target before
+// the command runs — versus falling back to the built-in default.
+export function readTargetLanguage(args: string[]): { value: string; defaulted: boolean } {
+  const explicit = readOption(args, "--target");
+  return { value: explicit ?? DEFAULT_TARGET_LANGUAGE, defaulted: explicit == null };
+}
+
+// Echo the resolved target on every translating command so a forgotten flag or a
+// one-character typo is visible before any paid spend, not after playing the game.
+// `warnOnDefault` (used by run) additionally warns when nothing supplied a target.
+export function echoTargetLanguage(
+  args: string[],
+  stderr: (text: string) => void,
+  options: { warnOnDefault?: boolean } = {}
+): void {
+  const { value, defaulted } = readTargetLanguage(args);
+  stderr(`Target language: ${value}${defaulted ? " (default)" : ""}\n`);
+  if (defaulted && options.warnOnDefault) {
+    stderr(
+      `Warning: no --target was given, so this run translates into '${value}' by default. ` +
+        `Pass --target <language> or set "target" in rpgm-ai-translator.json to translate into another language.\n`
+    );
+  }
+}
+
 // Validate the provider name up front so an unknown value (or `none` on a command
 // that does not support it) fails before any side effects such as writing a
 // checkpoint, instead of throwing deep inside createProvider. `none` is only
@@ -57,7 +88,7 @@ export function readProviderConfig(args: string[]): { baseUrl?: string } {
 
 export function readProviderCliOptions(args: string[]): ProviderCliOptions {
   return {
-    targetLanguage: readOption(args, "--target") ?? "ru",
+    targetLanguage: readOption(args, "--target") ?? DEFAULT_TARGET_LANGUAGE,
     model: readOption(args, "--model"),
     batchSize: readPositiveIntegerOption(args, "--batch-size"),
     timeoutMs: readPositiveIntegerOption(args, "--timeout-ms"),

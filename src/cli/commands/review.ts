@@ -36,6 +36,7 @@ import {
 } from "../checkpoints.js";
 import {
   assertProviderReady,
+  echoTargetLanguage,
   readOption,
   readProviderCliOptions,
   readProviderConfig,
@@ -51,6 +52,7 @@ export async function reviewCommand(args: string[], io: CliIO): Promise<number> 
   const translationsPath = requirePositional(args, 1, "translations path");
   const providerName = readProviderName(args);
   assertProviderReady(providerName);
+  echoTargetLanguage(args, io.stderr);
   const providerOptions = readProviderCliOptions(args);
   const out = requireOption(args, "--out");
   const checkpointOption = readOption(args, "--checkpoint");

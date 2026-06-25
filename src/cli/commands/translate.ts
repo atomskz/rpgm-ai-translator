@@ -38,6 +38,7 @@ import {
 import { maybeWriteReport } from "../file-utils.js";
 import {
   assertProviderReady,
+  echoTargetLanguage,
   readOption,
   readPositiveIntegerOption,
   readProviderConfig,
@@ -53,6 +54,7 @@ export async function translateCommand(args: string[], io: CliIO): Promise<numbe
   const unitsPath = requirePositional(args, 0, "units path");
   const providerName = readProviderName(args);
   assertProviderReady(providerName);
+  echoTargetLanguage(args, io.stderr);
   const providerOptions = readTranslateCliOptions(args);
   const out = readOption(args, "--out");
   const checkpointOption = readOption(args, "--checkpoint");

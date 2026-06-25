@@ -31,6 +31,7 @@ import { createProvider } from "../../providers/public-api.js";
 import { writeJson } from "../file-utils.js";
 import {
   assertProviderReady,
+  echoTargetLanguage,
   hasFlag,
   readOption,
   readPositiveIntegerOption,
@@ -51,6 +52,7 @@ export async function charactersCommand(args: string[], io: CliIO): Promise<numb
     assertProviderReady(providerName);
   }
   const providerOptions = readProviderCliOptions(args);
+  echoTargetLanguage(args, io.stderr);
   const tokenBudgetLimit = readPositiveIntegerOption(args, "--max-tokens-budget");
   const budget = tokenBudgetLimit != null ? new TokenBudget(tokenBudgetLimit) : undefined;
   const units = await readTranslationUnitsFile(unitsPath);

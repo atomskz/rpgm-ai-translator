@@ -38,6 +38,7 @@ import {
 } from "../checkpoints.js";
 import {
   assertProviderReady,
+  echoTargetLanguage,
   readIssueCodesOption,
   readOption,
   readProviderCliOptions,
@@ -58,6 +59,7 @@ export async function repairCommand(args: string[], io: CliIO): Promise<number> 
   const out = requireOption(args, "--out");
   const providerName = readProviderName(args);
   assertProviderReady(providerName);
+  echoTargetLanguage(args, io.stderr);
   const providerOptions = readProviderCliOptions(args);
   const checkpointOption = readOption(args, "--checkpoint");
   const glossaryPath = readOption(args, "--glossary");

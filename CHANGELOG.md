@@ -6,6 +6,13 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Echo the resolved target language (`Target language: <code>`) on every
+  translating command (`translate`, `characters`, `review`, `repair`, `run`),
+  marking it `(default)` when it fell back to the built-in `ru`. `run`
+  additionally prints a warning when no `--target` (or config `target`) was
+  given, so a forgotten flag is caught before a full paid patch ships in the
+  wrong language instead of being discovered by playing the game. The notice goes
+  to stderr, so a piped stdout payload is unaffected.
 - Accept `--repair-codes` and `--repair-attempts` as aliases for `--codes` and
   `--attempts` in the standalone `repair` command (mirroring `run`), so the
   `repairCodes`/`repairAttempts` project-config keys — which inject under the

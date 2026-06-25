@@ -52,6 +52,7 @@ import {
 import { createProvider } from "../../providers/public-api.js";
 import {
   assertProviderReady,
+  echoTargetLanguage,
   hasFlag,
   readExtractOptions,
   readFontOptions,
@@ -120,6 +121,10 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   if (!dryRun) {
     assertProviderReady(providerName);
   }
+  // Echo the resolved target and warn when it fell back to the default, so a
+  // forgotten --target is caught here rather than after a full paid patch ships
+  // in the wrong language.
+  echoTargetLanguage(args, io.stderr, { warnOnDefault: true });
   const providerOptions = readTranslateCliOptions(args);
   const extractOptions = readExtractOptions(args);
   const { fontPath, numberFontPath } = readFontOptions(args);

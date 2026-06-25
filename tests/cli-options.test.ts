@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli/app.js";
-import { validateCommandArgs } from "../src/cli/options/public-api.js";
+import { echoTargetLanguage, readTargetLanguage, validateCommandArgs } from "../src/cli/options/public-api.js";
 
 describe("validateCommandArgs", () => {
   it("suggests the closest option for a typo", () => {
@@ -94,6 +94,35 @@ describe("validateCommandArgs", () => {
     expect(() =>
       validateCommandArgs("run", ["./game", "--out", "./out", "--codes", "MISSING_TRANSLATION", "--repair-codes", "EMPTY_TRANSLATION"])
     ).toThrow("Option --repair-codes was provided more than once");
+  });
+});
+
+describe("readTargetLanguage", () => {
+  it("reports an explicit --target as not defaulted", () => {
+    expect(readTargetLanguage(["units.json", "--target", "en"])).toEqual({ value: "en", defaulted: false });
+  });
+
+  it("falls back to ru and marks it defaulted when --target is absent", () => {
+    expect(readTargetLanguage(["units.json"])).toEqual({ value: "ru", defaulted: true });
+  });
+});
+
+describe("echoTargetLanguage", () => {
+  it("marks the default target and warns only when asked", () => {
+    const lines: string[] = [];
+    echoTargetLanguage(["units.json"], (text) => lines.push(text), { warnOnDefault: true });
+    const out = lines.join("");
+    expect(out).toContain("Target language: ru (default)");
+    expect(out).toContain("no --target was given");
+  });
+
+  it("echoes an explicit target without the default marker or a warning", () => {
+    const lines: string[] = [];
+    echoTargetLanguage(["units.json", "--target", "en"], (text) => lines.push(text), { warnOnDefault: true });
+    const out = lines.join("");
+    expect(out).toContain("Target language: en");
+    expect(out).not.toContain("(default)");
+    expect(out).not.toContain("no --target was given");
   });
 });
 
