@@ -224,6 +224,19 @@ describe("translation memory", () => {
     expect(upgraded[0].metadata?.fromMemory).not.toBe(true);
   });
 
+  it("does not reuse memory across sampling settings", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-memory-temp-"));
+    const memory = new JsonlTranslationMemory(path.join(root, "memory.jsonl"));
+    const provider = new CountingProvider();
+    const units = [unit("Actors.1.name", "Aria")];
+
+    await translateWithMemory(units, provider, { targetLanguage: "ru", temperature: 0.3 }, memory);
+    const hotter = await translateWithMemory(units, provider, { targetLanguage: "ru", temperature: 0.9 }, memory);
+
+    expect(provider.calls).toEqual([["Actors.1.name"], ["Actors.1.name"]]);
+    expect(hotter[0].metadata?.fromMemory).not.toBe(true);
+  });
+
   it("translates equal source strings with different constraints separately", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-memory-constraints-"));
     const memory = new JsonlTranslationMemory(path.join(root, "memory.jsonl"));

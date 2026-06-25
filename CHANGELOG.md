@@ -6,6 +6,14 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Widen the resumable run signature and the translation-memory key so they cover
+  every setting that shapes output, not only language/model/provider/glossary.
+  Changing `--temperature`, `--max-tokens`, `--batch-size`, or any extraction flag
+  (`--include-plugins`, `--include-speaker-names`, `--include-comments`,
+  `--dialogue-max-length`) and re-running now discards the stale checkpoints —
+  and is a translation-memory miss for the sampling change — instead of silently
+  resuming output produced under the previous settings. A run that does not pass
+  these settings keeps the same key, so its existing memory stays valid.
 - Isolate runs by source game so two different games translated into the same
   `--out` (and therefore the same default work directory) no longer share
   checkpoints or translation memory. The resumable run signature now includes a

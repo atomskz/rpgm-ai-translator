@@ -42,27 +42,41 @@ export function defaultCheckpointPath(outPath: string): string {
 // a differing gameId trips the discard path so one game's output never bleeds
 // into another. It is empty for the unit-file commands (translate/review/repair)
 // that operate on a units.json rather than a game directory.
+//
+// `inputsHash` folds the remaining output-shaping settings that the per-result
+// source-equality gate cannot see: sampling (temperature, maxTokens, batchSize)
+// and, for the run pipeline, the extraction flags (includePlugins,
+// includeSpeakerNames, includeEventComments, dialogueMaxLength). Changing any of
+// them and re-running would otherwise resume translations produced under the old
+// settings; a differing inputsHash discards them instead.
 export type CheckpointSignature = {
   targetLanguage: string;
   provider: string;
   model: string;
   glossaryHash: string;
   gameId: string;
+  inputsHash: string;
 };
 
 export function checkpointSignature(
   providerName: string,
-  options: { targetLanguage?: string; model?: string },
+  options: { targetLanguage?: string; model?: string; temperature?: number; maxTokens?: number; batchSize?: number },
   glossary?: Glossary,
   characterGlossary?: CharacterGlossary,
-  context?: { gameId?: string }
+  context?: { gameId?: string; extractionFlagsHash?: string }
 ): CheckpointSignature {
   return {
     targetLanguage: options.targetLanguage ?? "",
     provider: providerName,
     model: options.model ?? "",
     glossaryHash: hashCacheKey({ glossary: glossary ?? null, characterGlossary: characterGlossary ?? null }),
-    gameId: context?.gameId ?? ""
+    gameId: context?.gameId ?? "",
+    inputsHash: hashCacheKey({
+      temperature: options.temperature ?? null,
+      maxTokens: options.maxTokens ?? null,
+      batchSize: options.batchSize ?? null,
+      extractionFlags: context?.extractionFlagsHash ?? ""
+    })
   };
 }
 
@@ -72,7 +86,8 @@ export function checkpointSignaturesEqual(a: CheckpointSignature, b: CheckpointS
     a.provider === b.provider &&
     a.model === b.model &&
     a.glossaryHash === b.glossaryHash &&
-    a.gameId === b.gameId
+    a.gameId === b.gameId &&
+    a.inputsHash === b.inputsHash
   );
 }
 
@@ -106,12 +121,18 @@ export async function readCheckpointSignatureFile(metaPath: string): Promise<Che
       typeof parsed.model === "string" &&
       typeof parsed.glossaryHash === "string"
     ) {
-      // gameId was added after the first signature format; a meta written before
-      // it is still valid and reads as an empty gameId (so an upgraded work dir
-      // resumes instead of being discarded as stale).
+      // gameId and inputsHash were added after the first signature format; a meta
+      // written before them stays valid and reads as empty so an upgraded work dir
+      // is handled by the normal equality check (an absent inputsHash differs from
+      // any computed one, so such a checkpoint is discarded once) rather than
+      // failing to parse.
       return {
         status: "ok",
-        signature: { ...(parsed as CheckpointSignature), gameId: typeof parsed.gameId === "string" ? parsed.gameId : "" }
+        signature: {
+          ...(parsed as CheckpointSignature),
+          gameId: typeof parsed.gameId === "string" ? parsed.gameId : "",
+          inputsHash: typeof parsed.inputsHash === "string" ? parsed.inputsHash : ""
+        }
       };
     }
   } catch {

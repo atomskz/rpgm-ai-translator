@@ -344,6 +344,36 @@ describe("run command", () => {
     expect(memory).not.toContain("Apple.");
   });
 
+  it("discards checkpoints when a sampling setting changes between runs", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-inputs-"));
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "out");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await mkdir(path.join(gamePath, "js"), { recursive: true });
+    await writeFile(path.join(gamePath, "js", "rpg_core.js"), "", "utf8");
+    await writeJson(path.join(gamePath, "data", "Map001.json"), {
+      displayName: "Town",
+      events: [null, { id: 1, name: "NPC", pages: [{ list: [{ code: 401, parameters: ["Hello."] }] }] }]
+    });
+
+    // First run stamps the signature at the default temperature.
+    await runCli(["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir], {
+      stdout: () => undefined,
+      stderr: () => undefined
+    });
+
+    // The same game/language but a different --temperature must not resume: the
+    // units and their sources are unchanged, so only the widened signature catches it.
+    const stderr: string[] = [];
+    const exitCode = await runCli(
+      ["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--temperature", "0.9"],
+      { stdout: () => undefined, stderr: (text) => stderr.push(text) }
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr.join("")).toContain("discarding stale checkpoints");
+  });
+
   it("estimates the token budget over unresumed units only", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-budget-"));
     const gamePath = path.join(root, "game");

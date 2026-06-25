@@ -173,7 +173,20 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   // (and therefore the same default work dir) cannot resume each other's
   // checkpoints or reuse each other's memory.
   const gameId = hashCacheKey({ projectPath: path.resolve(projectPath), engine: detected.engine });
-  const signature = checkpointSignature(providerName, providerOptions, glossary, characterGlossary, { gameId });
+  // Fold the extraction flags into the signature: they change which units exist
+  // and their constraints, but the per-result source check cannot see a flag flip
+  // (an unchanged dialogue line keeps its id/source even when its maxLength budget
+  // changed via --dialogue-max-length), so a flag change must discard the resume.
+  const extractionFlagsHash = hashCacheKey({
+    includePlugins: extractOptions.includePlugins ?? false,
+    includeSpeakerNames: extractOptions.includeSpeakerNames ?? false,
+    includeEventComments: extractOptions.includeEventComments ?? false,
+    dialogueMaxLength: extractOptions.dialogueMaxLength ?? null
+  });
+  const signature = checkpointSignature(providerName, providerOptions, glossary, characterGlossary, {
+    gameId,
+    extractionFlagsHash
+  });
   const previousSignature = await readCheckpointSignatureFile(checkpointMeta);
   // A non-empty stored gameId that differs means this work dir last served another
   // game; clear its memory too, not just the checkpoints (a pre-gameId meta reads
@@ -208,7 +221,7 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
     io.stderr(
       gameChanged
         ? "Warning: this output directory was last used for a different game; discarding its checkpoints and translation memory and starting fresh.\n"
-        : "Warning: run parameters (language/model/glossary) changed since the last run; discarding stale checkpoints and starting fresh.\n"
+        : "Warning: run parameters (language, model, sampling, glossary or extraction flags) changed since the last run; discarding stale checkpoints and starting fresh.\n"
     );
     await Promise.all([
       resetTranslationResultsJsonlFile(rawCheckpointPath),
