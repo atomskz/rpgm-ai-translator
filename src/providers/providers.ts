@@ -18,7 +18,7 @@
  */
 
 import type { LLMProvider } from "../core/types/types.js";
-import { DeepSeekProvider } from "./deepseek/deepseek.js";
+import { DeepSeekProvider } from "./deepseek/public-api.js";
 import { MockProvider } from "./mock.js";
 
 export type ProviderName = "mock" | "deepseek";

@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { applyFontPatch } from "../../engines/rpgmaker-mvmz/font.js";
+import { applyFontPatch } from "../../engines/rpgmaker-mvmz/public-api.js";
 import { readFontOptions, requireOption, requirePositional } from "../options/public-api.js";
 import type { CliIO } from "../types.js";
 

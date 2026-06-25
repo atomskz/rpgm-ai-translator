@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { MvMzEngineDetector } from "../../engines/rpgmaker-mvmz/detector.js";
+import { MvMzEngineDetector } from "../../engines/rpgmaker-mvmz/public-api.js";
 import { requirePositional } from "../options/public-api.js";
 import type { CliIO } from "../types.js";
 

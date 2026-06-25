@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { RpgMakerMvMzExtractor } from "../../engines/rpgmaker-mvmz/extractor.js";
+import { RpgMakerMvMzExtractor } from "../../engines/rpgmaker-mvmz/public-api.js";
 import { createReport } from "../../core/reports/public-api.js";
 import { writeTranslationUnitsFile } from "../../core/translation-units.js";
 import { maybeWriteReport } from "../file-utils.js";

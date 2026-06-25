@@ -17,15 +17,13 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { applyFontPatch } from "../../engines/rpgmaker-mvmz/font.js";
-import { writePatch } from "../../engines/rpgmaker-mvmz/patch/public-api.js";
+import { applyFontPatch, RpgMakerMvMzExtractor, writePatch } from "../../engines/rpgmaker-mvmz/public-api.js";
 import { readReportFile } from "../../core/reports/public-api.js";
 import {
   readTranslationResultsFile,
   readTranslationUnitsFile
 } from "../../core/translation-units.js";
 import { filterTranslationsWithoutValidationErrors } from "../../core/validators/public-api.js";
-import { RpgMakerMvMzExtractor } from "../../engines/rpgmaker-mvmz/extractor.js";
 import { readApplyOptions, readFontOptions, readOption, requirePositional, UsageError } from "../options/public-api.js";
 import type { CliIO } from "../types.js";
 

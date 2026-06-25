@@ -21,14 +21,17 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { loadGlossary } from "../../config/public-api.js";
 import { loadCharacterGlossary } from "../../config/public-api.js";
-import { MvMzEngineDetector } from "../../engines/rpgmaker-mvmz/detector.js";
-import { RpgMakerMvMzExtractor } from "../../engines/rpgmaker-mvmz/extractor.js";
-import { applyFontPatch } from "../../engines/rpgmaker-mvmz/font.js";
+import {
+  applyFontPatch,
+  assertPatchOutputOutsideGame,
+  MvMzEngineDetector,
+  RpgMakerMvMzExtractor,
+  writePatch
+} from "../../engines/rpgmaker-mvmz/public-api.js";
 import { estimateInputTokens, TokenBudget } from "../../core/cost.js";
 import { acquireDirectoryLock } from "../../core/locks.js";
 import { JsonlTranslationMemory } from "../../core/memory/public-api.js";
 import { translateWithMemory } from "../../core/memory/public-api.js";
-import { assertPatchOutputOutsideGame, writePatch } from "../../engines/rpgmaker-mvmz/patch/public-api.js";
 import { repairTranslations } from "../../core/pipeline/public-api.js";
 import { createReport, summarizeReport, writeReportFile } from "../../core/reports/public-api.js";
 import { reviewTranslations } from "../../core/pipeline/public-api.js";
