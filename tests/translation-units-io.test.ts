@@ -34,6 +34,20 @@ describe("translation unit import/export", () => {
     expect(JSON.parse(await readFile(filePath, "utf8"))).toEqual(units);
   });
 
+  it("reports an actionable error when a units file path does not exist", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-tu-missing-"));
+    await expect(readTranslationUnitsFile(path.join(root, "nope.json"))).rejects.toThrow(
+      /Could not read units file '.*nope\.json': file not found/
+    );
+  });
+
+  it("reports an actionable error when a translations file path does not exist", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-tr-missing-"));
+    await expect(readTranslationResultsFile(path.join(root, "nope.json"))).rejects.toThrow(
+      /Could not read translations file '.*nope\.json': file not found/
+    );
+  });
+
   it("loads a well-formed units file including placeholders and constraints", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-tu-load-"));
     const filePath = path.join(root, "units.json");

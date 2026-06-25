@@ -47,6 +47,10 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Report an actionable error when a `units` or `translations` file passed to
+  `translate`/`review`/`repair`/`validate`/`apply` does not exist, naming the file
+  (`Could not read units file '<path>': file not found.`) instead of surfacing a
+  raw `ENOENT`, matching the scoped errors the config/glossary loaders already give.
 - Make the `--max-tokens-budget` pre-flight check meaningful. The estimate counted
   only source characters (input), but the budget trips on the provider's reported
   *total* (input + output) tokens, so the two disagreed by a large multiplier and

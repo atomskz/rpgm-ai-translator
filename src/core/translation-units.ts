@@ -118,8 +118,25 @@ export async function readTranslationResultsJsonlFile(filePath: string): Promise
     });
 }
 
+// Wrap readFile so a mistyped path gives an actionable message naming the file
+// and what it was expected to be, instead of a raw ENOENT — matching the scoped
+// errors the config/glossary/character loaders already produce.
+async function readUtf8FileOrThrow(filePath: string, label: string): Promise<string> {
+  try {
+    return await readFile(filePath, "utf8");
+  } catch (error: unknown) {
+    const detail =
+      error instanceof Error && (error as NodeJS.ErrnoException).code === "ENOENT"
+        ? "file not found"
+        : error instanceof Error
+          ? error.message
+          : String(error);
+    throw new Error(`Could not read ${label} '${filePath}': ${detail}.`, { cause: error });
+  }
+}
+
 export async function readTranslationUnitsFile(filePath: string): Promise<TranslationUnit[]> {
-  const raw = await readFile(filePath, "utf8");
+  const raw = await readUtf8FileOrThrow(filePath, "units file");
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -147,7 +164,7 @@ export async function readTranslationUnitsFile(filePath: string): Promise<Transl
 }
 
 export async function readTranslationResultsFile(filePath: string): Promise<TranslationResult[]> {
-  const raw = await readFile(filePath, "utf8");
+  const raw = await readUtf8FileOrThrow(filePath, "translations file");
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
