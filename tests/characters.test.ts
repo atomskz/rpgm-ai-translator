@@ -3,7 +3,7 @@ import {
   candidatesToDraftGlossary,
   extractCharacterCandidates,
   inferCharacterGlossary
-} from "../src/core/pipeline/characters.js";
+} from "../src/core/pipeline/public-api.js";
 import { TokenBudget } from "../src/core/cost.js";
 import type { LLMProvider, TranslationUnit } from "../src/core/types/types.js";
 

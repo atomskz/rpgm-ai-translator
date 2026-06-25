@@ -2,8 +2,8 @@ import { mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
-import { JsonlTranslationMemory } from "../src/core/memory/jsonl.js";
-import { translateWithMemory } from "../src/core/memory/translate.js";
+import { JsonlTranslationMemory } from "../src/core/memory/public-api.js";
+import { translateWithMemory } from "../src/core/memory/public-api.js";
 import { hashSource } from "../src/core/utils/hash.js";
 import type { LLMProvider, TranslateOptions, TranslationResult, TranslationUnit } from "../src/core/types/types.js";
 

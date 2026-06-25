@@ -21,7 +21,7 @@ import {
   candidatesToDraftGlossary,
   extractCharacterCandidates,
   inferCharacterGlossary
-} from "../../core/pipeline/characters.js";
+} from "../../core/pipeline/public-api.js";
 import {
   readTranslationResultsFile,
   readTranslationUnitsFile

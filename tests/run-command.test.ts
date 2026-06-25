@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli/app.js";
 import { RpgMakerMvMzExtractor } from "../src/engines/rpgmaker-mvmz/extractor.js";
-import { translationCacheKey } from "../src/core/memory/translate.js";
-import type { MemoryEntry } from "../src/core/memory/types.js";
+import { translationCacheKey } from "../src/core/memory/public-api.js";
+import type { MemoryEntry } from "../src/core/memory/public-api.js";
 import { hashSource } from "../src/core/utils/hash.js";
 
 async function seedBrokenProfileMemory(

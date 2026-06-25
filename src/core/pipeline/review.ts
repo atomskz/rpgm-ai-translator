@@ -27,10 +27,10 @@ import type {
   ValidationIssue
 } from "../types/types.js";
 import { splitBatch } from "../batching.js";
-import { summarizeBatchFailures } from "../reports/failures.js";
+import { summarizeBatchFailures } from "../reports/public-api.js";
 import { isRetryableProviderError, withProviderRetry } from "../retry.js";
 import { collectRevalidatedBatch } from "./revalidation.js";
-import { DefaultValidator, introducedErrorCode } from "../validators/validators.js";
+import { DefaultValidator, introducedErrorCode } from "../validators/public-api.js";
 
 export type ReviewPassResult = {
   translations: TranslationResult[];

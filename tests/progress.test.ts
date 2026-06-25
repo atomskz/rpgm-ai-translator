@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createProgressLogger } from "../src/cli/progress.js";
-import { summarizeBatchFailures } from "../src/core/reports/failures.js";
+import { summarizeBatchFailures } from "../src/core/reports/public-api.js";
 import type { CliIO } from "../src/cli/types.js";
 import type { TranslationResult } from "../src/core/types/types.js";
 

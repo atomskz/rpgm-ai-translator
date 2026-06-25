@@ -26,12 +26,12 @@ import { RpgMakerMvMzExtractor } from "../../engines/rpgmaker-mvmz/extractor.js"
 import { applyFontPatch } from "../../engines/rpgmaker-mvmz/font.js";
 import { estimateInputTokens, TokenBudget } from "../../core/cost.js";
 import { acquireDirectoryLock } from "../../core/locks.js";
-import { JsonlTranslationMemory } from "../../core/memory/jsonl.js";
-import { translateWithMemory } from "../../core/memory/translate.js";
+import { JsonlTranslationMemory } from "../../core/memory/public-api.js";
+import { translateWithMemory } from "../../core/memory/public-api.js";
 import { assertPatchOutputOutsideGame, writePatch } from "../../engines/rpgmaker-mvmz/patch-writer.js";
-import { repairTranslations } from "../../core/pipeline/repair.js";
-import { createReport, summarizeReport, writeReportFile } from "../../core/reports/reports.js";
-import { reviewTranslations } from "../../core/pipeline/review.js";
+import { repairTranslations } from "../../core/pipeline/public-api.js";
+import { createReport, summarizeReport, writeReportFile } from "../../core/reports/public-api.js";
+import { reviewTranslations } from "../../core/pipeline/public-api.js";
 import {
   appendTranslationResultsJsonlFile,
   readTranslationResultsJsonlFile,
@@ -43,7 +43,7 @@ import {
   DefaultValidator,
   filterTranslationsWithoutValidationErrors,
   validateTranslationResults
-} from "../../core/validators/validators.js";
+} from "../../core/validators/public-api.js";
 import { createProvider } from "../../providers/public-api.js";
 import {
   assertProviderReady,

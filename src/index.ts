@@ -43,7 +43,7 @@ export {
   DefaultValidator,
   validateTranslationResults,
   filterTranslationsWithoutValidationErrors
-} from "./core/validators/validators.js";
+} from "./core/validators/public-api.js";
 export {
   REPORT_SCHEMA_VERSION,
   createReport,
@@ -53,7 +53,7 @@ export {
   reportUnitsFingerprint,
   summarizeReport,
   type ReportInput
-} from "./core/reports/reports.js";
+} from "./core/reports/public-api.js";
 
 // Translation-unit and result file I/O.
 export {
@@ -69,17 +69,17 @@ export {
 } from "./core/translation-units.js";
 
 // Translation memory and pipeline passes.
-export { JsonlTranslationMemory } from "./core/memory/jsonl.js";
-export { translateWithMemory } from "./core/memory/translate.js";
-export type { MemoryEntry, TranslationMemory } from "./core/memory/types.js";
-export { reviewTranslations, type ReviewPassResult } from "./core/pipeline/review.js";
-export { repairTranslations, type RepairOptions, type RepairResult } from "./core/pipeline/repair.js";
+export { JsonlTranslationMemory } from "./core/memory/public-api.js";
+export { translateWithMemory } from "./core/memory/public-api.js";
+export type { MemoryEntry, TranslationMemory } from "./core/memory/public-api.js";
+export { reviewTranslations, type ReviewPassResult } from "./core/pipeline/public-api.js";
+export { repairTranslations, type RepairOptions, type RepairResult } from "./core/pipeline/public-api.js";
 export {
   extractCharacterCandidates,
   inferCharacterGlossary,
   candidatesToDraftGlossary,
   type CharacterExtractionOptions
-} from "./core/pipeline/characters.js";
+} from "./core/pipeline/public-api.js";
 
 // Providers.
 export { MockProvider } from "./providers/public-api.js";

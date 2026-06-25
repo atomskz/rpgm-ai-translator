@@ -5,7 +5,7 @@ import {
   filterTranslationsWithoutValidationErrors,
   introducedErrorCode,
   validateTranslationResults
-} from "../src/core/validators/validators.js";
+} from "../src/core/validators/public-api.js";
 import type { Glossary, TranslationResult, TranslationUnit, ValidationIssue } from "../src/core/types/types.js";
 
 describe("DefaultValidator", () => {

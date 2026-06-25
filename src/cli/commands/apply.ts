@@ -19,12 +19,12 @@
 
 import { applyFontPatch } from "../../engines/rpgmaker-mvmz/font.js";
 import { writePatch } from "../../engines/rpgmaker-mvmz/patch-writer.js";
-import { readReportFile } from "../../core/reports/reports.js";
+import { readReportFile } from "../../core/reports/public-api.js";
 import {
   readTranslationResultsFile,
   readTranslationUnitsFile
 } from "../../core/translation-units.js";
-import { filterTranslationsWithoutValidationErrors } from "../../core/validators/validators.js";
+import { filterTranslationsWithoutValidationErrors } from "../../core/validators/public-api.js";
 import { RpgMakerMvMzExtractor } from "../../engines/rpgmaker-mvmz/extractor.js";
 import { readApplyOptions, readFontOptions, readOption, requirePositional, UsageError } from "../options.js";
 import type { CliIO } from "../types.js";

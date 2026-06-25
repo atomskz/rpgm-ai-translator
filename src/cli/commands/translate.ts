@@ -18,9 +18,9 @@
  */
 
 import { estimateInputTokens, TokenBudget } from "../../core/cost.js";
-import { JsonlTranslationMemory } from "../../core/memory/jsonl.js";
-import { translateWithMemory } from "../../core/memory/translate.js";
-import { createReport } from "../../core/reports/reports.js";
+import { JsonlTranslationMemory } from "../../core/memory/public-api.js";
+import { translateWithMemory } from "../../core/memory/public-api.js";
+import { createReport } from "../../core/reports/public-api.js";
 import {
   appendTranslationResultsJsonlFile,
   readTranslationUnitsFile,

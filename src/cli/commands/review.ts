@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { reviewTranslations } from "../../core/pipeline/review.js";
+import { reviewTranslations } from "../../core/pipeline/public-api.js";
 import {
   appendTranslationResultsJsonlFile,
   readTranslationResultsFile,

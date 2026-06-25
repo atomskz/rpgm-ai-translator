@@ -18,7 +18,7 @@
  */
 
 import { RpgMakerMvMzExtractor } from "../../engines/rpgmaker-mvmz/extractor.js";
-import { createReport } from "../../core/reports/reports.js";
+import { createReport } from "../../core/reports/public-api.js";
 import { writeTranslationUnitsFile } from "../../core/translation-units.js";
 import { maybeWriteReport } from "../file-utils.js";
 import { readExtractOptions, readOption, requirePositional } from "../options.js";

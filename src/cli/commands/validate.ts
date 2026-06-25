@@ -17,12 +17,12 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { createReport, summarizeReport, writeReportFile } from "../../core/reports/reports.js";
+import { createReport, summarizeReport, writeReportFile } from "../../core/reports/public-api.js";
 import {
   readTranslationResultsFile,
   readTranslationUnitsFile
 } from "../../core/translation-units.js";
-import { DefaultValidator, validateTranslationResults } from "../../core/validators/validators.js";
+import { DefaultValidator, validateTranslationResults } from "../../core/validators/public-api.js";
 import { loadGlossary } from "../../config/public-api.js";
 import { readOption, requirePositional } from "../options.js";
 import type { CliIO } from "../types.js";
