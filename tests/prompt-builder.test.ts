@@ -172,6 +172,29 @@ describe("prompt builder", () => {
     expect(JSON.parse(messages[1].content)).not.toHaveProperty("characters");
   });
 
+  it("instructs the review/repair pass to act on supplied validationIssues", () => {
+    const withIssues = buildReviewMessages(
+      [
+        {
+          id: "Map001.events.1.pages.0.list.1.parameters.0",
+          source: "I am ready.",
+          currentTranslation: "Я очень очень готов.",
+          category: "dialogue",
+          issues: [{ id: "Map001.events.1.pages.0.list.1.parameters.0", severity: "warning", code: "MAX_LENGTH_EXCEEDED", message: "Too long" }]
+        }
+      ],
+      { targetLanguage: "ru" }
+    )[0].content;
+    const withoutIssues = buildReviewMessages(
+      [{ id: "x", source: "Hi.", currentTranslation: "Привет.", category: "dialogue" }],
+      { targetLanguage: "ru" }
+    )[0].content;
+
+    expect(withIssues).toContain("validationIssues");
+    expect(withIssues).toContain("resolves all of them");
+    expect(withoutIssues).not.toContain("validationIssues");
+  });
+
   it("explains length constraints in the review prompt when a unit carries them", () => {
     const system = buildReviewMessages(
       [

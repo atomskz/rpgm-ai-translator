@@ -53,8 +53,23 @@ function characterGlossaryInstructions(): string[] {
   ];
 }
 
+// Tells review/repair to actually act on the per-unit validationIssues the payload
+// carries, instead of doing a cosmetic rewrite that re-trips the same rule. The
+// repair pass sends the exact violation, so naming it here makes repair converge.
+function validationIssueInstructions(): string[] {
+  return [
+    "Each unit may include validationIssues describing concrete problems with its currentTranslation (for example MAX_LENGTH_EXCEEDED, a missing placeholder, an altered number, or a glossary violation).",
+    "Read every listed issue and return a translation that resolves all of them, without introducing a new issue or breaking a constraint that currently passes. A cosmetic rewrite that re-trips the same rule is not acceptable."
+  ];
+}
+
 // Which optional instruction blocks a system prompt should include for a batch.
-export type PromptFeatures = { hasGlossary?: boolean; hasConstraints?: boolean; hasCharacters?: boolean };
+export type PromptFeatures = {
+  hasGlossary?: boolean;
+  hasConstraints?: boolean;
+  hasCharacters?: boolean;
+  hasIssues?: boolean;
+};
 
 export function buildTranslationSystemPrompt(targetLanguage: string, features: PromptFeatures = {}): string {
   return [
@@ -85,6 +100,7 @@ export function buildReviewSystemPrompt(targetLanguage: string, features: Prompt
     ...(features.hasGlossary ? glossaryModeInstructions() : []),
     ...(features.hasCharacters ? characterGlossaryInstructions() : []),
     ...(features.hasConstraints ? lengthConstraintInstructions() : []),
+    ...(features.hasIssues ? validationIssueInstructions() : []),
     "Return only valid JSON with a top-level translations array.",
     "Do not add explanations."
   ].join("\n");

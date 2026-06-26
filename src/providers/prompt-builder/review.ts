@@ -30,7 +30,8 @@ export function buildReviewMessages(batch: ReviewUnit[], options: ReviewOptions)
       role: "system",
       content: buildReviewSystemPrompt(options.targetLanguage, {
         hasGlossary: Object.keys(glossary).length > 0,
-        hasConstraints: batchHasLengthConstraints(batch)
+        hasConstraints: batchHasLengthConstraints(batch),
+        hasIssues: batch.some((unit) => (unit.issues?.length ?? 0) > 0)
       })
     },
     {

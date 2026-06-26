@@ -6,6 +6,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Changed
 
+- Instruct the review/repair pass to read and resolve the `validationIssues` the
+  payload already carries (it sent the exact violation but never told the model to
+  act on it), so repair fixes the named problem — `MAX_LENGTH_EXCEEDED`, a missing
+  placeholder, an altered number — instead of doing a cosmetic rewrite that
+  re-trips the same rule. Added only when a batch carries issues.
 - Inject the character glossary into the **first-pass** translate prompt (not only
   review), relevance-filtered to the speakers/names in each batch and capped per
   batch, so the first pass already uses the correct pronoun, display name and
