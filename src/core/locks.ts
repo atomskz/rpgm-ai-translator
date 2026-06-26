@@ -34,14 +34,13 @@ export type DirectoryLock = {
   releaseSync(): void;
 };
 
-// Acquire an exclusive lock on a directory for the duration of a run, so two
-// runs sharing the same work dir cannot interleave checkpoint/memory appends and
-// corrupt them. The lock is a single file created with O_EXCL; if it already
-// exists and its recorded pid is still alive, acquisition fails fast.
-export async function acquireDirectoryLock(dirPath: string): Promise<DirectoryLock> {
-  await mkdir(dirPath, { recursive: true });
-  const lockPath = path.join(dirPath, LOCK_FILENAME);
-  await createLockFile(lockPath);
+// Acquire an exclusive lock at an explicit lock-file path. The lock is a single
+// file created with O_EXCL; if it already exists and its recorded pid is still
+// alive, acquisition fails fast. `busyMessage` customizes the failure text so a
+// directory lock and a memory-file lock can each explain their own remedy.
+export async function acquireLockFile(lockPath: string, busyMessage?: string): Promise<DirectoryLock> {
+  await mkdir(path.dirname(lockPath), { recursive: true });
+  await createLockFile(lockPath, busyMessage);
   let released = false;
   return {
     async release() {
@@ -59,6 +58,34 @@ export async function acquireDirectoryLock(dirPath: string): Promise<DirectoryLo
       rmSync(lockPath, { force: true });
     }
   };
+}
+
+// Acquire an exclusive lock on a directory for the duration of a run, so two
+// runs sharing the same work dir cannot interleave checkpoint/memory appends and
+// corrupt them.
+export async function acquireDirectoryLock(dirPath: string): Promise<DirectoryLock> {
+  return acquireLockFile(path.join(dirPath, LOCK_FILENAME));
+}
+
+// Run `fn` while holding an exclusive lock at `lockPath`, releasing it afterwards —
+// and synchronously on SIGINT/SIGTERM. Used to serialize translation-memory writes
+// keyed on the memory file, so two processes sharing a --memory file cannot lose
+// each other's entries when one compacts the log.
+export async function withLockFile<T>(lockPath: string, busyMessage: string, fn: () => Promise<T>): Promise<T> {
+  const lock = await acquireLockFile(lockPath, busyMessage);
+  const onSignal = (signal: NodeJS.Signals): void => {
+    lock.releaseSync();
+    process.kill(process.pid, signal);
+  };
+  process.once("SIGINT", onSignal);
+  process.once("SIGTERM", onSignal);
+  try {
+    return await fn();
+  } finally {
+    process.removeListener("SIGINT", onSignal);
+    process.removeListener("SIGTERM", onSignal);
+    await lock.release();
+  }
 }
 
 // Run `fn` while holding an exclusive lock on `dirPath`, releasing it afterwards —
@@ -83,7 +110,7 @@ export async function withDirectoryLock<T>(dirPath: string, fn: () => Promise<T>
   }
 }
 
-async function createLockFile(lockPath: string): Promise<void> {
+async function createLockFile(lockPath: string, busyMessage?: string): Promise<void> {
   // A starting run may find a stale lock and reclaim it, and another starting run
   // can race for the same one. reclaimStaleLock elects a single winner, so loop a
   // bounded number of times: create, and on EEXIST either reclaim (if stale) or
@@ -105,8 +132,9 @@ async function createLockFile(lockPath: string): Promise<void> {
     await reclaimStaleLock(lockPath);
   }
   throw new Error(
-    `Another run is using '${path.dirname(lockPath)}' (lock file '${lockPath}'). ` +
-      "Wait for it to finish, pass a different --work-dir, or delete the lock file if no run is active."
+    busyMessage ??
+      `Another run is using '${path.dirname(lockPath)}' (lock file '${lockPath}'). ` +
+        "Wait for it to finish, pass a different --work-dir, or delete the lock file if no run is active."
   );
 }
 

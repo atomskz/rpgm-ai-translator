@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import { JsonlTranslationMemory } from "../src/core/memory/public-api.js";
 import { persistResultsToMemory, translateWithMemory } from "../src/core/memory/public-api.js";
+import type { MemoryEntry } from "../src/core/memory/public-api.js";
 import { hashSource } from "../src/core/utils/hash.js";
 import type { LLMProvider, TranslateOptions, TranslationResult, TranslationUnit } from "../src/core/types/public-api.js";
 
@@ -194,6 +195,43 @@ describe("translation memory", () => {
     expect(provider.calls).toEqual([["Actors.1.name", "Actors.3.name"]]);
     expect(firstRun.map((result) => result.translation)).toEqual(["[ru] Aria", "[ru] Aria", "[ru] Luna"]);
     expect(secondRun.every((result) => result.metadata?.fromMemory === true)).toBe(true);
+  });
+
+  it("does not lose a concurrent writer's entries when another instance compacts", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-memory-concurrent-"));
+    const file = path.join(root, "memory.jsonl");
+    const memEntry = (key: string, updatedAt: string): MemoryEntry => ({
+      source: key,
+      sourceHash: hashSource(key),
+      cacheKey: key,
+      translation: `[ru] ${key}`,
+      category: "name",
+      provider: "mock",
+      model: "mock",
+      status: "translated",
+      createdAt: updatedAt,
+      updatedAt
+    });
+    // Tiny thresholds so the next write compacts (rewrites the whole file).
+    const options = { compactionMinLines: 1, compactionGrowthFactor: 1 };
+    const a = new JsonlTranslationMemory(file, options);
+    const b = new JsonlTranslationMemory(file, options);
+
+    await a.upsert(memEntry("seed", "2026-01-01T00:00:00.000Z"));
+    await a.upsert(memEntry("seed", "2026-01-01T00:00:01.000Z")); // superseded line inflates physical count
+    await a.get("seed"); // prime A's cache, which becomes stale once B writes
+
+    // B is a separate "process": it appends an entry A's cache does not know about.
+    await b.upsert(memEntry("from-b", "2026-01-01T00:00:02.000Z"));
+
+    // A writes again and compacts; without the in-lock fresh read it would rewrite
+    // the file from its stale cache and drop B's entry.
+    await a.upsert(memEntry("from-a", "2026-01-01T00:00:03.000Z"));
+
+    const fresh = new JsonlTranslationMemory(file);
+    expect(await fresh.get("seed")).toBeDefined();
+    expect(await fresh.get("from-b")).toBeDefined();
+    expect(await fresh.get("from-a")).toBeDefined();
   });
 
   it("reuses reviewed text persisted to memory and reports it as reviewed", async () => {

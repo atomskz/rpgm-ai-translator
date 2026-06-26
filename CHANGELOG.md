@@ -128,6 +128,13 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Guard the translation-memory file against concurrent writers. Two processes
+  sharing one `--memory` file each held a private cached view, so the first to
+  cross the compaction threshold rewrote the whole file from its stale cache and
+  discarded the other's appended entries. Memory writes now serialize on a
+  per-file lock and re-read the file fresh inside the lock before appending or
+  compacting (last-`updatedAt` wins on a key touched by both), so no entries are
+  lost; a still-held lock from a live writer fails fast with a clear message.
 - Make a custom `--base-url` actually work with a generic OpenAI-compatible or
   local endpoint. The DeepSeek adapter always sent the proprietary `thinking`
   field, which a generic/local server rejects with a non-retryable 400, so

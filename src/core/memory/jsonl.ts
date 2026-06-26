@@ -19,6 +19,7 @@
 
 import { appendFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { withLockFile } from "../locks.js";
 import { writeFileAtomic } from "../utils/fs.js";
 import type { MemoryEntry, TranslationMemory } from "./types.js";
 
@@ -59,12 +60,32 @@ export class JsonlTranslationMemory implements TranslationMemory {
     if (entriesToUpsert.length === 0) {
       return;
     }
+    // Serialize writers on a per-file lock so two processes sharing this --memory
+    // file cannot lose each other's entries: a compaction rewrites the whole file,
+    // and without the lock a writer with a stale cache would drop another's appends.
+    await mkdir(path.dirname(this.filePath), { recursive: true });
+    await withLockFile(
+      `${this.filePath}.lock`,
+      `Another process is writing the translation memory '${this.filePath}'. ` +
+        "Wait for it to finish, or do not share the same --memory file across concurrent processes.",
+      () => this.upsertManyLocked(entriesToUpsert)
+    );
+  }
 
+  private async upsertManyLocked(entriesToUpsert: MemoryEntry[]): Promise<void> {
+    // Re-read fresh from disk inside the lock so a concurrent writer's appends are
+    // seen before we possibly rewrite the whole file during compaction.
+    this.cachedEntries = undefined;
     const entries = await this.readAll();
     const merged: MemoryEntry[] = [];
     for (const entry of entriesToUpsert) {
       const key = keyOf(entry);
       const existing = entries.get(key);
+      // Last-updatedAt wins: never clobber a concurrent writer's newer entry for the
+      // same key with an older one (ISO timestamps compare lexicographically).
+      if (existing && existing.updatedAt > entry.updatedAt) {
+        continue;
+      }
       const next: MemoryEntry = {
         ...entry,
         createdAt: existing?.createdAt ?? entry.createdAt,
@@ -72,6 +93,9 @@ export class JsonlTranslationMemory implements TranslationMemory {
       };
       entries.set(key, next);
       merged.push(next);
+    }
+    if (merged.length === 0) {
+      return;
     }
 
     // Compact when the log has grown well past the number of live entries;
