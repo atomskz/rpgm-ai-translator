@@ -121,6 +121,11 @@ const COMMAND_HELP: Record<string, CommandHelpMeta> = {
     usage: "patch-font <game> --out <dir> --font <file> [options]",
     summary: "Patch RPG Maker MZ font settings into an output folder."
   },
+  verify: {
+    usage: "verify <game> <patch-dir>",
+    summary: "Check a written patch against the game: re-parse each file and confirm it structurally matches.",
+    notes: ["Confirms the patch dir is outside the game, that each patch JSON/plugins.js parses, and that it overlays a matching game file. Exits non-zero on any mismatch."]
+  },
   run: {
     usage: "run <game> --out <dir> [options]",
     summary: "Full pipeline: detect, extract, translate, optional review, validate, optional repair, apply, optional font patch.",
@@ -295,6 +300,9 @@ Commands:
 
   patch-font <game>
       Patch RPG Maker MZ font settings in an output folder.
+
+  verify <game> <patch-dir>
+      Check a written patch against the game: re-parse and structurally match each file.
 
   run <game>
       Run the full pipeline: detect, extract, translate, optional review,

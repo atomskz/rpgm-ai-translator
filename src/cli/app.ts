@@ -37,6 +37,7 @@ import { reviewCommand } from "./commands/review.js";
 import { runCommand } from "./commands/run.js";
 import { translateCommand } from "./commands/translate.js";
 import { validateCommand } from "./commands/validate.js";
+import { verifyCommand } from "./commands/verify.js";
 import { loadProjectConfig } from "../config/public-api.js";
 import { mergeConfigIntoArgs } from "./config-args.js";
 import { commandHelp, commandUsage, helpText } from "./help.js";
@@ -66,6 +67,7 @@ const COMMANDS = new Map<string, CommandHandler>([
   ["repair", repairCommand],
   ["apply", applyCommand],
   ["patch-font", patchFontCommand],
+  ["verify", verifyCommand],
   ["run", runCommand]
 ]);
 

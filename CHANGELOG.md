@@ -60,6 +60,12 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Add a `verify` command (`verify <game> <patch-dir>`) that checks a written patch
+  against the game it overlays: it confirms the patch directory is outside the
+  game, re-parses each patch JSON / `plugins.js`, and confirms each one
+  structurally matches the corresponding game file (same top-level shape, same
+  array length / object keys, same plugin count, no orphan files). It exits
+  non-zero on any mismatch, so a shipped patch can be checked before distribution.
 - Add a `glossary` command. `glossary extract <units.json>` drafts a glossary by
   mining frequently recurring proper nouns from the units (capitalized words that
   never appear lowercased, so a sentence-initial common word is excluded), in

@@ -136,7 +136,8 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
     valueOptions: ["--out", "--font", "--number-font"],
     booleanFlags: [],
     maxPositionals: 1
-  }
+  },
+  verify: { valueOptions: [], booleanFlags: [], maxPositionals: 2 }
 };
 
 // Options accepted by every command. --config selects a project config file and
