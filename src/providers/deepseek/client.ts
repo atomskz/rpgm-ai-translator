@@ -18,7 +18,7 @@
  */
 
 import { DEFAULT_RETRY_ATTEMPTS, sleep } from "../../core/retry.js";
-import type { TranslateOptions } from "../../core/types/public-api.js";
+import type { ThinkingPreference, TranslateOptions } from "../../core/types/public-api.js";
 import {
   ChatCompletionProviderError,
   createHttpError,
@@ -80,8 +80,10 @@ export class DeepSeekClient implements ChatCompletionClient {
     pass: ChatCompletionPass
   ): Promise<ChatCompletionResponse> {
     const url = `${this.baseUrl}/chat/completions`;
-    // Only the review pass reasons; translate and characters answer directly.
-    const thinkingMode: DeepSeekThinkingMode = pass === "review" ? "enabled" : "disabled";
+    // Reasoning depends on the model's capability, not just the pass: a plain chat
+    // model (deepseek-chat) does not reason, so forcing thinking on its review pass
+    // wasted the 32k ceiling and dropped temperature. `--thinking on|off` overrides.
+    const thinkingMode = thinkingModeFor(model, pass, options.thinking);
     // A DeepSeek reasoning pass (thinking enabled) bills chain-of-thought against
     // max_tokens, so it needs a larger default. The openai dialect has no thinking
     // mode, so it never inflates the budget regardless of the requested pass.
@@ -160,6 +162,37 @@ export class DeepSeekClient implements ChatCompletionClient {
 
     throw lastError instanceof Error ? lastError : new Error(String(lastError));
   }
+}
+
+// Decide whether to reason on this request. An explicit --thinking on/off always
+// wins; "auto" (the default) reasons only on the review pass and only when the
+// model can reason, so a non-reasoning model keeps temperature and the plain token
+// ceiling on review instead of paying the reasoning defaults for no benefit.
+export function thinkingModeFor(
+  model: string,
+  pass: ChatCompletionPass,
+  preference: ThinkingPreference | undefined
+): DeepSeekThinkingMode {
+  if (preference === "on") {
+    return "enabled";
+  }
+  if (preference === "off") {
+    return "disabled";
+  }
+  return pass === "review" && isReasoningCapableModel(model) ? "enabled" : "disabled";
+}
+
+// DeepSeek model families that reason — `deepseek-reasoner`, and the hybrid V4
+// line (`deepseek-v4-*`, e.g. the default flash) and R1 — which can toggle the
+// `thinking` switch. A plain chat model (`deepseek-chat`, V3) cannot, so "auto"
+// leaves it off. An unrecognized model also defaults off; force it with
+// `--thinking on` when a custom reasoning model is in use.
+function isReasoningCapableModel(model: string): boolean {
+  const name = model.toLowerCase();
+  if (name.includes("chat")) {
+    return false;
+  }
+  return name.includes("reasoner") || name.includes("v4") || name.includes("r1");
 }
 
 function isRetryableStatus(status: number): boolean {

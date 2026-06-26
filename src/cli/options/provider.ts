@@ -24,7 +24,7 @@ import { UsageError } from "./usage-error.js";
 
 export type ProviderCliOptions = Pick<
   TranslateOptions,
-  "targetLanguage" | "model" | "batchSize" | "timeoutMs" | "temperature" | "maxTokens"
+  "targetLanguage" | "model" | "batchSize" | "timeoutMs" | "temperature" | "maxTokens" | "thinking"
 >;
 
 export type TranslateCliOptions = ProviderCliOptions & Pick<TranslateOptions, "retryAttempts" | "concurrency">;
@@ -110,8 +110,22 @@ export function readProviderCliOptions(args: string[]): ProviderCliOptions {
     batchSize: readPositiveIntegerOption(args, "--batch-size"),
     timeoutMs: readPositiveIntegerOption(args, "--timeout-ms"),
     temperature: readNumberOption(args, "--temperature", { min: 0, max: 2 }),
-    maxTokens: readPositiveIntegerOption(args, "--max-tokens")
+    maxTokens: readPositiveIntegerOption(args, "--max-tokens"),
+    thinking: readThinking(args)
   };
+}
+
+// Resolve --thinking. Unset returns undefined so the provider decides by pass and
+// model capability; "on"/"off" force reasoning, "auto" is the explicit default.
+function readThinking(args: string[]): "on" | "off" | "auto" | undefined {
+  const value = readOption(args, "--thinking");
+  if (value == null) {
+    return undefined;
+  }
+  if (value !== "on" && value !== "off" && value !== "auto") {
+    throw new UsageError("--thinking must be one of: on, off, auto");
+  }
+  return value;
 }
 
 export function readTranslateCliOptions(args: string[]): TranslateCliOptions {

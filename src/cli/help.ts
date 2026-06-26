@@ -143,6 +143,7 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--timeout-ms": "Provider request timeout in milliseconds.",
   "--temperature": "Provider sampling temperature (0..2). Ignored on the reasoning review/repair passes.",
   "--max-tokens": "Provider output token limit (DeepSeek: 8192, or 32000 for reasoning review/repair).",
+  "--thinking": "Reasoning mode: on, off, or auto (default; reason on review only for a reasoning-capable model).",
   "--max-tokens-budget": "Abort the run if estimated or used tokens exceed this budget.",
   "--retry-attempts": "Provider retry attempts for transient failures (timeout, network, rate limit, 5xx). Default: 2.",
   "--concurrency": "Translation batches to keep in flight at once. Default: 1 (serial).",
@@ -320,6 +321,13 @@ Common options:
   --max-tokens <n>
       Provider output token limit. DeepSeek default: 8192, or 32000 for the
       reasoning review/repair passes (chain-of-thought counts against this).
+
+  --thinking <on|off|auto>
+      DeepSeek reasoning mode. Default: auto, which reasons only on the review
+      pass and only for a reasoning-capable model (deepseek-reasoner or the
+      hybrid V4 line); a plain chat model keeps temperature and the 8192 ceiling.
+      Use on/off to force it (e.g. on for a custom reasoning model). No effect on
+      the openai dialect, which has no thinking mode.
 
   --retry-attempts <n>
       Provider retry attempts for transient failures (timeouts, network errors,

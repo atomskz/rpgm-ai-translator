@@ -40,6 +40,7 @@ export type ProjectConfig = {
   timeoutMs?: number;
   temperature?: number;
   maxTokens?: number;
+  thinking?: string;
   maxTokensBudget?: number;
   retryAttempts?: number;
   concurrency?: number;
@@ -94,6 +95,7 @@ export const CONFIG_FIELD_SPECS: readonly ConfigFieldSpec[] = [
   { key: "timeoutMs", flag: "--timeout-ms", type: "number" },
   { key: "temperature", flag: "--temperature", type: "number" },
   { key: "maxTokens", flag: "--max-tokens", type: "number" },
+  { key: "thinking", flag: "--thinking", type: "string" },
   { key: "maxTokensBudget", flag: "--max-tokens-budget", type: "number" },
   { key: "retryAttempts", flag: "--retry-attempts", type: "number" },
   { key: "concurrency", flag: "--concurrency", type: "number" },

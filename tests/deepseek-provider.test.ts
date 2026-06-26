@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DeepSeekProvider } from "../src/providers/deepseek/public-api.js";
-import { backoffDelay, retryAfterMs } from "../src/providers/deepseek/client.js";
+import { backoffDelay, retryAfterMs, thinkingModeFor } from "../src/providers/deepseek/client.js";
 import { aggregateTokenUsage } from "../src/core/cost.js";
 import type { TranslationUnit } from "../src/core/types/public-api.js";
 
@@ -439,6 +439,72 @@ describe("DeepSeekProvider", () => {
     expect(bodies[0].max_tokens).toBe(5000);
   });
 
+  it("does not reason on a non-reasoning model, even on the review pass", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      fetchFn: async (_url, init) => {
+        bodies.push(JSON.parse(init.body));
+        return response(200, {
+          choices: [{ message: { content: JSON.stringify({ translations: [{ id: "Actors.1.name", translation: "Ария" }] }) } }]
+        });
+      }
+    });
+
+    await provider.reviewBatch(
+      [{ id: "Actors.1.name", source: "Aria", currentTranslation: "Ария", category: "name" }],
+      { targetLanguage: "ru", model: "deepseek-chat" }
+    );
+
+    // deepseek-chat (V3) does not reason: thinking stays off, temperature is kept,
+    // and the token ceiling is the plain default rather than the 32k reasoning one.
+    expect(bodies[0].thinking).toEqual({ type: "disabled" });
+    expect(bodies[0].temperature).toBe(0.3);
+    expect(bodies[0].max_tokens).toBe(8192);
+  });
+
+  it("--thinking off forces a reasoning-capable model off on the review pass", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      fetchFn: async (_url, init) => {
+        bodies.push(JSON.parse(init.body));
+        return response(200, {
+          choices: [{ message: { content: JSON.stringify({ translations: [{ id: "Actors.1.name", translation: "Ария" }] }) } }]
+        });
+      }
+    });
+
+    await provider.reviewBatch(
+      [{ id: "Actors.1.name", source: "Aria", currentTranslation: "Ария", category: "name" }],
+      { targetLanguage: "ru", thinking: "off" }
+    );
+
+    expect(bodies[0].thinking).toEqual({ type: "disabled" });
+    expect(bodies[0].temperature).toBe(0.3);
+    expect(bodies[0].max_tokens).toBe(8192);
+  });
+
+  it("--thinking on forces reasoning on the translate pass", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      fetchFn: async (_url, init) => {
+        bodies.push(JSON.parse(init.body));
+        return response(200, {
+          choices: [{ message: { content: JSON.stringify({ translations: [{ id: "Actors.1.name", translation: "Ария" }] }) } }]
+        });
+      }
+    });
+
+    await provider.translateBatch([unit()], { targetLanguage: "ru", thinking: "on" });
+
+    expect(bodies[0].thinking).toEqual({ type: "enabled" });
+    // A forced reasoning pass omits temperature and gets the larger token ceiling.
+    expect(bodies[0].temperature).toBeUndefined();
+    expect(bodies[0].max_tokens).toBe(32000);
+  });
+
   it("returns per-unit failures when the API key is missing", async () => {
     const provider = new DeepSeekProvider({ apiKey: "" });
 
@@ -632,6 +698,27 @@ describe("DeepSeekProvider", () => {
     // retryAttempts: 0 disables retries even though the client default is higher.
     expect(calls).toBe(1);
     expect(results[0].status).toBe("failed");
+  });
+});
+
+describe("thinkingModeFor", () => {
+  it("reasons on review only for a reasoning-capable model in auto mode", () => {
+    expect(thinkingModeFor("deepseek-v4-flash", "review", undefined)).toBe("enabled");
+    expect(thinkingModeFor("deepseek-reasoner", "review", "auto")).toBe("enabled");
+    expect(thinkingModeFor("deepseek-r1", "review", undefined)).toBe("enabled");
+    // A plain chat model and an unrecognized model do not reason in auto mode.
+    expect(thinkingModeFor("deepseek-chat", "review", undefined)).toBe("disabled");
+    expect(thinkingModeFor("local-llama", "review", undefined)).toBe("disabled");
+  });
+
+  it("never reasons on the translate or characters pass in auto mode", () => {
+    expect(thinkingModeFor("deepseek-v4-flash", "translate", undefined)).toBe("disabled");
+    expect(thinkingModeFor("deepseek-reasoner", "characters", undefined)).toBe("disabled");
+  });
+
+  it("lets an explicit preference override pass and model", () => {
+    expect(thinkingModeFor("deepseek-chat", "translate", "on")).toBe("enabled");
+    expect(thinkingModeFor("deepseek-reasoner", "review", "off")).toBe("disabled");
   });
 });
 

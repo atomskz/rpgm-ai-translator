@@ -43,7 +43,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   init: { valueOptions: ["--out"], booleanFlags: ["--force"], maxPositionals: 0 },
   doctor: {
     valueOptions: [
-      "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature", "--max-tokens"
+      "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature", "--max-tokens", "--thinking"
     ],
     booleanFlags: [],
     maxPositionals: 1
@@ -56,7 +56,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   status: {
     valueOptions: [
       "--out", "--work-dir", "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size",
-      "--timeout-ms", "--temperature", "--max-tokens", "--glossary", "--characters", "--dialogue-max-length"
+      "--timeout-ms", "--temperature", "--max-tokens", "--thinking", "--glossary", "--characters", "--dialogue-max-length"
     ],
     booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--include-notes"],
     maxPositionals: 1
@@ -75,7 +75,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   translate: {
     valueOptions: [
       "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
-      "--max-tokens", "--max-tokens-budget", "--retry-attempts", "--concurrency", "--out", "--checkpoint", "--report", "--memory", "--glossary"
+      "--max-tokens", "--thinking", "--max-tokens-budget", "--retry-attempts", "--concurrency", "--out", "--checkpoint", "--report", "--memory", "--glossary"
     ],
     booleanFlags: [],
     maxPositionals: 1
@@ -83,7 +83,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   characters: {
     valueOptions: [
       "--out", "--translations", "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size",
-      "--timeout-ms", "--temperature", "--max-tokens", "--max-tokens-budget"
+      "--timeout-ms", "--temperature", "--max-tokens", "--thinking", "--max-tokens-budget"
     ],
     booleanFlags: ["--draft-only", "--include-mentions"],
     // <units.json> [translations.json]; --translations is a deprecated alias for
@@ -93,7 +93,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   review: {
     valueOptions: [
       "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
-      "--max-tokens", "--out", "--checkpoint", "--glossary", "--characters"
+      "--max-tokens", "--thinking", "--out", "--checkpoint", "--glossary", "--characters"
     ],
     booleanFlags: [],
     maxPositionals: 2
@@ -106,7 +106,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   repair: {
     valueOptions: [
       "--report", "--out", "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size", "--timeout-ms",
-      "--temperature", "--max-tokens", "--checkpoint", "--glossary", "--characters", "--codes", "--attempts"
+      "--temperature", "--max-tokens", "--thinking", "--checkpoint", "--glossary", "--characters", "--codes", "--attempts"
     ],
     booleanFlags: [],
     maxPositionals: 2,
@@ -123,7 +123,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   run: {
     valueOptions: [
       "--out", "--work-dir", "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
-      "--max-tokens", "--max-tokens-budget", "--retry-attempts", "--concurrency", "--memory", "--glossary", "--characters", "--from-translations", "--repair-attempts",
+      "--max-tokens", "--thinking", "--max-tokens-budget", "--retry-attempts", "--concurrency", "--memory", "--glossary", "--characters", "--from-translations", "--repair-attempts",
       "--repair-codes", "--font", "--number-font", "--mode", "--backup", "--dialogue-max-length", "--price-per-1k"
     ],
     booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--include-notes", "--review", "--repair", "--dry-run", "--force"],

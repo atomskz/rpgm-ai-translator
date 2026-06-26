@@ -54,6 +54,11 @@ export type ApplyResult = {
   backupDir?: string;
 };
 
+// Whether the provider should reason (DeepSeek "thinking") on a pass. "auto"
+// (default) reasons only on the review pass and only for a reasoning-capable
+// model; "on"/"off" force it. Has no effect on a dialect without a thinking mode.
+export type ThinkingPreference = "on" | "off" | "auto";
+
 export type TranslateOptions = {
   sourceLanguage?: string;
   targetLanguage: string;
@@ -63,6 +68,9 @@ export type TranslateOptions = {
   timeoutMs?: number;
   temperature?: number;
   maxTokens?: number;
+  // Reasoning preference. When unset the dialect decides (review pass + a
+  // reasoning-capable model); "on"/"off" force it regardless of pass/model.
+  thinking?: ThinkingPreference;
   batchSize?: number;
   // Number of translation batches to keep in flight at once. Default 1 (serial).
   // Higher values dispatch several provider requests concurrently; the per-batch

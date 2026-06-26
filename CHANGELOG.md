@@ -4,6 +4,17 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- Add `--thinking on|off|auto` (config `thinking`) to control DeepSeek reasoning.
+  Reasoning is now decided by the model's capability rather than only the pass:
+  in the default `auto` mode the review pass reasons only for a reasoning-capable
+  model (`deepseek-reasoner` or the hybrid V4 line), so a plain chat model
+  (`deepseek-chat`) no longer pays the 32000-token reasoning ceiling and keeps
+  `temperature` on review. `on`/`off` force it (for example `on` for a custom
+  reasoning model whose name is not recognized). It has no effect on the openai
+  dialect, which has no thinking mode.
+
 ### Internal
 
 - Extract a provider-neutral OpenAI-compatible chat-completion base
