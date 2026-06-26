@@ -2,7 +2,7 @@
 
 All notable changes to `rpgm-ai-translator` are documented in this file.
 
-## Unreleased
+## 0.1.9 - 2026-06-26
 
 ### Internal
 
