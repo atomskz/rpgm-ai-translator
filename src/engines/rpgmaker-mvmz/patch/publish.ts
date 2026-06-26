@@ -20,7 +20,7 @@
 import { copyFile, mkdir, realpath, rm } from "node:fs/promises";
 import path from "node:path";
 import type { ApplyOptions, ApplyResult } from "../../../core/types/public-api.js";
-import { pathExists } from "../../../core/utils/fs.js";
+import { isNonEmptyDirectory, pathExists } from "../../../core/utils/fs.js";
 import {
   atomicReplaceFile,
   createSiblingTempDir,
@@ -124,6 +124,15 @@ export async function writeInPlaceFiles(
   options: ApplyOptions
 ): Promise<ApplyResult> {
   const backupDir = path.resolve(options.backupDir ?? path.join(root, `.rpgm-ai-translator-backup-${timestamp()}`));
+  // An explicit --backup is published with a whole-directory rename-swap, which
+  // replaces whatever was there. Refuse a non-empty explicit backup dir so the swap
+  // cannot silently discard its existing contents; the default timestamped backup is
+  // always fresh and so never trips this.
+  if (options.backupDir != null && (await isNonEmptyDirectory(backupDir))) {
+    throw new Error(
+      `Backup directory '${options.backupDir}' is not empty. In-place mode replaces the backup directory with a rename-swap, which would discard its contents; choose an empty or new directory.`
+    );
+  }
   const realRoot = await realpath(root).catch(() => root);
   const stagingDir = await createSiblingTempDir(root, "staging");
   const backupStagingDir = await createSiblingTempDir(backupDir, "backup");

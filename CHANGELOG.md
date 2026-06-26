@@ -22,6 +22,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Refuse an explicit in-place `--backup` directory that is not empty. In-place mode
+  publishes the backup with a whole-directory rename-swap, which would discard
+  whatever was already in an explicitly named backup directory; it now errors
+  instead, telling you to choose an empty or new directory. The default timestamped
+  backup is always fresh and so is unaffected.
 - Re-check that a patch file's parent directory still resolves inside the output
   directory immediately before writing it, so a directory symlink planted under
   the patch `--out` (a subfolder swapped to point elsewhere) can no longer
