@@ -26,7 +26,7 @@ export type ProviderCliOptions = Pick<
   "targetLanguage" | "model" | "batchSize" | "timeoutMs" | "temperature" | "maxTokens"
 >;
 
-export type TranslateCliOptions = ProviderCliOptions & Pick<TranslateOptions, "retryAttempts">;
+export type TranslateCliOptions = ProviderCliOptions & Pick<TranslateOptions, "retryAttempts" | "concurrency">;
 
 const SUPPORTED_PROVIDERS = ["mock", "deepseek"] as const;
 
@@ -114,6 +114,7 @@ export function readProviderCliOptions(args: string[]): ProviderCliOptions {
 export function readTranslateCliOptions(args: string[]): TranslateCliOptions {
   return {
     ...readProviderCliOptions(args),
-    retryAttempts: readNonNegativeIntegerOption(args, "--retry-attempts")
+    retryAttempts: readNonNegativeIntegerOption(args, "--retry-attempts"),
+    concurrency: readPositiveIntegerOption(args, "--concurrency")
   };
 }

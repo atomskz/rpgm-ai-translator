@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { JsonlTranslationMemory } from "../src/core/memory/public-api.js";
 import { persistResultsToMemory, translateWithMemory } from "../src/core/memory/public-api.js";
 import type { MemoryEntry } from "../src/core/memory/public-api.js";
+import { appendTranslationResultsJsonlFile } from "../src/core/translation-units.js";
 import { hashSource } from "../src/core/utils/hash.js";
 import type { LLMProvider, TranslateOptions, TranslationResult, TranslationUnit } from "../src/core/types/public-api.js";
 
@@ -358,6 +359,37 @@ describe("translation memory", () => {
     });
   });
 
+  it("translates batches concurrently while keeping results and checkpoint correct", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-memory-concurrency-"));
+    const memory = new JsonlTranslationMemory(path.join(root, "memory.jsonl"));
+    const checkpoint = path.join(root, "checkpoint.jsonl");
+    const provider = new InFlightProvider();
+    const units = Array.from({ length: 6 }, (_, index) => unit(`Actors.${index}.name`, `Name${index}`));
+
+    const results = await translateWithMemory(
+      units,
+      provider,
+      {
+        targetLanguage: "ru",
+        batchSize: 1,
+        concurrency: 3,
+        onBatchResults: async (batchResults) => {
+          await appendTranslationResultsJsonlFile(checkpoint, batchResults);
+        }
+      },
+      memory
+    );
+
+    // Results stay in unit order and all translate, even though batches overlapped.
+    expect(results.map((result) => result.id)).toEqual(units.map((unit) => unit.id));
+    expect(results.every((result) => result.status === "translated")).toBe(true);
+    // The provider actually saw more than one batch in flight at once.
+    expect(provider.maxInFlight).toBeGreaterThan(1);
+    // The serialized append hook wrote every batch's result with no corruption.
+    const lines = (await readFile(checkpoint, "utf8")).trim().split(/\r?\n/).filter(Boolean);
+    expect(lines).toHaveLength(6);
+  });
+
   it("does not retry a non-retryable provider error", async () => {
     const provider = new AuthFailingProvider();
 
@@ -402,6 +434,26 @@ class CountingProvider implements LLMProvider {
       translation: `[${options.targetLanguage}] ${unit.normalizedSource ?? unit.source}`,
       provider: this.name,
       model: "counting",
+      status: "translated"
+    }));
+  }
+}
+
+class InFlightProvider extends CountingProvider {
+  inFlight = 0;
+  maxInFlight = 0;
+
+  override async translateBatch(batch: TranslationUnit[], options: TranslateOptions): Promise<TranslationResult[]> {
+    this.inFlight += 1;
+    this.maxInFlight = Math.max(this.maxInFlight, this.inFlight);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    this.inFlight -= 1;
+    return batch.map((unit) => ({
+      id: unit.id,
+      source: unit.source,
+      translation: `[${options.targetLanguage}] ${unit.normalizedSource ?? unit.source}`,
+      provider: this.name,
+      model: "in-flight",
       status: "translated"
     }));
   }

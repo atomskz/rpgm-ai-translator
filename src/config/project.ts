@@ -42,6 +42,7 @@ export type ProjectConfig = {
   maxTokens?: number;
   maxTokensBudget?: number;
   retryAttempts?: number;
+  concurrency?: number;
   out?: string;
   workDir?: string;
   memory?: string;
@@ -94,6 +95,7 @@ export const CONFIG_FIELD_SPECS: readonly ConfigFieldSpec[] = [
   { key: "maxTokens", flag: "--max-tokens", type: "number" },
   { key: "maxTokensBudget", flag: "--max-tokens-budget", type: "number" },
   { key: "retryAttempts", flag: "--retry-attempts", type: "number" },
+  { key: "concurrency", flag: "--concurrency", type: "number" },
   // `out` means the patch output directory for these commands; for the manual
   // pipeline (extract/translate/validate/review/repair/characters) it is a
   // different artifact each, so config does not inject it there — pass --out

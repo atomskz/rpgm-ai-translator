@@ -40,6 +40,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Add `--concurrency <n>` (config `concurrency`) to translate several translation
+  batches at once for `translate` and `run` (default 1, i.e. unchanged serial
+  behavior). Provider requests overlap up to the limit, while the per-batch
+  checkpoint append and token-budget check are serialized so they cannot race, and
+  an over-budget run still aborts cleanly mid-flight.
 - Add a `clean` command for safe recovery from a crashed or abandoned run: it
   removes the work-dir checkpoints and the run lock by default (preserving the
   translation memory), with `--with-memory`/`--all` to also remove memory,

@@ -63,6 +63,10 @@ export type TranslateOptions = {
   temperature?: number;
   maxTokens?: number;
   batchSize?: number;
+  // Number of translation batches to keep in flight at once. Default 1 (serial).
+  // Higher values dispatch several provider requests concurrently; the per-batch
+  // checkpoint append and token-budget check are serialized so they cannot race.
+  concurrency?: number;
   retryAttempts?: number;
   retryDelayMs?: number;
   onProgress?: (event: TranslationProgressEvent) => void;

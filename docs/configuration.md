@@ -57,6 +57,7 @@ Keys mirror the CLI flag names (camelCase). All are optional.
 | `maxTokens` | `--max-tokens` | number |
 | `maxTokensBudget` | `--max-tokens-budget` | number |
 | `retryAttempts` | `--retry-attempts` | number |
+| `concurrency` | `--concurrency` | number |
 | `out` | `--out` | string (only `run`/`apply`/`patch-font`) |
 | `workDir` | `--work-dir` | string |
 | `memory` | `--memory` | string |

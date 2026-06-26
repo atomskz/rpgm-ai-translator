@@ -140,6 +140,7 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--max-tokens": "Provider output token limit (DeepSeek: 8192, or 32000 for reasoning review/repair).",
   "--max-tokens-budget": "Abort the run if estimated or used tokens exceed this budget.",
   "--retry-attempts": "Provider retry attempts for transient failures (timeout, network, rate limit, 5xx). Default: 2.",
+  "--concurrency": "Translation batches to keep in flight at once. Default: 1 (serial).",
   "--codes": "Comma-separated validation issue codes to repair.",
   "--attempts": "Number of repair passes.",
   "--repair-codes": "Comma-separated validation issue codes for run --repair.",

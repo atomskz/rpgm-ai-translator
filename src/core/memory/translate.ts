@@ -21,7 +21,13 @@ import { normalizeBatchSize } from "../batching.js";
 import { PROMPT_VERSION } from "../prompt-version.js";
 import { summarizeBatchFailures } from "../reports/public-api.js";
 import type { LLMProvider } from "../ports/public-api.js";
-import type { TranslateOptions, TranslationMetadata, TranslationResult, TranslationUnit } from "../types/public-api.js";
+import type {
+  TranslateOptions,
+  TranslationMetadata,
+  TranslationProgressEvent,
+  TranslationResult,
+  TranslationUnit
+} from "../types/public-api.js";
 import { hashCacheKey } from "../utils/hash.js";
 import { translateBatchWithRetry } from "./batch-retry.js";
 import type { MemoryEntry, TranslationMemory } from "./types.js";
@@ -141,6 +147,46 @@ async function translateUniqueBatches(
   provider: LLMProvider,
   options: TranslateOptions
 ): Promise<TranslationResult[]> {
+  const concurrency = Math.max(1, Math.floor(options.concurrency ?? 1));
+  return concurrency === 1
+    ? translateBatchesSerially(units, provider, options)
+    : translateBatchesConcurrently(units, provider, options, concurrency);
+}
+
+function batchCompleteEvent(
+  batchIndex: number,
+  batchCount: number,
+  batch: TranslationUnit[],
+  batchResults: TranslationResult[],
+  completed: number,
+  total: number
+): TranslationProgressEvent {
+  return {
+    type: "batch-complete",
+    batchIndex,
+    batchCount,
+    batchSize: batch.length,
+    translated: batchResults.filter((result) => result.status === "translated").length,
+    failed: batchResults.filter((result) => result.status === "failed").length,
+    completed,
+    total,
+    failures: summarizeBatchFailures(batchResults)
+  };
+}
+
+function splitIntoBatches(units: TranslationUnit[], batchSize: number): TranslationUnit[][] {
+  const batches: TranslationUnit[][] = [];
+  for (let index = 0; index < units.length; index += batchSize) {
+    batches.push(units.slice(index, index + batchSize));
+  }
+  return batches;
+}
+
+async function translateBatchesSerially(
+  units: TranslationUnit[],
+  provider: LLMProvider,
+  options: TranslateOptions
+): Promise<TranslationResult[]> {
   const batchSize = normalizeBatchSize(options.batchSize);
   const results: TranslationResult[] = [];
   const batchCount = Math.ceil(units.length / batchSize);
@@ -161,20 +207,71 @@ async function translateUniqueBatches(
     results.push(...batchResults);
     await options.onBatchResults?.(batchResults);
     completed += batch.length;
-    options.onProgress?.({
-      type: "batch-complete",
-      batchIndex,
-      batchCount,
-      batchSize: batch.length,
-      translated: batchResults.filter((result) => result.status === "translated").length,
-      failed: batchResults.filter((result) => result.status === "failed").length,
-      completed,
-      total: units.length,
-      failures: summarizeBatchFailures(batchResults)
-    });
+    options.onProgress?.(batchCompleteEvent(batchIndex, batchCount, batch, batchResults, completed, units.length));
   }
 
   return results;
+}
+
+// Translate several batches concurrently (up to `concurrency` in flight) to cut
+// wall-clock on large runs. Provider calls run in parallel, but the per-batch hook
+// (checkpoint append + token-budget record/assert) is serialized so concurrent
+// batches cannot interleave appends or race the budget. Results are kept in batch
+// order; the caller maps by id regardless. A hook that aborts (over budget) stops
+// further dispatch and rejects, so the run fails cleanly mid-flight.
+async function translateBatchesConcurrently(
+  units: TranslationUnit[],
+  provider: LLMProvider,
+  options: TranslateOptions,
+  concurrency: number
+): Promise<TranslationResult[]> {
+  const batchSize = normalizeBatchSize(options.batchSize);
+  const batches = splitIntoBatches(units, batchSize);
+  const batchCount = batches.length;
+  const resultsByBatch: TranslationResult[][] = new Array(batchCount);
+  let completed = 0;
+  let nextBatch = 0;
+  let aborted = false;
+  // Serializes the post-batch hooks (and therefore their order relative to each
+  // other) even though the provider calls overlap.
+  let hookTail: Promise<void> = Promise.resolve();
+
+  const runBatch = async (index: number): Promise<void> => {
+    const batch = batches[index];
+    const batchIndex = index + 1;
+    options.onProgress?.({ type: "batch-start", batchIndex, batchCount, batchSize: batch.length, completed, total: units.length });
+    const batchResults = await translateBatchWithRetry(batch, provider, options, batchIndex, batchCount);
+    resultsByBatch[index] = batchResults;
+    // Chain the hook onto the serial tail and await our turn, so the append/budget
+    // hook runs one at a time; surface a budget abort to this worker.
+    const hook = hookTail.then(() => options.onBatchResults?.(batchResults) ?? undefined);
+    hookTail = hook.then(
+      () => undefined,
+      () => undefined
+    );
+    await hook;
+    completed += batch.length;
+    options.onProgress?.(batchCompleteEvent(batchIndex, batchCount, batch, batchResults, completed, units.length));
+  };
+
+  const worker = async (): Promise<void> => {
+    while (!aborted) {
+      const index = nextBatch;
+      nextBatch += 1;
+      if (index >= batchCount) {
+        return;
+      }
+      try {
+        await runBatch(index);
+      } catch (error) {
+        aborted = true;
+        throw error;
+      }
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(concurrency, batchCount) }, () => worker()));
+  return resultsByBatch.flat();
 }
 
 function expandBatchResultsForDuplicateMisses(
