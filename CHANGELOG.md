@@ -6,6 +6,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Internal
 
+- Add display-width and number-canonicalization edge tests
+  (`tests/display-width.test.ts`): emoji (two cells, once per surrogate pair),
+  fullwidth vs halfwidth forms, supplementary-plane CJK, zero-width
+  joiner/variation selector, and number canonicalization (grouping vs decimal
+  separators, leading-dot decimals, fullwidth digits, percent, ellipsis runs).
 - Hoist the per-file database field map out of a switch into one exported
   constant (`DATABASE_ARRAY_FIELDS`), the single source of truth for the
   translatable per-row fields of each array-shaped database file, and add a
