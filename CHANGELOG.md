@@ -2,6 +2,15 @@
 
 All notable changes to `rpgm-ai-translator` are documented in this file.
 
+## Unreleased
+
+### Internal
+
+- Remove the tag-triggered npm publish workflow (`.github/workflows/release.yml`).
+  The project is not published to npm for now; the CI `package` job still builds
+  the `.tgz` and uploads it as a build artifact, as before. Distribute a release
+  by attaching that tarball to a GitHub Release.
+
 ## 0.1.9 - 2026-06-26
 
 ### Internal
