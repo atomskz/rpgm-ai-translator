@@ -18,29 +18,40 @@
  */
 
 import type { ValidationIssue } from "../../core/types/public-api.js";
-import type { DeepSeekResponse } from "./types.js";
+import type { ChatCompletionResponse } from "./types.js";
 
-export class DeepSeekProviderError extends Error {
+// A minimal response shape that carries only what error handling reads, so the
+// HTTP error path does not depend on the full request/response client types.
+type HttpErrorResponse = {
+  status: number;
+  statusText: string;
+  json: () => Promise<unknown>;
+};
+
+// Provider-neutral error raised by any OpenAI-compatible chat-completion adapter.
+// `host` labels the endpoint in messages so a failure against a generic or local
+// `--base-url` is not mislabeled as "DeepSeek" (see PROV-04).
+export class ChatCompletionProviderError extends Error {
   readonly issueCode: ValidationIssue["code"];
 
   constructor(message: string, issueCode: ValidationIssue["code"], options?: ErrorOptions) {
     super(message, options);
-    this.name = "DeepSeekProviderError";
+    this.name = "ChatCompletionProviderError";
     this.issueCode = issueCode;
   }
 }
 
-export async function createHttpError(response: DeepSeekResponse): Promise<DeepSeekProviderError> {
+export async function createHttpError(response: HttpErrorResponse, host: string): Promise<ChatCompletionProviderError> {
   const detail = await readHttpErrorDetail(response);
   const reason = detail ? `: ${detail}` : response.statusText ? `: ${response.statusText}` : "";
-  return new DeepSeekProviderError(
-    `DeepSeek API error ${response.status}${reason}`,
+  return new ChatCompletionProviderError(
+    `${host} API error ${response.status}${reason}`,
     issueCodeForHttpStatus(response.status)
   );
 }
 
-export function providerIssue(id: string, error: unknown): ValidationIssue {
-  const normalized = normalizeProviderError(error);
+export function providerIssue(id: string, error: unknown, host: string): ValidationIssue {
+  const normalized = normalizeProviderError(error, host);
   return {
     id,
     severity: "error",
@@ -49,7 +60,7 @@ export function providerIssue(id: string, error: unknown): ValidationIssue {
   };
 }
 
-async function readHttpErrorDetail(response: DeepSeekResponse): Promise<string | undefined> {
+async function readHttpErrorDetail(response: HttpErrorResponse): Promise<string | undefined> {
   try {
     const payload = await response.json();
     return extractErrorMessage(payload);
@@ -146,12 +157,12 @@ export function isNetworkError(error: unknown): boolean {
   return networkErrorCode(error) !== undefined;
 }
 
-function normalizeProviderError(error: unknown): { code: ValidationIssue["code"]; message: string } {
-  if (error instanceof DeepSeekProviderError) {
+function normalizeProviderError(error: unknown, host: string): { code: ValidationIssue["code"]; message: string } {
+  if (error instanceof ChatCompletionProviderError) {
     return { code: error.issueCode, message: error.message };
   }
   if (isTimeoutError(error)) {
-    return { code: "PROVIDER_TIMEOUT", message: "DeepSeek API request timed out" };
+    return { code: "PROVIDER_TIMEOUT", message: `${host} API request timed out` };
   }
   if (isNetworkError(error)) {
     const code = networkErrorCode(error);
@@ -163,3 +174,7 @@ function normalizeProviderError(error: unknown): { code: ValidationIssue["code"]
   }
   return { code: "PROVIDER_RESPONSE_ERROR", message: String(error) };
 }
+
+// Re-exported so a dialect can reference the response type used by createHttpError
+// without importing it from two places.
+export type { ChatCompletionResponse };

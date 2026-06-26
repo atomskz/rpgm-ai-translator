@@ -18,15 +18,15 @@
  */
 
 import type { CharacterGlossary, ProviderUsage } from "../../core/types/public-api.js";
-import { DeepSeekProviderError } from "./errors.js";
+import { ChatCompletionProviderError } from "./errors.js";
 import type { ChatCompletionResponse, ModelCharactersPayload, ModelTranslationPayload } from "./types.js";
 
-export function parseModelPayload(response: ChatCompletionResponse): ModelTranslationPayload {
-  const parsed = parseJsonContent(response);
+export function parseTranslationsPayload(response: ChatCompletionResponse, host: string): ModelTranslationPayload {
+  const parsed = parseJsonContent(response, host);
 
   if (!isModelTranslationPayload(parsed)) {
-    throw new DeepSeekProviderError(
-      "DeepSeek API JSON content did not match expected translations schema",
+    throw new ChatCompletionProviderError(
+      `${host} API JSON content did not match expected translations schema`,
       "PROVIDER_RESPONSE_SCHEMA_ERROR"
     );
   }
@@ -34,12 +34,12 @@ export function parseModelPayload(response: ChatCompletionResponse): ModelTransl
   return parsed;
 }
 
-export function parseCharactersPayload(response: ChatCompletionResponse): ModelCharactersPayload {
-  const parsed = parseJsonContent(response);
+export function parseCharactersPayload(response: ChatCompletionResponse, host: string): ModelCharactersPayload {
+  const parsed = parseJsonContent(response, host);
 
   if (!isModelCharactersPayload(parsed)) {
-    throw new DeepSeekProviderError(
-      "DeepSeek API JSON content did not match expected characters schema",
+    throw new ChatCompletionProviderError(
+      `${host} API JSON content did not match expected characters schema`,
       "PROVIDER_RESPONSE_SCHEMA_ERROR"
     );
   }
@@ -52,20 +52,20 @@ export function parseCharactersPayload(response: ChatCompletionResponse): ModelC
 // empty or malformed one. Truncation is the common failure for reasoning models
 // whose chain-of-thought consumes the whole max_tokens budget, so it gets an
 // actionable message instead of a generic "no content" / "invalid JSON".
-function parseJsonContent(response: ChatCompletionResponse): unknown {
+function parseJsonContent(response: ChatCompletionResponse, host: string): unknown {
   const choice = response.choices[0];
   const content = choice?.message?.content;
   const truncated = choice?.finish_reason === "length";
 
   if (!content) {
     if (truncated) {
-      throw new DeepSeekProviderError(
-        "DeepSeek response was truncated at the max_tokens limit before any content was produced; increase --max-tokens (a reasoning model spends max_tokens on its chain-of-thought).",
+      throw new ChatCompletionProviderError(
+        `${host} response was truncated at the max_tokens limit before any content was produced; increase --max-tokens (a reasoning model spends max_tokens on its chain-of-thought).`,
         "PROVIDER_RESPONSE_ERROR"
       );
     }
-    throw new DeepSeekProviderError(
-      "DeepSeek API response did not include message content",
+    throw new ChatCompletionProviderError(
+      `${host} API response did not include message content`,
       "PROVIDER_RESPONSE_SCHEMA_ERROR"
     );
   }
@@ -74,14 +74,14 @@ function parseJsonContent(response: ChatCompletionResponse): unknown {
     return JSON.parse(content);
   } catch (error: unknown) {
     if (truncated) {
-      throw new DeepSeekProviderError(
-        "DeepSeek response was truncated at the max_tokens limit (incomplete JSON); increase --max-tokens (a reasoning model spends max_tokens on its chain-of-thought).",
+      throw new ChatCompletionProviderError(
+        `${host} response was truncated at the max_tokens limit (incomplete JSON); increase --max-tokens (a reasoning model spends max_tokens on its chain-of-thought).`,
         "PROVIDER_RESPONSE_ERROR",
         { cause: error }
       );
     }
-    throw new DeepSeekProviderError(
-      `DeepSeek API returned invalid JSON content: ${error instanceof Error ? error.message : String(error)}`,
+    throw new ChatCompletionProviderError(
+      `${host} API returned invalid JSON content: ${error instanceof Error ? error.message : String(error)}`,
       "PROVIDER_RESPONSE_ERROR",
       { cause: error }
     );

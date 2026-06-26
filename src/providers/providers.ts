@@ -21,8 +21,6 @@ import type { LLMProvider } from "../core/ports/public-api.js";
 import { DeepSeekProvider } from "./deepseek/public-api.js";
 import { MockProvider } from "./mock.js";
 
-export type ProviderName = "mock" | "deepseek";
-
 // Provider-neutral configuration injected from the CLI. `baseUrl` lets the
 // OpenAI-compatible DeepSeek client target a local or self-hosted endpoint, and
 // `dialect` controls whether DeepSeek-proprietary request fields are sent.
@@ -33,14 +31,24 @@ export type ProviderConfig = {
   dialect?: "deepseek" | "openai";
 };
 
+// The single source of truth for which providers exist. Adding a provider is one
+// entry here; the supported-name list, the ProviderName type and the help/preflight
+// strings all derive from these keys so they can never drift out of lockstep.
+const PROVIDERS: Record<string, (config: ProviderConfig) => LLMProvider> = {
+  mock: () => new MockProvider(),
+  deepseek: (config) => new DeepSeekProvider({ apiKey: config.apiKey, baseUrl: config.baseUrl, dialect: config.dialect })
+};
+
+// Stable, registration-order list of supported provider names, derived from the
+// registry so a new provider appears everywhere it is listed automatically.
+export const SUPPORTED_PROVIDER_NAMES = Object.keys(PROVIDERS);
+
+export type ProviderName = keyof typeof PROVIDERS;
+
 export function createProvider(name: string, config: ProviderConfig = {}): LLMProvider {
-  if (name === "mock") {
-    return new MockProvider();
+  const factory = PROVIDERS[name];
+  if (!factory) {
+    throw new Error(`Unknown provider '${name}'. Supported providers: ${SUPPORTED_PROVIDER_NAMES.join(", ")}`);
   }
-
-  if (name === "deepseek") {
-    return new DeepSeekProvider({ apiKey: config.apiKey, baseUrl: config.baseUrl, dialect: config.dialect });
-  }
-
-  throw new Error(`Unknown provider '${name}'. Supported providers: mock, deepseek`);
+  return factory(config);
 }

@@ -19,6 +19,14 @@
 
 import { DEFAULT_RETRY_ATTEMPTS, sleep } from "../../core/retry.js";
 import type { TranslateOptions } from "../../core/types/public-api.js";
+import {
+  ChatCompletionProviderError,
+  createHttpError,
+  isChatCompletionResponse,
+  isNetworkError,
+  isTimeoutError
+} from "../openai-chat/public-api.js";
+import type { ChatCompletionClient, ChatCompletionPass, ChatCompletionResponse } from "../openai-chat/public-api.js";
 import type { ChatMessage } from "../prompt-builder/public-api.js";
 import {
   DEFAULT_BASE_URL,
@@ -26,10 +34,7 @@ import {
   DEFAULT_THINKING_MAX_TOKENS,
   DEFAULT_TEMPERATURE
 } from "./defaults.js";
-import { createHttpError, DeepSeekProviderError, isNetworkError, isTimeoutError } from "./errors.js";
-import { isChatCompletionResponse } from "./schemas.js";
 import type {
-  ChatCompletionResponse,
   DeepSeekDialect,
   DeepSeekProviderConfig,
   DeepSeekResponse,
@@ -37,11 +42,14 @@ import type {
   FetchLike
 } from "./types.js";
 
+// The host label used in DeepSeek error messages.
+const HOST = "DeepSeek";
+
 // Cap any single backoff (including a server-provided Retry-After) so a large or
 // malicious value cannot stall the run indefinitely.
 const MAX_RETRY_DELAY_MS = 60_000;
 
-export class DeepSeekClient {
+export class DeepSeekClient implements ChatCompletionClient {
   private readonly apiKey?: string;
   private readonly baseUrl: string;
   private readonly dialect: DeepSeekDialect;
@@ -69,9 +77,11 @@ export class DeepSeekClient {
     messages: ChatMessage[],
     options: TranslateOptions,
     model: string,
-    thinkingMode: DeepSeekThinkingMode
+    pass: ChatCompletionPass
   ): Promise<ChatCompletionResponse> {
     const url = `${this.baseUrl}/chat/completions`;
+    // Only the review pass reasons; translate and characters answer directly.
+    const thinkingMode: DeepSeekThinkingMode = pass === "review" ? "enabled" : "disabled";
     // A DeepSeek reasoning pass (thinking enabled) bills chain-of-thought against
     // max_tokens, so it needs a larger default. The openai dialect has no thinking
     // mode, so it never inflates the budget regardless of the requested pass.
@@ -120,7 +130,7 @@ export class DeepSeekClient {
         clearTimeout(timeout);
 
         if (!response.ok) {
-          const error = await createHttpError(response);
+          const error = await createHttpError(response, HOST);
           if (attempt < maxRetries && isRetryableStatus(response.status)) {
             lastError = error;
             await sleep(backoffDelay(attempt, this.retryDelayMs, retryAfterMs(response)));
@@ -131,8 +141,8 @@ export class DeepSeekClient {
 
         const json = await response.json();
         if (!isChatCompletionResponse(json)) {
-          throw new DeepSeekProviderError(
-            "DeepSeek API returned an unexpected response shape",
+          throw new ChatCompletionProviderError(
+            `${HOST} API returned an unexpected response shape`,
             "PROVIDER_RESPONSE_SCHEMA_ERROR"
           );
         }

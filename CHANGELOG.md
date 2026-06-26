@@ -2,6 +2,22 @@
 
 All notable changes to `rpgm-ai-translator` are documented in this file.
 
+## Unreleased
+
+### Internal
+
+- Extract a provider-neutral OpenAI-compatible chat-completion base
+  (`providers/openai-chat`) that owns the degradation skeleton every adapter
+  repeated by hand — skip an empty batch, degrade rather than throw when the API
+  key is missing, and turn a thrown request/parse error into per-unit `failed`
+  results so the client stays the single retry layer — and replace the hardcoded
+  provider if-chain with a registry map (`PROVIDERS`) that the supported-name
+  list and `ProviderName` type derive from. The DeepSeek provider is now a thin
+  dialect (a client plus four labels) over the shared base, so adding an
+  OpenAI-shaped provider is one small subclass and one registry entry instead of
+  a copy of the whole translate/review/character pipeline. No runtime behavior
+  changed; the shared degradation contract is covered by its own tests.
+
 ## 0.1.8 - 2026-06-26
 
 ### Changed

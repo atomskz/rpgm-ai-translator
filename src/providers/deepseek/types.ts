@@ -17,8 +17,6 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { CharacterGlossary, ProviderUsage } from "../../core/types/public-api.js";
-
 export type FetchLike = (url: string, init: DeepSeekRequestInit) => Promise<DeepSeekResponse>;
 
 export type DeepSeekRequestInit = {
@@ -52,26 +50,3 @@ export type DeepSeekProviderConfig = {
 };
 
 export type DeepSeekThinkingMode = "enabled" | "disabled";
-
-export type ChatCompletionResponse = {
-  choices: Array<{
-    message?: {
-      content?: string | null;
-    };
-    // "length" means the model hit max_tokens; used to distinguish a truncated
-    // response from a genuinely empty/malformed one.
-    finish_reason?: string | null;
-  }>;
-  usage?: ProviderUsage;
-};
-
-export type ModelTranslationPayload = {
-  translations: Array<{
-    id: string;
-    translation: string;
-  }>;
-};
-
-export type ModelCharactersPayload = {
-  characters: CharacterGlossary;
-};

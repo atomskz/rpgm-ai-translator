@@ -18,14 +18,12 @@
  */
 
 import { MvMzEngineDetector } from "../../engines/rpgmaker-mvmz/public-api.js";
-import { createProvider } from "../../providers/public-api.js";
+import { createProvider, SUPPORTED_PROVIDER_NAMES } from "../../providers/public-api.js";
 import { readPositionals, readProviderCliOptions, readProviderConfig, readProviderName } from "../options/public-api.js";
 import type { TranslationUnit } from "../../core/types/public-api.js";
 import type { CliIO } from "../types.js";
 
 type CheckResult = { ok: boolean; name: string; detail?: string };
-
-const SUPPORTED_PROVIDERS = ["mock", "deepseek"];
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -55,11 +53,11 @@ export async function doctorCommand(args: string[], io: CliIO): Promise<number> 
 
   const checks: CheckResult[] = [];
 
-  const supported = SUPPORTED_PROVIDERS.includes(providerName);
+  const supported = SUPPORTED_PROVIDER_NAMES.includes(providerName);
   checks.push({
     ok: supported,
     name: `Provider '${providerName}' is supported`,
-    detail: supported ? undefined : `Supported providers: ${SUPPORTED_PROVIDERS.join(", ")}.`
+    detail: supported ? undefined : `Supported providers: ${SUPPORTED_PROVIDER_NAMES.join(", ")}.`
   });
 
   let keyOk = true;

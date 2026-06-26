@@ -18,6 +18,7 @@
  */
 
 import type { TranslateOptions } from "../../core/types/public-api.js";
+import { SUPPORTED_PROVIDER_NAMES } from "../../providers/public-api.js";
 import { readNonNegativeIntegerOption, readNumberOption, readOption, readPositiveIntegerOption } from "./readers.js";
 import { UsageError } from "./usage-error.js";
 
@@ -28,7 +29,9 @@ export type ProviderCliOptions = Pick<
 
 export type TranslateCliOptions = ProviderCliOptions & Pick<TranslateOptions, "retryAttempts" | "concurrency">;
 
-const SUPPORTED_PROVIDERS = ["mock", "deepseek"] as const;
+// Derived from the provider registry so the accepted CLI names track the shipped
+// providers automatically (a new provider needs no edit here).
+const SUPPORTED_PROVIDERS = SUPPORTED_PROVIDER_NAMES;
 
 // Built-in target language used when neither --target nor a config "target" key is
 // given. Kept as one constant so the echo (readTargetLanguage) and the option

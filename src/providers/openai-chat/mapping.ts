@@ -27,10 +27,10 @@ import type {
   TranslationUnit,
   ValidationIssue
 } from "../../core/types/public-api.js";
-import { DeepSeekProviderError, providerIssue } from "./errors.js";
+import { ChatCompletionProviderError, providerIssue } from "./errors.js";
 import type { ChatCompletionResponse, ModelTranslationPayload } from "./types.js";
 
-// Map DeepSeek's OpenAI-shaped usage payload to the provider-neutral TokenUsage.
+// Map an OpenAI-shaped usage payload to the provider-neutral TokenUsage.
 function toTokenUsage(usage: ProviderUsage | undefined): TokenUsage | undefined {
   if (!usage) {
     return undefined;
@@ -81,7 +81,8 @@ function indexTranslationsById(items: ModelTranslation[]): Map<string, string> {
 function responseIdAnomalyIssue(
   ownerId: string,
   requestedIds: Set<string>,
-  items: ModelTranslation[]
+  items: ModelTranslation[],
+  host: string
 ): ValidationIssue | undefined {
   const seen = new Set<string>();
   const unexpected = new Set<string>();
@@ -114,14 +115,15 @@ function responseIdAnomalyIssue(
     id: ownerId,
     severity: "warning",
     code: "PROVIDER_RESPONSE_ID_ANOMALY",
-    message: `DeepSeek response did not match the requested ids (requested ${requestedIds.size}, returned ${items.length}): ${parts.join("; ")}`
+    message: `${host} response did not match the requested ids (requested ${requestedIds.size}, returned ${items.length}): ${parts.join("; ")}`
   };
 }
 
 function withResponseIdAnomalies(
   results: TranslationResult[],
   requestedIds: Set<string>,
-  payload: ModelTranslationPayload
+  payload: ModelTranslationPayload,
+  host: string
 ): TranslationResult[] {
   if (results.length === 0) {
     return results;
@@ -132,7 +134,7 @@ function withResponseIdAnomalies(
   // result only when every unit failed.
   const translatedIndex = results.findIndex((result) => result.status === "translated");
   const ownerIndex = translatedIndex >= 0 ? translatedIndex : 0;
-  const anomaly = responseIdAnomalyIssue(results[ownerIndex].id, requestedIds, payload.translations);
+  const anomaly = responseIdAnomalyIssue(results[ownerIndex].id, requestedIds, payload.translations, host);
   if (!anomaly) {
     return results;
   }
@@ -144,22 +146,28 @@ function withResponseIdAnomalies(
 export function missingApiKeyTranslationResults(
   providerName: string,
   model: string,
-  batch: TranslationUnit[]
+  batch: TranslationUnit[],
+  apiKeyName: string
 ): TranslationResult[] {
-  const error = new DeepSeekProviderError("Missing DEEPSEEK_API_KEY", "PROVIDER_AUTH_ERROR");
-  return batch.map((unit) => failedTranslationResult(providerName, unit, model, error));
+  const error = new ChatCompletionProviderError(`Missing ${apiKeyName}`, "PROVIDER_AUTH_ERROR");
+  return batch.map((unit) => failedTranslationResult(providerName, unit, model, error, providerName));
 }
 
 export function missingApiKeyReviewResults(
   providerName: string,
   model: string,
-  batch: ReviewUnit[]
+  batch: ReviewUnit[],
+  apiKeyName: string
 ): TranslationResult[] {
-  const error = new DeepSeekProviderError("Missing DEEPSEEK_API_KEY", "PROVIDER_AUTH_ERROR");
-  return batch.map((unit) => failedReviewResult(providerName, unit, model, error));
+  const error = new ChatCompletionProviderError(`Missing ${apiKeyName}`, "PROVIDER_AUTH_ERROR");
+  return batch.map((unit) => failedReviewResult(providerName, unit, model, error, providerName));
 }
 
-export function missingApiKeyCharacterGlossary(candidates: CharacterCandidate[]): CharacterGlossary {
+export function missingApiKeyCharacterGlossary(
+  candidates: CharacterCandidate[],
+  host: string,
+  apiKeyName: string
+): CharacterGlossary {
   return Object.fromEntries(
     candidates.map((candidate) => [
       candidate.name,
@@ -167,7 +175,7 @@ export function missingApiKeyCharacterGlossary(candidates: CharacterCandidate[])
         translation: candidate.suggestedTranslation ?? candidate.name,
         gender: "unknown" as const,
         type: "unknown" as const,
-        description: "DeepSeek inference skipped because DEEPSEEK_API_KEY is missing.",
+        description: `${host} inference skipped because ${apiKeyName} is missing.`,
         confidence: 0,
         review: true
       }
@@ -199,7 +207,8 @@ export function translationResultsFromPayload(
   model: string,
   batch: TranslationUnit[],
   payload: ModelTranslationPayload,
-  response: ChatCompletionResponse
+  response: ChatCompletionResponse,
+  host: string
 ): TranslationResult[] {
   const byId = indexTranslationsById(payload.translations);
   const requestedIds = new Set(batch.map((unit) => unit.id));
@@ -216,10 +225,11 @@ export function translationResultsFromPayload(
         providerName,
         unit,
         model,
-        new DeepSeekProviderError(
-          `DeepSeek API response is missing translation for unit '${unit.id}'`,
+        new ChatCompletionProviderError(
+          `${host} API response is missing translation for unit '${unit.id}'`,
           "PROVIDER_RESPONSE_SCHEMA_ERROR"
-        )
+        ),
+        host
       );
     }
 
@@ -236,7 +246,7 @@ export function translationResultsFromPayload(
     };
   });
 
-  return withResponseIdAnomalies(results, requestedIds, payload);
+  return withResponseIdAnomalies(results, requestedIds, payload, host);
 }
 
 export function reviewResultsFromPayload(
@@ -244,7 +254,8 @@ export function reviewResultsFromPayload(
   model: string,
   batch: ReviewUnit[],
   payload: ModelTranslationPayload,
-  response: ChatCompletionResponse
+  response: ChatCompletionResponse,
+  host: string
 ): TranslationResult[] {
   const byId = indexTranslationsById(payload.translations);
   const requestedIds = new Set(batch.map((unit) => unit.id));
@@ -262,10 +273,11 @@ export function reviewResultsFromPayload(
         providerName,
         unit,
         model,
-        new DeepSeekProviderError(
-          `DeepSeek API response is missing revised translation for unit '${unit.id}'`,
+        new ChatCompletionProviderError(
+          `${host} API response is missing revised translation for unit '${unit.id}'`,
           "PROVIDER_RESPONSE_SCHEMA_ERROR"
-        )
+        ),
+        host
       );
     }
 
@@ -282,32 +294,35 @@ export function reviewResultsFromPayload(
     };
   });
 
-  return withResponseIdAnomalies(results, requestedIds, payload);
+  return withResponseIdAnomalies(results, requestedIds, payload, host);
 }
 
 export function failedTranslationResults(
   providerName: string,
   model: string,
   batch: TranslationUnit[],
-  error: unknown
+  error: unknown,
+  host: string
 ): TranslationResult[] {
-  return batch.map((unit) => failedTranslationResult(providerName, unit, model, error));
+  return batch.map((unit) => failedTranslationResult(providerName, unit, model, error, host));
 }
 
 export function failedReviewResults(
   providerName: string,
   model: string,
   batch: ReviewUnit[],
-  error: unknown
+  error: unknown,
+  host: string
 ): TranslationResult[] {
-  return batch.map((unit) => failedReviewResult(providerName, unit, model, error));
+  return batch.map((unit) => failedReviewResult(providerName, unit, model, error, host));
 }
 
 function failedTranslationResult(
   providerName: string,
   unit: TranslationUnit,
   model: string,
-  error: unknown
+  error: unknown,
+  host: string
 ): TranslationResult {
   return {
     id: unit.id,
@@ -316,7 +331,7 @@ function failedTranslationResult(
     provider: providerName,
     model,
     status: "failed",
-    issues: [providerIssue(unit.id, error)]
+    issues: [providerIssue(unit.id, error, host)]
   };
 }
 
@@ -324,7 +339,8 @@ function failedReviewResult(
   providerName: string,
   unit: ReviewUnit,
   model: string,
-  error: unknown
+  error: unknown,
+  host: string
 ): TranslationResult {
   return {
     id: unit.id,
@@ -333,7 +349,7 @@ function failedReviewResult(
     provider: providerName,
     model,
     status: "failed",
-    issues: [providerIssue(unit.id, error)],
+    issues: [providerIssue(unit.id, error, host)],
     metadata: { reviewed: false }
   };
 }
