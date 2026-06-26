@@ -60,7 +60,13 @@ export async function translateWithMemory(
         provider: cached.provider,
         model: cached.model,
         status: "translated",
-        metadata: { fromMemory: true }
+        // Surface that a reused translation already went through review/repair, so
+        // a no-review re-run still ships the higher-quality text (SAFE-06).
+        metadata: {
+          fromMemory: true,
+          ...(cached.reviewed ? { reviewed: true } : {}),
+          ...(cached.repaired ? { repaired: true } : {})
+        }
       });
       memoryCompleted += 1;
       options.onProgress?.({
@@ -272,7 +278,8 @@ function toMemoryEntry(
   unit: TranslationUnit,
   result: TranslationResult,
   cacheKey: string,
-  options: TranslateOptions
+  options: TranslateOptions,
+  provenance: { reviewed?: boolean; repaired?: boolean } = {}
 ): MemoryEntry {
   const now = new Date().toISOString();
   return {
@@ -286,9 +293,39 @@ function toMemoryEntry(
     provider: result.provider,
     model: result.model,
     status: result.status,
+    ...(provenance.reviewed ? { reviewed: true } : {}),
+    ...(provenance.repaired ? { repaired: true } : {}),
     createdAt: now,
     updatedAt: now
   };
+}
+
+// Persist the final (reviewed/repaired) translations to memory under the same
+// per-unit cache key the first pass uses, so a later run reuses the *reviewed*
+// text (and does not re-spend review/repair tokens) instead of replaying the raw
+// pre-review translation. The provenance marks the entry so a memory hit reports
+// the text as already reviewed/repaired. Only translated results whose source
+// still matches the unit are stored.
+export async function persistResultsToMemory(
+  units: TranslationUnit[],
+  translations: TranslationResult[],
+  options: TranslateOptions,
+  memory: TranslationMemory,
+  provenance: { reviewed?: boolean; repaired?: boolean } = {}
+): Promise<void> {
+  const unitsById = new Map(units.map((unit) => [unit.id, unit]));
+  const entries: MemoryEntry[] = [];
+  for (const result of translations) {
+    if (result.status !== "translated") {
+      continue;
+    }
+    const unit = unitsById.get(result.id);
+    if (!unit || unit.source !== result.source) {
+      continue;
+    }
+    entries.push(toMemoryEntry(unit, result, translationCacheKey(unit, options), options, provenance));
+  }
+  await upsertMemoryEntries(memory, entries);
 }
 
 function missingTranslationResult(

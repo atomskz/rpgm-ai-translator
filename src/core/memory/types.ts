@@ -37,6 +37,10 @@ export type MemoryEntry = {
   provider: string;
   model: string;
   status: "translated" | "failed" | "skipped";
+  /** The stored translation already went through the review pass. */
+  reviewed?: boolean;
+  /** The stored translation already went through the repair pass. */
+  repaired?: boolean;
   createdAt: string;
   updatedAt: string;
 };

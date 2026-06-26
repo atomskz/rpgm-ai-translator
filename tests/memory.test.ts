@@ -3,7 +3,7 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import { JsonlTranslationMemory } from "../src/core/memory/public-api.js";
-import { translateWithMemory } from "../src/core/memory/public-api.js";
+import { persistResultsToMemory, translateWithMemory } from "../src/core/memory/public-api.js";
 import { hashSource } from "../src/core/utils/hash.js";
 import type { LLMProvider, TranslateOptions, TranslationResult, TranslationUnit } from "../src/core/types/public-api.js";
 
@@ -194,6 +194,32 @@ describe("translation memory", () => {
     expect(provider.calls).toEqual([["Actors.1.name", "Actors.3.name"]]);
     expect(firstRun.map((result) => result.translation)).toEqual(["[ru] Aria", "[ru] Aria", "[ru] Luna"]);
     expect(secondRun.every((result) => result.metadata?.fromMemory === true)).toBe(true);
+  });
+
+  it("reuses reviewed text persisted to memory and reports it as reviewed", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-memory-reviewed-"));
+    const memory = new JsonlTranslationMemory(path.join(root, "memory.jsonl"));
+    const provider = new CountingProvider();
+    const units = [unit("Actors.1.name", "Aria")];
+    const options = { targetLanguage: "ru" };
+
+    // Persist a reviewed final under the translate cache key, as run does after review.
+    await persistResultsToMemory(
+      units,
+      [{ id: "Actors.1.name", source: "Aria", translation: "Ария (reviewed)", provider: "deepseek", model: "m", status: "translated" }],
+      options,
+      memory,
+      { reviewed: true }
+    );
+
+    const run = await translateWithMemory(units, provider, options, memory);
+
+    // The reviewed text is served from memory without re-calling the provider, and
+    // the result is marked reviewed so a no-review re-run still ships review quality.
+    expect(provider.calls).toEqual([]);
+    expect(run[0].translation).toBe("Ария (reviewed)");
+    expect(run[0].metadata?.fromMemory).toBe(true);
+    expect(run[0].metadata?.reviewed).toBe(true);
   });
 
   it("does not reuse memory across target languages", async () => {

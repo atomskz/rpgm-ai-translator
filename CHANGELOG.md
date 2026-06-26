@@ -36,6 +36,12 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Persist the reviewed/repaired translations to memory (not only the raw
+  first-pass output), under the same per-unit cache key the translate pass looks
+  up, so a re-run reuses the higher-quality reviewed text instead of replaying the
+  pre-review translation or re-spending review/repair tokens. Memory entries carry
+  a `reviewed`/`repaired` provenance flag, and a memory hit reports it so a
+  no-review re-run still ships review-quality text.
 - Extract `Troops.json` — troop names and in-battle event command lists (boss and
   battle `Show Text`, choices, plugin commands) per page. These were silently
   dropped because `Troops.json` had no field mapping, so battle dialogue went

@@ -33,7 +33,7 @@ import { acquireDirectoryLock, LOCK_FILENAME, withDirectoryLock } from "../../co
 import { isNonEmptyDirectory, writeFileAtomic } from "../../core/utils/fs.js";
 import { hashCacheKey } from "../../core/utils/hash.js";
 import { JsonlTranslationMemory } from "../../core/memory/public-api.js";
-import { translateWithMemory } from "../../core/memory/public-api.js";
+import { persistResultsToMemory, translateWithMemory } from "../../core/memory/public-api.js";
 import { repairTranslations } from "../../core/pipeline/public-api.js";
 import { createReport, summarizeReport, writeReportFile } from "../../core/reports/public-api.js";
 import { reviewTranslations } from "../../core/pipeline/public-api.js";
@@ -259,6 +259,11 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   }
   await writeCheckpointSignatureFile(checkpointMeta, signature);
   const provider = createProvider(providerName, readProviderConfig(args));
+  const memory = new JsonlTranslationMemory(memoryPath);
+  // The cache-key inputs shared by the translate lookup and the reviewed/repaired
+  // persistence below; the callbacks are not part of the key, so they are kept off
+  // this base object (they are spread into the translate call only).
+  const memoryOptions = { ...providerOptions, glossary, characterGlossary };
   if (rawCheckpointById.size > 0) {
     io.stderr(`Resuming translation: ${rawCheckpointById.size}/${units.length} units already in checkpoint.\n`);
   }
@@ -266,11 +271,7 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
     unitsToTranslate,
     provider,
     {
-      ...providerOptions,
-      glossary,
-      // Give the first pass the character glossary too (not just review), so it
-      // already uses the right pronoun/voice instead of leaving it all to review.
-      characterGlossary,
+      ...memoryOptions,
       onProgress: createProgressLogger(io),
       onBatchResults: async (batchResults) => {
         await appendTranslationResultsJsonlFile(rawCheckpointPath, batchResults);
@@ -278,7 +279,7 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
         budget?.assertWithin();
       }
     },
-    new JsonlTranslationMemory(memoryPath)
+    memory
   );
   const translatedById = new Map(translatedResults.map((result) => [result.id, result]));
   let translations = units.map(
@@ -323,6 +324,10 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
     translations = reviewResult.translations;
     await writeTranslationResultsFile(path.join(workDir, "translations.reviewed.json"), translations);
     io.stderr(`Reviewed: ${reviewResult.reviewed}, failed: ${reviewResult.failed}, skipped: ${reviewResult.skipped}\n`);
+    // Persist the reviewed text to memory under the translate cache key so a later
+    // run reuses the reviewed quality instead of replaying the raw translation
+    // (and does not re-spend review tokens on it).
+    await persistResultsToMemory(units, translations, memoryOptions, memory, { reviewed: true });
   }
   io.stderr("Validating translations...\n");
   let validationIssues = validateTranslationResults(units, translations, new DefaultValidator(glossary));
@@ -377,6 +382,9 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
     // The repair budget for this run is fully accounted for; clear the counter so a
     // later deliberate re-run of the same game gets the full --repair-attempts again.
     await rm(repairProgressPath, { force: true });
+    // Persist the repaired text to memory so a re-run reuses it instead of the raw
+    // (or merely reviewed) translation that still tripped a validation rule.
+    await persistResultsToMemory(units, translations, memoryOptions, memory, { repaired: true });
   }
   const safeTranslations = filterTranslationsWithoutValidationErrors(translations, validationIssues);
   io.stderr(`Applying patch with ${safeTranslations.length}/${translations.length} validation-safe translations...\n`);
