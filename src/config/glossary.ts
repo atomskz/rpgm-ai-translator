@@ -33,38 +33,46 @@ export async function loadGlossary(filePath: string): Promise<Glossary> {
     });
   }
 
-  if (!isGlossary(parsed)) {
-    throw new Error("Glossary must be an object whose values have a valid mode and optional translation string");
+  if (typeof parsed !== "object" || parsed == null || Array.isArray(parsed)) {
+    throw new Error(`Glossary in '${filePath}' must be a JSON object mapping a term to { mode, translation? }.`);
   }
 
-  // A `custom` term is defined as "use the provided translation exactly", so an
-  // entry in that mode without a translation is a contradictory instruction. Reject
-  // it before any provider call rather than sending the model an empty pin.
+  // Validate each entry so a malformed term points at the offending key (and the
+  // specific problem) instead of one generic message for the whole file.
   for (const [term, entry] of Object.entries(parsed)) {
-    if (entry.mode === "custom" && (entry.translation == null || entry.translation.trim() === "")) {
-      throw new Error(
-        `Glossary term '${term}' uses mode 'custom' but has no translation; custom mode requires the exact translation to use (or pick mode 'keep' or 'transliterate').`
-      );
-    }
+    assertValidGlossaryEntry(term, entry, filePath);
   }
 
-  return parsed;
+  return parsed as Glossary;
 }
 
-function isGlossary(value: unknown): value is Glossary {
-  if (typeof value !== "object" || value == null || Array.isArray(value)) {
-    return false;
+function assertValidGlossaryEntry(term: string, entry: unknown, filePath: string): void {
+  const where = `glossary term '${term}' in '${filePath}'`;
+  if (typeof entry !== "object" || entry == null || Array.isArray(entry)) {
+    throw new Error(`Invalid ${where}: expected an object with a 'mode', got ${describeJsonType(entry)}.`);
   }
-
-  return Object.values(value).every((entry) => {
-    if (typeof entry !== "object" || entry == null || Array.isArray(entry)) {
-      return false;
-    }
-    const candidate = entry as { mode?: unknown; translation?: unknown };
-    return (
-      typeof candidate.mode === "string" &&
-      MODES.includes(candidate.mode as GlossaryMode) &&
-      (candidate.translation == null || typeof candidate.translation === "string")
+  const candidate = entry as { mode?: unknown; translation?: unknown };
+  if (typeof candidate.mode !== "string" || !MODES.includes(candidate.mode as GlossaryMode)) {
+    throw new Error(`Invalid ${where}: 'mode' must be one of ${MODES.join(", ")}, got ${describeJsonType(candidate.mode)}.`);
+  }
+  if (candidate.translation != null && typeof candidate.translation !== "string") {
+    throw new Error(`Invalid ${where}: 'translation' must be a string, got ${describeJsonType(candidate.translation)}.`);
+  }
+  // A `custom` term is defined as "use the provided translation exactly", so an
+  // entry in that mode without a translation is a contradictory instruction.
+  if (candidate.mode === "custom" && (candidate.translation == null || candidate.translation.trim() === "")) {
+    throw new Error(
+      `Glossary term '${term}' in '${filePath}' uses mode 'custom' but has no translation; custom mode requires the exact translation to use (or pick mode 'keep' or 'transliterate').`
     );
-  });
+  }
+}
+
+function describeJsonType(value: unknown): string {
+  if (value === null) {
+    return "null";
+  }
+  if (value === undefined) {
+    return "nothing";
+  }
+  return Array.isArray(value) ? "array" : typeof value;
 }

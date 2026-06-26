@@ -34,44 +34,65 @@ export async function loadCharacterGlossary(filePath: string): Promise<Character
     });
   }
 
-  if (!isCharacterGlossary(parsed)) {
-    throw new Error(
-      "Character glossary must be an object whose values may include gender, translation, aliases, description and speechStyle"
-    );
+  if (typeof parsed !== "object" || parsed == null || Array.isArray(parsed)) {
+    throw new Error(`Character glossary in '${filePath}' must be a JSON object mapping a name to its attributes.`);
   }
 
-  return parsed;
+  // Validate each entry so a malformed character points at the offending name and
+  // field instead of one generic message for the whole file.
+  for (const [name, entry] of Object.entries(parsed)) {
+    assertValidCharacterEntry(name, entry, filePath);
+  }
+
+  return parsed as CharacterGlossary;
 }
 
-function isCharacterGlossary(value: unknown): value is CharacterGlossary {
-  if (typeof value !== "object" || value == null || Array.isArray(value)) {
-    return false;
+function assertValidCharacterEntry(name: string, entry: unknown, filePath: string): void {
+  const where = `character '${name}' in '${filePath}'`;
+  if (typeof entry !== "object" || entry == null || Array.isArray(entry)) {
+    throw new Error(`Invalid ${where}: expected an object, got ${describeJsonType(entry)}.`);
   }
-
-  return Object.values(value).every((entry) => {
-    if (typeof entry !== "object" || entry == null || Array.isArray(entry)) {
-      return false;
+  const candidate = entry as {
+    gender?: unknown;
+    translation?: unknown;
+    aliases?: unknown;
+    description?: unknown;
+    speechStyle?: unknown;
+    type?: unknown;
+    confidence?: unknown;
+    review?: unknown;
+  };
+  if (candidate.gender != null && !(typeof candidate.gender === "string" && GENDERS.includes(candidate.gender as CharacterGender))) {
+    throw new Error(`Invalid ${where}: 'gender' must be one of ${GENDERS.join(", ")}, got ${describeJsonType(candidate.gender)}.`);
+  }
+  if (candidate.type != null && !(typeof candidate.type === "string" && KINDS.includes(candidate.type as CharacterKind))) {
+    throw new Error(`Invalid ${where}: 'type' must be one of ${KINDS.join(", ")}, got ${describeJsonType(candidate.type)}.`);
+  }
+  for (const field of ["translation", "description", "speechStyle"] as const) {
+    if (candidate[field] != null && typeof candidate[field] !== "string") {
+      throw new Error(`Invalid ${where}: '${field}' must be a string, got ${describeJsonType(candidate[field])}.`);
     }
-    const candidate = entry as {
-      gender?: unknown;
-      translation?: unknown;
-      aliases?: unknown;
-      description?: unknown;
-      speechStyle?: unknown;
-      type?: unknown;
-      confidence?: unknown;
-      review?: unknown;
-    };
-    return (
-      (candidate.gender == null || (typeof candidate.gender === "string" && GENDERS.includes(candidate.gender as CharacterGender))) &&
-      (candidate.type == null || (typeof candidate.type === "string" && KINDS.includes(candidate.type as CharacterKind))) &&
-      (candidate.translation == null || typeof candidate.translation === "string") &&
-      (candidate.description == null || typeof candidate.description === "string") &&
-      (candidate.speechStyle == null || typeof candidate.speechStyle === "string") &&
-      (candidate.confidence == null || typeof candidate.confidence === "number") &&
-      (candidate.review == null || typeof candidate.review === "boolean") &&
-      (candidate.aliases == null ||
-        (Array.isArray(candidate.aliases) && candidate.aliases.every((alias) => typeof alias === "string")))
-    );
-  });
+  }
+  if (candidate.confidence != null && typeof candidate.confidence !== "number") {
+    throw new Error(`Invalid ${where}: 'confidence' must be a number, got ${describeJsonType(candidate.confidence)}.`);
+  }
+  if (candidate.review != null && typeof candidate.review !== "boolean") {
+    throw new Error(`Invalid ${where}: 'review' must be a boolean, got ${describeJsonType(candidate.review)}.`);
+  }
+  if (
+    candidate.aliases != null &&
+    !(Array.isArray(candidate.aliases) && candidate.aliases.every((alias) => typeof alias === "string"))
+  ) {
+    throw new Error(`Invalid ${where}: 'aliases' must be an array of strings.`);
+  }
+}
+
+function describeJsonType(value: unknown): string {
+  if (value === null) {
+    return "null";
+  }
+  if (value === undefined) {
+    return "nothing";
+  }
+  return Array.isArray(value) ? "array" : typeof value;
 }

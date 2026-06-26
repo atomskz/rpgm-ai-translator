@@ -157,6 +157,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Name the offending entry and field when a glossary or character glossary fails
+  to load, instead of one generic message for the whole file — for example
+  `Invalid glossary term 'Aria' in '<file>': 'mode' must be one of …` or
+  `Invalid character 'Aria' in '<file>': 'gender' must be one of …` — so a typo is
+  easy to find.
 - Guard the translation-memory file against concurrent writers. Two processes
   sharing one `--memory` file each held a private cached view, so the first to
   cross the compaction threshold rewrote the whole file from its stale cache and

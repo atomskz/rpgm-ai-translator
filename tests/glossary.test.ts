@@ -24,12 +24,12 @@ describe("glossary loading", () => {
     });
   });
 
-  it("rejects invalid glossary shapes", async () => {
+  it("rejects an invalid glossary entry, naming the offending term", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-glossary-"));
     const glossaryPath = path.join(root, "glossary.json");
     await writeFile(glossaryPath, JSON.stringify({ Aria: { mode: "unknown" } }), "utf8");
 
-    await expect(loadGlossary(glossaryPath)).rejects.toThrow("Glossary must be an object");
+    await expect(loadGlossary(glossaryPath)).rejects.toThrow(/glossary term 'Aria'.*'mode' must be one of/);
   });
 
   it("rejects a custom-mode term that has no translation", async () => {
@@ -58,11 +58,19 @@ describe("character glossary loading", () => {
     });
   });
 
-  it("rejects invalid character metadata", async () => {
+  it("rejects an invalid character entry, naming the offending name and field", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-characters-"));
     const charactersPath = path.join(root, "characters.json");
     await writeFile(charactersPath, JSON.stringify({ Aria: { gender: "robot" } }), "utf8");
 
-    await expect(loadCharacterGlossary(charactersPath)).rejects.toThrow("Character glossary must be an object");
+    await expect(loadCharacterGlossary(charactersPath)).rejects.toThrow(/character 'Aria'.*'gender' must be one of/);
+  });
+
+  it("names the offending field for a non-string alias list", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-characters-"));
+    const charactersPath = path.join(root, "characters.json");
+    await writeFile(charactersPath, JSON.stringify({ Aria: { aliases: [1, 2] } }), "utf8");
+
+    await expect(loadCharacterGlossary(charactersPath)).rejects.toThrow(/character 'Aria'.*'aliases' must be an array of strings/);
   });
 });
