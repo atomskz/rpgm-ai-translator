@@ -198,6 +198,23 @@ describe("translation memory", () => {
     expect(secondRun.every((result) => result.metadata?.fromMemory === true)).toBe(true);
   });
 
+  it("a second translateWithMemory writer with a stale cache does not clobber the first's entry", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-memory-2writers-"));
+    const file = path.join(root, "memory.jsonl");
+    const provider = new CountingProvider();
+    const a = new JsonlTranslationMemory(file);
+    const b = new JsonlTranslationMemory(file);
+
+    // `a` writes its entry; `b` (a separate instance whose cache never saw a's
+    // write) then writes its own. The in-lock fresh re-read must pick up a's entry
+    // so b's upsert does not drop it.
+    await translateWithMemory([unit("Actors.1.name", "Aria")], provider, { targetLanguage: "ru" }, a);
+    await translateWithMemory([unit("Actors.2.name", "Luna")], provider, { targetLanguage: "ru" }, b);
+
+    const fresh = new JsonlTranslationMemory(file);
+    expect((await fresh.stats()).liveEntries).toBe(2);
+  });
+
   it("does not lose a concurrent writer's entries when another instance compacts", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-memory-concurrent-"));
     const file = path.join(root, "memory.jsonl");

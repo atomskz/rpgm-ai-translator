@@ -672,6 +672,41 @@ describe("run command", () => {
     // Review kept from the reviewed checkpoint, not re-reviewed back to the raw value.
     expect(patched.events[1].pages[0].list[0].parameters[0]).toBe("Привет!");
   });
+
+  it("resumes past a checkpoint truncated by a crash mid-write", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-crash-"));
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "out");
+    const workDir = `${outDir}-work`;
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await mkdir(path.join(gamePath, "js"), { recursive: true });
+    await mkdir(workDir, { recursive: true });
+    await writeFile(path.join(gamePath, "js", "rpg_core.js"), "", "utf8");
+    await writeJson(path.join(gamePath, "data", "Actors.json"), [null, { id: 1, name: "Aria", profile: "A knight." }]);
+
+    // One complete checkpoint line for the name, then a truncated final line for the
+    // profile (a crash mid-append). The run must keep the good line, skip the
+    // corrupt one, and translate the profile fresh — no crash, no lost work.
+    await writeFile(
+      path.join(workDir, "translations.raw.jsonl"),
+      `${JSON.stringify({ id: "Actors.1.name", source: "Aria", translation: "Ария", provider: "manual", model: "manual", status: "translated" })}\n` +
+        `{"id":"Actors.1.profile","source":"A knight.","transl`,
+      "utf8"
+    );
+
+    const output: string[] = [];
+    const exitCode = await runCli(["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir], {
+      stdout: (text) => output.push(text),
+      stderr: (text) => output.push(text)
+    });
+
+    const patched = JSON.parse(await readFile(path.join(outDir, "data", "Actors.json"), "utf8"));
+    expect(exitCode).toBe(0);
+    // The valid checkpoint line is reused; the truncated line is ignored and that
+    // unit is translated fresh by the mock provider.
+    expect(patched[1].name).toBe("Ария");
+    expect(patched[1].profile).toBe("[ru] A knight.");
+  });
 });
 
 async function writeJson(filePath: string, value: unknown): Promise<void> {

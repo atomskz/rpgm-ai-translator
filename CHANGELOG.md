@@ -158,6 +158,9 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Internal
 
+- Add integration coverage for concurrent memory writers (a second writer with a
+  stale cache, and a compaction that must not drop another writer's appends) and
+  crash-resume (a run resuming past a checkpoint truncated by a crash mid-write).
 - Add a CLI behavior test suite: a per-command `--help` matrix (usage to stdout,
   exit 0, clean stderr) that fails if a new command ships without per-command
   help, the exit-code contract (0 success, 1 unknown command / missing argument,
