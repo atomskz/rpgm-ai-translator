@@ -40,6 +40,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Add `--include-notes` (config `includeNotes`) to extract the database `note`
+  field (notetag text) for `extract`/`run`/`apply`. Off by default — notes often
+  hold plugin configuration rather than display text — and when off, a non-empty
+  note is flagged with a one-per-file advisory so translatable note content is not
+  silently dropped. The flag is folded into the resume signature.
 - Add an `estimate` command (`estimate <units.json> [--batch-size <n>]
   [--price-per-1k <usd>]`) that reports the batch count, input tokens and a
   total-token estimate (with an optional USD band), so a job can be sized before

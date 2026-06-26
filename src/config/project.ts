@@ -58,6 +58,7 @@ export type ProjectConfig = {
   includeComments?: boolean;
   includePlugins?: boolean;
   includeSpeakerNames?: boolean;
+  includeNotes?: boolean;
   review?: boolean;
   repair?: boolean;
 };
@@ -115,6 +116,7 @@ export const CONFIG_FIELD_SPECS: readonly ConfigFieldSpec[] = [
   { key: "includeComments", flag: "--include-comments", type: "boolean" },
   { key: "includePlugins", flag: "--include-plugins", type: "boolean" },
   { key: "includeSpeakerNames", flag: "--include-speaker-names", type: "boolean" },
+  { key: "includeNotes", flag: "--include-notes", type: "boolean" },
   { key: "review", flag: "--review", type: "boolean" },
   { key: "repair", flag: "--repair", type: "boolean" }
 ];

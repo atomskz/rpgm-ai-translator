@@ -29,6 +29,7 @@ export type ApplyOptions = {
   includeEventComments?: boolean;
   includePlugins?: boolean;
   includeSpeakerNames?: boolean;
+  includeNotes?: boolean;
   // Must mirror the extraction flags so the re-extracted units (when no explicit
   // units list is supplied) match the translated ids; otherwise comment or
   // length-constrained units are missing and their translations are skipped.
@@ -149,6 +150,10 @@ export type ExtractOptions = {
   includeEventComments?: boolean;
   includePlugins?: boolean;
   includeSpeakerNames?: boolean;
+  // Extract the database `note` field (notetag descriptions). Off by default
+  // because notes often hold plugin configuration rather than display text; when
+  // off, a non-empty note triggers a one-per-file advisory.
+  includeNotes?: boolean;
   // Max display width (in cells) allowed for a single Show Text dialogue line,
   // baked into each dialogue unit's maxLength constraint. The fitting width
   // depends on the game's font, so it is overridable; when unset the built-in

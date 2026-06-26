@@ -158,6 +158,7 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--include-comments": "Extract event comments.",
   "--include-plugins": "Extract cautious plugin parameters and selected plugin command text.",
   "--include-speaker-names": "Translate Show Text speaker name fields.",
+  "--include-notes": "Extract the database note field (notetag text). Off by default; review the output.",
   "--dialogue-max-length": "Max display width (cells) for a dialogue line constraint. Default: 52.",
   "--draft-only": "Build a heuristic character glossary without calling a provider.",
   "--include-mentions": "Include dialogue name mentions as character candidates.",

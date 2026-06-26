@@ -58,7 +58,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
       "--out", "--work-dir", "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size",
       "--timeout-ms", "--temperature", "--max-tokens", "--glossary", "--characters", "--dialogue-max-length"
     ],
-    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names"],
+    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--include-notes"],
     maxPositionals: 1
   },
   clean: {
@@ -69,7 +69,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   detect: { valueOptions: [], booleanFlags: [], maxPositionals: 1 },
   extract: {
     valueOptions: ["--out", "--report", "--dialogue-max-length"],
-    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names"],
+    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--include-notes"],
     maxPositionals: 1
   },
   translate: {
@@ -117,7 +117,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   },
   apply: {
     valueOptions: ["--mode", "--out", "--backup", "--font", "--number-font", "--report", "--units", "--dialogue-max-length"],
-    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--dry-run", "--force"],
+    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--include-notes", "--dry-run", "--force"],
     maxPositionals: 2
   },
   run: {
@@ -126,7 +126,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
       "--max-tokens", "--max-tokens-budget", "--retry-attempts", "--concurrency", "--memory", "--glossary", "--characters", "--from-translations", "--repair-attempts",
       "--repair-codes", "--font", "--number-font", "--mode", "--backup", "--dialogue-max-length", "--price-per-1k"
     ],
-    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--review", "--repair", "--dry-run", "--force"],
+    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--include-notes", "--review", "--repair", "--dry-run", "--force"],
     maxPositionals: 1,
     // Accept repair's flag names so muscle memory transfers between the commands.
     aliases: { "--codes": "--repair-codes", "--attempts": "--repair-attempts" }

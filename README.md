@@ -185,6 +185,10 @@ Extraction options:
 - `--include-speaker-names` — translate `Show Text` speaker names. Off by default
   because many games and portrait plugins use them as technical lookup keys;
   enable it only if the game does not.
+- `--include-notes` — extract the database `note` field (notetag text). Off by
+  default because notes frequently hold plugin configuration rather than display
+  text; when off, a non-empty note is flagged so it is not silently dropped.
+  Review the output, since the whole note (including any tag markup) is translated.
 - `--dialogue-max-length <n>` — override the per-line dialogue width limit
   (default `52` display cells) to match the game's message font. The limit is
   baked into each dialogue unit's `maxLength` constraint.

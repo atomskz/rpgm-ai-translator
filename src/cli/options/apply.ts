@@ -31,6 +31,7 @@ export function readExtractOptions(args: string[]): ExtractOptions {
     includeEventComments: hasFlag(args, "--include-comments"),
     includePlugins: hasFlag(args, "--include-plugins"),
     includeSpeakerNames: hasFlag(args, "--include-speaker-names"),
+    includeNotes: hasFlag(args, "--include-notes"),
     dialogueMaxLength: readPositiveIntegerOption(args, "--dialogue-max-length")
   };
 }
@@ -56,6 +57,7 @@ export function readApplyOptions(args: string[]): ApplyOptions {
     includeEventComments: hasFlag(args, "--include-comments"),
     includePlugins: hasFlag(args, "--include-plugins"),
     includeSpeakerNames: hasFlag(args, "--include-speaker-names"),
+    includeNotes: hasFlag(args, "--include-notes"),
     dialogueMaxLength: readPositiveIntegerOption(args, "--dialogue-max-length"),
     dryRun: hasFlag(args, "--dry-run")
   };

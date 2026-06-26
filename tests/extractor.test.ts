@@ -209,6 +209,28 @@ describe("RpgMakerMvMzExtractor", () => {
     });
   });
 
+  it("extracts the note field only with --include-notes, and warns otherwise", async () => {
+    const root = await makeProject("mz");
+    await writeJson(path.join(root, "data", "Items.json"), [
+      null,
+      { id: 1, name: "Potion", description: "Heals a little.", note: "A common healing item." }
+    ]);
+
+    const warnings: string[] = [];
+    const without = await new RpgMakerMvMzExtractor().extract(root, { onWarning: (warning) => warnings.push(warning) });
+    const withNotes = await new RpgMakerMvMzExtractor().extract(root, { includeNotes: true });
+
+    // Off by default: the note is not extracted, but its presence is flagged.
+    expect(without.some((unit) => unit.id === "Items.1.note")).toBe(false);
+    expect(warnings.join("")).toContain("--include-notes");
+    // On: the note becomes a translatable unit anchored at the note field.
+    expect(withNotes.find((unit) => unit.id === "Items.1.note")).toMatchObject({
+      source: "A common healing item.",
+      jsonPath: "1.note",
+      category: "description"
+    });
+  });
+
   it("extracts map and common event command text with event context", async () => {
     const root = await makeProject("mz");
     await writeJson(path.join(root, "data", "Map001.json"), {

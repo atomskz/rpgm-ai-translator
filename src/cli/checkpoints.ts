@@ -45,12 +45,15 @@ export function computeGameId(projectPath: string, engine: string): string {
 // but which the per-result source check cannot see. Shared by run and status.
 export function computeExtractionFlagsHash(extractOptions: Pick<
   ExtractOptions,
-  "includePlugins" | "includeSpeakerNames" | "includeEventComments" | "dialogueMaxLength"
+  "includePlugins" | "includeSpeakerNames" | "includeEventComments" | "includeNotes" | "dialogueMaxLength"
 >): string {
   return hashCacheKey({
     includePlugins: extractOptions.includePlugins ?? false,
     includeSpeakerNames: extractOptions.includeSpeakerNames ?? false,
     includeEventComments: extractOptions.includeEventComments ?? false,
+    // Undefined-dropped so an existing work dir that never set notes keeps resuming;
+    // turning notes on changes the hash and discards the old checkpoints.
+    includeNotes: extractOptions.includeNotes ? true : undefined,
     dialogueMaxLength: extractOptions.dialogueMaxLength ?? null
   });
 }

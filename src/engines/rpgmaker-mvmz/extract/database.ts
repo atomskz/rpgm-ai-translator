@@ -113,6 +113,9 @@ function extractArrayFile(
     return units;
   }
 
+  const includeNotes = base.extractOptions.includeNotes === true;
+  let sawUnextractedNote = false;
+
   for (const [rowIndex, row] of rows.entries()) {
     if (!isObject(row)) {
       continue;
@@ -129,6 +132,30 @@ function extractArrayFile(
         );
       }
     }
+
+    // The `note` field carries notetag text (plugin descriptions, etc.). Extract it
+    // as a whole-field unit only with --include-notes, since notes frequently hold
+    // configuration rather than display text; otherwise flag that translatable note
+    // content exists so it is not silently dropped.
+    const note = row.note;
+    if (typeof note === "string" && note.trim().length > 0) {
+      if (includeNotes && isTranslatableString(note) && isSafeRuntimeText(note)) {
+        units.push(
+          makeDraft(base, `${rowIndex}.note`, note, "description", {
+            eventId: numberOrUndefined(row.id),
+            eventName: stringOrUndefined(row.name)
+          })
+        );
+      } else if (!includeNotes) {
+        sawUnextractedNote = true;
+      }
+    }
+  }
+
+  if (sawUnextractedNote) {
+    base.extractOptions.onWarning?.(
+      `${fileName} has records with a non-empty note field; pass --include-notes to translate notetag text (review the output, as notes often hold plugin configuration).`
+    );
   }
 
   return units;

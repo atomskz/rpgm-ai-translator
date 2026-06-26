@@ -100,6 +100,7 @@ export class RpgMakerMvMzExtractor implements Extractor {
       includeEventComments: options.includeEventComments,
       includePlugins: options.includePlugins,
       includeSpeakerNames: options.includeSpeakerNames,
+      includeNotes: options.includeNotes,
       dialogueMaxLength: options.dialogueMaxLength
     });
     return writePatch(projectPath, units, translations, options);
