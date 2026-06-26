@@ -11,7 +11,6 @@ class FakeProvider extends OpenAiChatProvider {
   readonly name = "fake";
   protected readonly client: ChatCompletionClient;
   protected readonly defaultModel = "fake-model";
-  protected readonly host = "Fake";
   protected readonly apiKeyName = "FAKE_API_KEY";
 
   constructor(client: ChatCompletionClient) {
@@ -23,6 +22,7 @@ class FakeProvider extends OpenAiChatProvider {
 function okClient(response: ChatCompletionResponse, calls?: { count: number }): ChatCompletionClient {
   return {
     hasApiKey: true,
+    host: "Fake",
     requestChatCompletion: async () => {
       if (calls) {
         calls.count += 1;
@@ -74,6 +74,7 @@ describe("OpenAiChatProvider degradation contract", () => {
   it("degrades to per-unit auth failures when the API key is missing", async () => {
     const provider = new FakeProvider({
       hasApiKey: false,
+      host: "Fake",
       requestChatCompletion: async () => {
         throw new Error("should not be called");
       }
@@ -88,6 +89,7 @@ describe("OpenAiChatProvider degradation contract", () => {
   it("returns a degraded character glossary when the API key is missing", async () => {
     const provider = new FakeProvider({
       hasApiKey: false,
+      host: "Fake",
       requestChatCompletion: async () => {
         throw new Error("should not be called");
       }
@@ -101,6 +103,7 @@ describe("OpenAiChatProvider degradation contract", () => {
   it("turns a thrown request error into failed results instead of throwing", async () => {
     const provider = new FakeProvider({
       hasApiKey: true,
+      host: "Fake",
       requestChatCompletion: async () => {
         throw new Error("network is down");
       }

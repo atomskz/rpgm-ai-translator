@@ -4,6 +4,20 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- Name the configured endpoint in provider error messages instead of always
+  saying "DeepSeek": a failure against a custom `--base-url` is now labeled by its
+  host (for example `localhost:11434 API error 500: …`), so a generic or local
+  endpoint's failure is no longer mislabeled as the default provider. The default
+  DeepSeek endpoint is still named "DeepSeek".
+- Parse a response from a generic OpenAI-compatible endpoint more tolerantly: read
+  the answer from the legacy completion `text` field when `message.content` is
+  absent, and treat an empty `content` with a non-empty reasoning field as
+  budget-exhausting truncation (the same actionable raise-`--max-tokens` guidance
+  as an explicit `max_tokens` cut-off) rather than a bare "no content". The strict
+  DeepSeek path is unaffected, since DeepSeek sets neither field.
+
 ### Added
 
 - Add `--thinking on|off|auto` (config `thinking`) to control DeepSeek reasoning.

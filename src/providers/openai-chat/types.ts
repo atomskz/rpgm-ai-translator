@@ -31,6 +31,10 @@ export type ChatCompletionPass = "translate" | "review" | "characters";
 // interface, so the base owns only the provider-neutral degradation skeleton.
 export interface ChatCompletionClient {
   readonly hasApiKey: boolean;
+  // Human-readable label for the resolved endpoint (e.g. "DeepSeek" or the host of
+  // a custom --base-url), used to name the endpoint in error messages so a generic
+  // or local endpoint's failure is not mislabeled as the default provider.
+  readonly host: string;
   requestChatCompletion(
     messages: ChatMessage[],
     options: TranslateOptions,
@@ -43,7 +47,13 @@ export type ChatCompletionResponse = {
   choices: Array<{
     message?: {
       content?: string | null;
+      // Some OpenAI-compatible reasoning endpoints leave `content` empty and put
+      // the chain-of-thought here; a non-empty reasoning field with empty content
+      // is treated as the model having spent its budget reasoning (truncation).
+      reasoning_content?: string | null;
     };
+    // Legacy completion endpoints return the answer here instead of message.content.
+    text?: string | null;
     // "length" means the model hit max_tokens; used to distinguish a truncated
     // response from a genuinely empty/malformed one.
     finish_reason?: string | null;

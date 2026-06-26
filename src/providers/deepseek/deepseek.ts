@@ -31,7 +31,6 @@ export class DeepSeekProvider extends OpenAiChatProvider {
 
   protected readonly client: ChatCompletionClient;
   protected readonly defaultModel = DEFAULT_MODEL;
-  protected readonly host = "DeepSeek";
   protected readonly apiKeyName = "DEEPSEEK_API_KEY";
 
   constructor(config: DeepSeekProviderConfig = {}) {

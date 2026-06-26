@@ -66,11 +66,14 @@ export abstract class OpenAiChatProvider implements LLMProvider {
   // Model used when a request does not specify one.
   protected abstract readonly defaultModel: string;
 
-  // Human-readable endpoint label used in response/parse error messages.
-  protected abstract readonly host: string;
-
   // Environment variable that holds the API key, named in the missing-key error.
   protected abstract readonly apiKeyName: string;
+
+  // Human-readable endpoint label used in response/parse error messages, taken
+  // from the client so a custom --base-url is named by its host, not the dialect.
+  protected get host(): string {
+    return this.client.host;
+  }
 
   async translateBatch(batch: TranslationUnit[], options: TranslateOptions): Promise<TranslationResult[]> {
     const model = options.model ?? this.defaultModel;

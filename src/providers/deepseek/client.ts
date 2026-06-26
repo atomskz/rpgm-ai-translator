@@ -42,9 +42,6 @@ import type {
   FetchLike
 } from "./types.js";
 
-// The host label used in DeepSeek error messages.
-const HOST = "DeepSeek";
-
 // Cap any single backoff (including a server-provided Retry-After) so a large or
 // malicious value cannot stall the run indefinitely.
 const MAX_RETRY_DELAY_MS = 60_000;
@@ -56,6 +53,10 @@ export class DeepSeekClient implements ChatCompletionClient {
   private readonly fetchFn: FetchLike;
   private readonly maxRetries: number;
   private readonly retryDelayMs: number;
+  // Names the endpoint in error messages: "DeepSeek" for the default base URL, or
+  // the configured host for a custom --base-url, so a generic/local endpoint's
+  // failure is not mislabeled as DeepSeek.
+  readonly host: string;
 
   constructor(config: DeepSeekProviderConfig = {}) {
     this.apiKey = config.apiKey ?? process.env.DEEPSEEK_API_KEY;
@@ -67,6 +68,7 @@ export class DeepSeekClient implements ChatCompletionClient {
     this.fetchFn = config.fetchFn ?? ((url, init) => fetch(url, init) as Promise<DeepSeekResponse>);
     this.maxRetries = config.maxRetries ?? DEFAULT_RETRY_ATTEMPTS;
     this.retryDelayMs = config.retryDelayMs ?? 250;
+    this.host = hostLabelFor(this.baseUrl);
   }
 
   get hasApiKey(): boolean {
@@ -132,7 +134,7 @@ export class DeepSeekClient implements ChatCompletionClient {
         clearTimeout(timeout);
 
         if (!response.ok) {
-          const error = await createHttpError(response, HOST);
+          const error = await createHttpError(response, this.host);
           if (attempt < maxRetries && isRetryableStatus(response.status)) {
             lastError = error;
             await sleep(backoffDelay(attempt, this.retryDelayMs, retryAfterMs(response)));
@@ -144,7 +146,7 @@ export class DeepSeekClient implements ChatCompletionClient {
         const json = await response.json();
         if (!isChatCompletionResponse(json)) {
           throw new ChatCompletionProviderError(
-            `${HOST} API returned an unexpected response shape`,
+            `${this.host} API returned an unexpected response shape`,
             "PROVIDER_RESPONSE_SCHEMA_ERROR"
           );
         }
@@ -193,6 +195,20 @@ function isReasoningCapableModel(model: string): boolean {
     return false;
   }
   return name.includes("reasoner") || name.includes("v4") || name.includes("r1");
+}
+
+// Label the endpoint for error messages: the default DeepSeek base URL is named
+// "DeepSeek"; any custom --base-url is named by its host (e.g. "localhost:11434"),
+// so a failure against a generic/local endpoint is not mislabeled as DeepSeek.
+export function hostLabelFor(baseUrl: string): string {
+  if (baseUrl.replace(/\/$/, "") === DEFAULT_BASE_URL.replace(/\/$/, "")) {
+    return "DeepSeek";
+  }
+  try {
+    return new URL(baseUrl).host || baseUrl;
+  } catch {
+    return baseUrl;
+  }
 }
 
 function isRetryableStatus(status: number): boolean {

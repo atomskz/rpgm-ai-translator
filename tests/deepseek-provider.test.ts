@@ -925,6 +925,53 @@ describe("DeepSeekProvider review and character inference", () => {
     expect(JSON.parse(calls[0].init.body)).toMatchObject({ thinking: { type: "disabled" } });
   });
 
+  it("labels HTTP errors with the configured host for a custom base URL", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      baseUrl: "http://localhost:11434/v1",
+      fetchFn: async () => response(401, { error: { message: "no key" } }, false, "Unauthorized")
+    });
+
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    // The endpoint is named by its host, not "DeepSeek", so a local/generic
+    // endpoint's failure is not mislabeled.
+    expect(results[0].issues?.[0].code).toBe("PROVIDER_AUTH_ERROR");
+    expect(results[0].issues?.[0].message).toContain("localhost:11434 API error 401");
+    expect(results[0].issues?.[0].message).not.toContain("DeepSeek");
+  });
+
+  it("reads a legacy completion `text` field when message.content is absent", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      baseUrl: "http://localhost:1234/v1",
+      fetchFn: async () =>
+        response(200, {
+          choices: [{ text: JSON.stringify({ translations: [{ id: "Actors.1.name", translation: "Ария" }] }) }]
+        })
+    });
+
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    expect(results[0]).toMatchObject({ translation: "Ария", status: "translated" });
+  });
+
+  it("treats empty content with a non-empty reasoning field as truncation", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "test-key",
+      baseUrl: "http://localhost:1234/v1",
+      fetchFn: async () =>
+        response(200, { choices: [{ message: { content: "", reasoning_content: "let me think..." } }] })
+    });
+
+    const results = await provider.translateBatch([unit()], { targetLanguage: "ru" });
+
+    expect(results[0].status).toBe("failed");
+    expect(results[0].issues?.[0].code).toBe("PROVIDER_RESPONSE_ERROR");
+    expect(results[0].issues?.[0].message).toContain("truncated at the max_tokens limit");
+    expect(results[0].issues?.[0].message).toContain("localhost:1234");
+  });
+
   it("sends temperature and no thinking on the openai dialect review pass", async () => {
     const calls: Array<{ url: string; init: FetchInit }> = [];
     const provider = new DeepSeekProvider({

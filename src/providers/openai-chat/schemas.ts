@@ -54,8 +54,18 @@ export function parseCharactersPayload(response: ChatCompletionResponse, host: s
 // actionable message instead of a generic "no content" / "invalid JSON".
 function parseJsonContent(response: ChatCompletionResponse, host: string): unknown {
   const choice = response.choices[0];
-  const content = choice?.message?.content;
-  const truncated = choice?.finish_reason === "length";
+  // Tolerate two non-DeepSeek shapes a generic/local OpenAI-compatible endpoint
+  // can return: the answer in the legacy completion `text` field rather than
+  // `message.content`. Both only ever turn a current hard error into a parse or a
+  // clearer message, so the strict DeepSeek path is unaffected (DeepSeek sets
+  // neither field).
+  const content = choice?.message?.content || choice?.text;
+  // A non-empty reasoning field with empty content means the model spent its whole
+  // budget reasoning before answering — the same actionable failure as an explicit
+  // max_tokens truncation, so it gets the raise-token guidance rather than a bare
+  // "no content".
+  const reasonedButEmpty = Boolean(choice?.message?.reasoning_content);
+  const truncated = choice?.finish_reason === "length" || reasonedButEmpty;
 
   if (!content) {
     if (truncated) {
