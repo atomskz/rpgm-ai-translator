@@ -132,7 +132,11 @@ export function extractEventCommandList(
     }
 
     const textParameter = command.parameters[0];
-    if ((code === 401 || code === 405) && isTranslatableString(textParameter)) {
+    // Show Text (401) is a message-window line bounded by the per-line display
+    // width. Show Scrolling Text continuation (405, following a 105 header) scrolls
+    // vertically with no per-line width limit, so it carries no maxLength — applying
+    // the 52-cell dialogue budget to it produced spurious MAX_LENGTH_EXCEEDED.
+    if (code === 401 && isTranslatableString(textParameter)) {
       units.push(
         makeDraft(
           options,
@@ -145,6 +149,21 @@ export function extractEventCommandList(
             ...neighborContext(list, commandIndex)
           },
           { maxLines: 1, maxLength: options.extractOptions.dialogueMaxLength ?? DEFAULT_DIALOGUE_MAX_LENGTH }
+        )
+      );
+    }
+    if (code === 405 && isTranslatableString(textParameter)) {
+      units.push(
+        makeDraft(
+          options,
+          `${options.prefix}.${commandIndex}.parameters.0`,
+          textParameter,
+          "dialogue",
+          {
+            ...options.context,
+            speaker: currentSpeaker,
+            ...neighborContext(list, commandIndex)
+          }
         )
       );
     }

@@ -182,6 +182,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Give scroll text (Show Scrolling Text, event code 405) its own constraints
+  instead of the 52-cell Show Text dialogue budget. Scroll text scrolls vertically
+  with no per-line width limit, so it was being flagged with spurious
+  `MAX_LENGTH_EXCEEDED`; a 405 line now carries no `maxLength`, while a Show Text
+  (401) line keeps the budget.
 - `detect` exits non-zero when the project is not a recognized RPG Maker MV/MZ
   game (it still prints the JSON), so a wrapping script can branch on `$?` instead
   of parsing the output for `"engine": "unknown"`.

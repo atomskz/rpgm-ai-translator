@@ -282,6 +282,10 @@ describe("RpgMakerMvMzExtractor", () => {
       source: "Ancient text scrolls by.",
       category: "dialogue"
     });
+    // Scroll text (405) has no per-line width budget (so no spurious MAX_LENGTH),
+    // while a Show Text line (401) keeps the dialogue budget.
+    expect(byId.get("Map001.events.1.pages.0.list.5.parameters.0")?.constraints?.maxLength).toBeUndefined();
+    expect(byId.get("Map001.events.1.pages.0.list.1.parameters.0")?.constraints).toMatchObject({ maxLength: 52 });
     expect(byId.get("Map001.events.1.pages.0.list.6.parameters.0")).toMatchObject({
       source: "Translator note",
       category: "unknown"
