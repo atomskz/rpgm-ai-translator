@@ -538,6 +538,7 @@ npm run pack:check
 
 ## Documentation
 
+- [docs/tutorial.md](docs/tutorial.md) — translate your first game, end to end.
 - [docs/cli-reference.md](docs/cli-reference.md) — every command and flag.
 - [docs/configuration.md](docs/configuration.md) — project config file, environment, and precedence.
 - [docs/troubleshooting.md](docs/troubleshooting.md) — common errors and validation issue codes.
