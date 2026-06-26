@@ -23,6 +23,7 @@ import { configCommand } from "./commands/config.js";
 import { detectCommand } from "./commands/detect.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { initCommand } from "./commands/init.js";
+import { memoryCommand } from "./commands/memory.js";
 import { extractCommand } from "./commands/extract.js";
 import { patchFontCommand } from "./commands/patch-font.js";
 import { repairCommand } from "./commands/repair.js";
@@ -43,6 +44,7 @@ const COMMANDS = new Map<string, CommandHandler>([
   ["init", initCommand],
   ["doctor", doctorCommand],
   ["config", configCommand],
+  ["memory", memoryCommand],
   ["detect", detectCommand],
   ["extract", extractCommand],
   ["translate", translateCommand],
@@ -104,10 +106,11 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
       return 0;
     }
 
-    // The `config` command inspects the project config itself (including reporting
-    // a malformed file), so skip the usual pre-load+merge that would otherwise
-    // abort here on a bad config before `config validate` could run.
-    if (command === "config") {
+    // `config` inspects the project config itself (including reporting a malformed
+    // file), and `memory` is a file-maintenance command whose --provider/--model
+    // are prune filters that must not be filled in from the translation config.
+    // Both skip the usual pre-load+merge and run on the raw args.
+    if (command === "config" || command === "memory") {
       validateCommandArgs(command, args);
       return await handler(args, io);
     }

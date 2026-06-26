@@ -17,11 +17,18 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { appendFile, mkdir, readFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { withLockFile } from "../locks.js";
 import { writeFileAtomic } from "../utils/fs.js";
 import type { MemoryEntry, TranslationMemory } from "./types.js";
+
+export type MemoryStats = {
+  liveEntries: number;
+  physicalLines: number;
+  supersededLines: number;
+  bytes: number;
+};
 
 // Memory is an append-only JSONL log: an upsert appends only the changed entries
 // instead of rewriting the whole file, so a large memory is not fully rewritten
@@ -60,16 +67,73 @@ export class JsonlTranslationMemory implements TranslationMemory {
     if (entriesToUpsert.length === 0) {
       return;
     }
-    // Serialize writers on a per-file lock so two processes sharing this --memory
-    // file cannot lose each other's entries: a compaction rewrites the whole file,
-    // and without the lock a writer with a stale cache would drop another's appends.
+    await this.withWriteLock(() => this.upsertManyLocked(entriesToUpsert));
+  }
+
+  // Serialize writers on a per-file lock so two processes sharing this --memory
+  // file cannot lose each other's entries: a compaction rewrites the whole file,
+  // and without the lock a writer with a stale cache would drop another's appends.
+  private async withWriteLock<T>(fn: () => Promise<T>): Promise<T> {
     await mkdir(path.dirname(this.filePath), { recursive: true });
-    await withLockFile(
+    return withLockFile(
       `${this.filePath}.lock`,
       `Another process is writing the translation memory '${this.filePath}'. ` +
         "Wait for it to finish, or do not share the same --memory file across concurrent processes.",
-      () => this.upsertManyLocked(entriesToUpsert)
+      fn
     );
+  }
+
+  // Live entries (last-wins per key) plus how many physical lines are superseded
+  // duplicates, so `memory stats` can show how much a compaction would reclaim.
+  async stats(): Promise<MemoryStats> {
+    this.cachedEntries = undefined;
+    const entries = await this.readAll();
+    let bytes: number;
+    try {
+      bytes = (await stat(this.filePath)).size;
+    } catch {
+      bytes = 0;
+    }
+    return {
+      liveEntries: entries.size,
+      physicalLines: this.physicalLineCount,
+      supersededLines: Math.max(0, this.physicalLineCount - entries.size),
+      bytes
+    };
+  }
+
+  // Force a rewrite that drops superseded lines, returning how many lines were
+  // reclaimed. Holds the write lock and re-reads fresh, like upsert.
+  async compact(): Promise<number> {
+    return this.withWriteLock(async () => {
+      this.cachedEntries = undefined;
+      const entries = await this.readAll();
+      const reclaimed = Math.max(0, this.physicalLineCount - entries.size);
+      if (reclaimed > 0) {
+        await this.writeAll(entries);
+      }
+      return reclaimed;
+    });
+  }
+
+  // Remove every live entry for which `shouldRemove` is true, rewriting the file,
+  // and return how many were removed. Holds the write lock and re-reads fresh.
+  async prune(shouldRemove: (entry: MemoryEntry) => boolean): Promise<number> {
+    return this.withWriteLock(async () => {
+      this.cachedEntries = undefined;
+      const entries = await this.readAll();
+      let removed = 0;
+      for (const [key, entry] of entries) {
+        if (shouldRemove(entry)) {
+          entries.delete(key);
+          removed += 1;
+        }
+      }
+      if (removed > 0) {
+        await this.writeAll(entries);
+      }
+      return removed;
+    });
   }
 
   private async upsertManyLocked(entriesToUpsert: MemoryEntry[]): Promise<void> {

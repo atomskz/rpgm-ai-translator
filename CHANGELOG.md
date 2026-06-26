@@ -36,6 +36,13 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Add a `memory` command to operate the translation-memory file directly:
+  `memory stats` reports live entries, superseded lines and bytes; `memory compact`
+  rewrites the log without superseded lines; and `memory prune` removes entries by
+  `--before <ISO date>`, `--model`, and/or `--provider` (combined with AND, and
+  refusing a filter-less prune so the whole memory cannot be wiped by a slip). The
+  command does not read project config, so its `--model`/`--provider` are prune
+  filters rather than translation settings. Writes go through the new memory lock.
 - Persist the reviewed/repaired translations to memory (not only the raw
   first-pass output), under the same per-unit cache key the translate pass looks
   up, so a re-run reuses the higher-quality reviewed text instead of replaying the

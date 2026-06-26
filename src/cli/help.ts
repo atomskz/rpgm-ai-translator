@@ -45,6 +45,14 @@ const COMMAND_HELP: Record<string, CommandHelpMeta> = {
     summary: "Validate the project config, or print it (or the flags it injects into a command).",
     notes: ["config validate exits non-zero on a malformed config; config print <command> shows the effective injected flags."]
   },
+  memory: {
+    usage: "memory stats | memory compact | memory prune --memory <file> [filters]",
+    summary: "Inspect, compact, or prune a JSONL translation memory file.",
+    notes: [
+      "memory prune needs at least one of --before <ISO date>, --model <name>, --provider <name> (combined with AND).",
+      "memory does not read project config, so its --model/--provider are prune filters, not provider settings."
+    ]
+  },
   detect: { usage: "detect <game>", summary: "Detect the RPG Maker engine and project paths." },
   extract: { usage: "extract <game> [options]", summary: "Extract translation units from RPG Maker JSON data." },
   translate: { usage: "translate <units.json> [options]", summary: "Translate extracted units through a provider." },
@@ -171,6 +179,9 @@ Commands:
 
   config validate | config print [command]
       Validate the project config, or print it (or the flags it injects).
+
+  memory stats | memory compact | memory prune
+      Inspect, compact, or prune a JSONL translation memory file.
 
   detect <game>
       Detect RPG Maker engine and project paths.

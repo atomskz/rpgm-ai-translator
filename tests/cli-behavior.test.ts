@@ -10,6 +10,7 @@ const COMMANDS = [
   "init",
   "doctor",
   "config",
+  "memory",
   "detect",
   "extract",
   "translate",
