@@ -6,6 +6,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Internal
 
+- Add a tag-triggered release workflow (`.github/workflows/release.yml`) that
+  publishes to npm with provenance (a signed public build attestation) when a
+  `v*` version tag is pushed. The publish job is gated on the same
+  typecheck/lint/coverage/build verify matrix CI runs and refuses to publish if
+  the tag does not match `package.json`'s version.
 - Add display-width and number-canonicalization edge tests
   (`tests/display-width.test.ts`): emoji (two cells, once per surrogate pair),
   fullwidth vs halfwidth forms, supplementary-plane CJK, zero-width
