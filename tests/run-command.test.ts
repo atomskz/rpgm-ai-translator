@@ -125,8 +125,41 @@ describe("run command", () => {
 
     expect(exitCode).toBe(0);
     expect(output.join("")).toContain("[dry run]");
-    expect(output.join("")).toContain("Would extract 1 units");
+    expect(output.join("")).toContain("1 units:");
+    expect(output.join("")).toContain("1 to translate");
     await expect(readFile(path.join(outDir, "units.json"), "utf8")).rejects.toThrow();
+  });
+
+  it("dry-run reports passes and excludes memory-hit units from the estimate", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-dry-cost-"));
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "out");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await mkdir(path.join(gamePath, "js"), { recursive: true });
+    await writeFile(path.join(gamePath, "js", "rpg_core.js"), "", "utf8");
+    await writeJson(path.join(gamePath, "data", "Actors.json"), [
+      null,
+      { id: 1, name: "Aria", profile: "A wandering knight." }
+    ]);
+
+    // Pre-seed memory so the profile unit is a memory hit and drops out of the estimate.
+    await mkdir(`${outDir}-work`, { recursive: true });
+    const memoryPath = path.join(`${outDir}-work`, "translation-memory.jsonl");
+    await seedBrokenProfileMemory(gamePath, memoryPath, "A wandering knight.", "Странствующий рыцарь.");
+
+    const errors: string[] = [];
+    const exitCode = await runCli(
+      ["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--review", "--dry-run", "--price-per-1k", "1"],
+      { stdout: () => undefined, stderr: (text) => errors.push(text) }
+    );
+
+    const out = errors.join("");
+    expect(exitCode).toBe(0);
+    expect(out).toContain("[dry run]");
+    expect(out).toContain("1 memory hit(s)");
+    expect(out).toContain("Passes: translate + review");
+    // The USD band is shown because --price-per-1k was given.
+    expect(out).toMatch(/\$\d/);
   });
 
   it("echoes the resolved target and warns when --target was not given", async () => {

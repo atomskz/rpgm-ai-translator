@@ -63,6 +63,11 @@ const COMMAND_HELP: Record<string, CommandHelpMeta> = {
     summary: "Show per-unit before/after across the translate, review and repair passes.",
     notes: ["Lists only units whose translation changed between passes; the repaired file is optional."]
   },
+  estimate: {
+    usage: "estimate <units.json> [--batch-size <n>] [--price-per-1k <usd>]",
+    summary: "Estimate the batch count and token cost of translating a units file.",
+    notes: ["--price-per-1k adds a rough USD band. Writes nothing; prints a JSON report to stdout."]
+  },
   status: {
     usage: "status <game> --out <dir> [run flags]",
     summary: "Inspect a run's resumability: translated/reviewed/repaired counts and resume-vs-reset.",
@@ -141,6 +146,7 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--max-tokens-budget": "Abort the run if estimated or used tokens exceed this budget.",
   "--retry-attempts": "Provider retry attempts for transient failures (timeout, network, rate limit, 5xx). Default: 2.",
   "--concurrency": "Translation batches to keep in flight at once. Default: 1 (serial).",
+  "--price-per-1k": "Optional USD price per 1k tokens; adds a rough cost band to an estimate or dry run.",
   "--codes": "Comma-separated validation issue codes to repair.",
   "--attempts": "Number of repair passes.",
   "--repair-codes": "Comma-separated validation issue codes for run --repair.",
@@ -220,6 +226,9 @@ Commands:
 
   diff <raw.json> <reviewed.json> [repaired.json]
       Show per-unit before/after across the translate, review and repair passes.
+
+  estimate <units.json>
+      Estimate the batch count and token cost of translating a units file.
 
   status <game> --out <dir>
       Inspect a run's resumability (counts, stored signature, resume vs reset).

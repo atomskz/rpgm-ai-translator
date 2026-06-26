@@ -52,6 +52,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   memory: { valueOptions: ["--memory", "--before", "--model", "--provider"], booleanFlags: [], maxPositionals: 1 },
   report: { valueOptions: ["--units", "--translations", "--out"], booleanFlags: [], maxPositionals: 2 },
   diff: { valueOptions: ["--out"], booleanFlags: [], maxPositionals: 3 },
+  estimate: { valueOptions: ["--batch-size", "--price-per-1k"], booleanFlags: [], maxPositionals: 1 },
   status: {
     valueOptions: [
       "--out", "--work-dir", "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size",
@@ -123,7 +124,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
     valueOptions: [
       "--out", "--work-dir", "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
       "--max-tokens", "--max-tokens-budget", "--retry-attempts", "--concurrency", "--memory", "--glossary", "--characters", "--from-translations", "--repair-attempts",
-      "--repair-codes", "--font", "--number-font", "--mode", "--backup", "--dialogue-max-length"
+      "--repair-codes", "--font", "--number-font", "--mode", "--backup", "--dialogue-max-length", "--price-per-1k"
     ],
     booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--review", "--repair", "--dry-run", "--force"],
     maxPositionals: 1,

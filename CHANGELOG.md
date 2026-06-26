@@ -40,6 +40,14 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Add an `estimate` command (`estimate <units.json> [--batch-size <n>]
+  [--price-per-1k <usd>]`) that reports the batch count, input tokens and a
+  total-token estimate (with an optional USD band), so a job can be sized before
+  committing. Writes nothing.
+- Enrich `run --dry-run`: the estimate now runs *after* checkpoint resume and
+  excludes translation-memory hits (so it reflects what would actually be sent),
+  names the passes it would run (translate / review / repair), and shows an
+  optional USD band with `--price-per-1k`.
 - Add `--concurrency <n>` (config `concurrency`) to translate several translation
   batches at once for `translate` and `run` (default 1, i.e. unchanged serial
   behavior). Provider requests overlap up to the limit, while the per-batch

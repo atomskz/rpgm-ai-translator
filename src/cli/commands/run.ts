@@ -28,11 +28,11 @@ import {
   RpgMakerMvMzExtractor,
   writePatch
 } from "../../engines/rpgmaker-mvmz/public-api.js";
-import { estimateInputTokens, estimateTotalTokens, TokenBudget } from "../../core/cost.js";
+import { estimateTotalTokens, TokenBudget } from "../../core/cost.js";
 import { acquireDirectoryLock, LOCK_FILENAME, withDirectoryLock } from "../../core/locks.js";
 import { isNonEmptyDirectory, writeFileAtomic } from "../../core/utils/fs.js";
 import { JsonlTranslationMemory } from "../../core/memory/public-api.js";
-import { persistResultsToMemory, translateWithMemory } from "../../core/memory/public-api.js";
+import { persistResultsToMemory, translateWithMemory, translationCacheKey } from "../../core/memory/public-api.js";
 import { repairTranslations } from "../../core/pipeline/public-api.js";
 import { createReport, dominantFailureCause, summarizeReport, writeReportFile } from "../../core/reports/public-api.js";
 import { reviewTranslations } from "../../core/pipeline/public-api.js";
@@ -57,6 +57,7 @@ import {
   readExtractOptions,
   readFontOptions,
   readIssueCodesOption,
+  readNumberOption,
   readOption,
   readProviderConfig,
   readProviderName,
@@ -78,7 +79,7 @@ import {
   writeCheckpointSignatureFile
 } from "../checkpoints.js";
 import { createProgressLogger } from "../progress.js";
-import type { TranslationResult } from "../../core/types/public-api.js";
+import type { TranslateOptions, TranslationResult, TranslationUnit } from "../../core/types/public-api.js";
 import type { CliIO } from "../types.js";
 
 export async function runCommand(args: string[], io: CliIO): Promise<number> {
@@ -159,12 +160,6 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
       io.stderr(`Warning: ${warning}\n`);
     }
   });
-  if (dryRun) {
-    io.stderr(
-      `[dry run] Detected ${detected.engine}. Would extract ${units.length} units from ${new Set(units.map((unit) => unit.filePath)).size} files (estimated ~${estimateInputTokens(units)} input tokens) and translate, validate and patch into '${outDir}'. No files were written.\n`
-    );
-    return 0;
-  }
   const glossary = glossaryPath ? await loadGlossary(glossaryPath) : undefined;
   const characterGlossary = charactersPath ? await loadCharacterGlossary(charactersPath) : undefined;
 
@@ -214,6 +209,22 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
     ? checkpointedTranslationsById(units, await readTranslationResultsJsonlFile(rawCheckpointPath))
     : new Map();
   let unitsToTranslate = units.filter((unit) => !rawCheckpointById.has(unit.id));
+
+  if (dryRun) {
+    return previewDryRun(args, io, {
+      detectedEngine: detected.engine,
+      outDir,
+      units,
+      unitsToTranslate,
+      resumedCount: rawCheckpointById.size,
+      memoryPath,
+      memoryOptions: { ...providerOptions, glossary, characterGlossary },
+      batchSize: providerOptions.batchSize,
+      review: hasFlag(args, "--review"),
+      repair: repairEnabled
+    });
+  }
+
   // Estimate over the units actually being sent (after checkpoint resume), not the
   // full extraction, and before any files are written, so a resumed run is not
   // falsely blocked and an over-budget run leaves nothing behind.
@@ -488,4 +499,60 @@ async function fileMtimeMs(filePath: string): Promise<number | undefined> {
   } catch {
     return undefined;
   }
+}
+
+// Report what a run would do without writing anything: the estimate is scoped to
+// the units actually sent (excluding checkpoint resumes and translation-memory
+// hits) and includes the review/repair passes that are enabled, plus an optional
+// USD band from --price-per-1k. Reads the memory only to count hits.
+async function previewDryRun(
+  args: string[],
+  io: CliIO,
+  params: {
+    detectedEngine: string;
+    outDir: string;
+    units: TranslationUnit[];
+    unitsToTranslate: TranslationUnit[];
+    resumedCount: number;
+    memoryPath: string;
+    memoryOptions: TranslateOptions;
+    batchSize: number | undefined;
+    review: boolean;
+    repair: boolean;
+  }
+): Promise<number> {
+  const memory = new JsonlTranslationMemory(params.memoryPath);
+  const pending: TranslationUnit[] = [];
+  let memoryHits = 0;
+  for (const unit of params.unitsToTranslate) {
+    const cached = await memory.get(translationCacheKey(unit, params.memoryOptions));
+    if (cached && cached.status === "translated") {
+      memoryHits += 1;
+    } else {
+      pending.push(unit);
+    }
+  }
+
+  const translateTokens = estimateTotalTokens(pending, { batchSize: params.batchSize });
+  const reviewTokens = params.review ? estimateTotalTokens(params.units, { batchSize: params.batchSize }) : 0;
+  // Repair is a targeted subset; estimate one pass over the pending units as a
+  // rough upper bound for the preview.
+  const repairTokens = params.repair ? estimateTotalTokens(pending, { batchSize: params.batchSize }) : 0;
+  const totalTokens = translateTokens + reviewTokens + repairTokens;
+
+  const passes = ["translate", ...(params.review ? ["review"] : []), ...(params.repair ? ["repair"] : [])].join(" + ");
+  const price = readNumberOption(args, "--price-per-1k", { min: 0 });
+  // The estimate is approximate, so quote a band (half to double) rather than a
+  // single misleadingly-precise figure.
+  const usdNote =
+    price != null
+      ? ` ~$${(((totalTokens / 1000) * price) / 2).toFixed(3)}–$${((totalTokens / 1000) * price * 2).toFixed(3)} (at $${price}/1k tokens)`
+      : "";
+
+  io.stderr(
+    `[dry run] Detected ${params.detectedEngine}. ${params.units.length} units: ${params.resumedCount} already in checkpoint, ` +
+      `${memoryHits} memory hit(s), ${pending.length} to translate. Passes: ${passes}. ` +
+      `Estimated ~${totalTokens} total tokens${usdNote}. Patch would go to '${params.outDir}'. No files were written.\n`
+  );
+  return 0;
 }
