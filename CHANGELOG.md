@@ -36,6 +36,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Add a `report summarize` command that renders the JSON validation report as a
+  human-readable Markdown review document, joining each issue to its source text,
+  translation and file location, grouped by file and ordered by severity — so a
+  translator can see and act on what to fix without reading the raw report JSON.
+  Writes to `--out` or prints to stdout.
 - Add a `memory` command to operate the translation-memory file directly:
   `memory stats` reports live entries, superseded lines and bytes; `memory compact`
   rewrites the log without superseded lines; and `memory prune` removes entries by

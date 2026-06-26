@@ -20,3 +20,4 @@
 // Public contract: reports.
 export * from "./reports.js";
 export * from "./failures.js";
+export * from "./summarize-markdown.js";

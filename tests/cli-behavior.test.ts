@@ -11,6 +11,7 @@ const COMMANDS = [
   "doctor",
   "config",
   "memory",
+  "report",
   "detect",
   "extract",
   "translate",
