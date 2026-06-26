@@ -71,8 +71,9 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
       "--timeout-ms", "--temperature", "--max-tokens", "--max-tokens-budget"
     ],
     booleanFlags: ["--draft-only", "--include-mentions"],
-    maxPositionals: 1,
-    extraPositionalHint: "characters reads only <units.json>; pass the translations file via --translations."
+    // <units.json> [translations.json]; --translations is a deprecated alias for
+    // the second positional. (The check subcommand uses `characters check <file>`.)
+    maxPositionals: 2
   },
   review: {
     valueOptions: [

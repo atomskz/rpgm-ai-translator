@@ -68,9 +68,13 @@ describe("validateCommandArgs", () => {
     ).not.toThrow();
   });
 
-  it("rejects a surplus positional and points characters at --translations", () => {
-    expect(() => validateCommandArgs("characters", ["units.json", "translations.json"])).toThrow(
-      "Unexpected argument 'translations.json' for 'characters'. characters reads only <units.json>; pass the translations file via --translations."
+  it("accepts characters' translations file as an optional second positional", () => {
+    expect(() => validateCommandArgs("characters", ["units.json", "translations.json"])).not.toThrow();
+  });
+
+  it("rejects a third positional for characters", () => {
+    expect(() => validateCommandArgs("characters", ["units.json", "translations.json", "extra.json"])).toThrow(
+      "Unexpected argument 'extra.json' for 'characters'."
     );
   });
 

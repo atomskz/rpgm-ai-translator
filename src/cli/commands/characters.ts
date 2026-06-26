@@ -34,6 +34,7 @@ import {
   echoTargetLanguage,
   hasFlag,
   readOption,
+  readPositionals,
   readPositiveIntegerOption,
   readProviderCliOptions,
   readProviderConfig,
@@ -46,7 +47,9 @@ import type { CliIO } from "../types.js";
 export async function charactersCommand(args: string[], io: CliIO): Promise<number> {
   const unitsPath = requirePositional(args, 0, "units path");
   const out = requireOption(args, "--out");
-  const translationsPath = readOption(args, "--translations");
+  // Accept the translations file as an optional second positional (consistent with
+  // review/validate/repair); --translations stays as a deprecated alias one release.
+  const translationsPath = readPositionals(args)[1] ?? readOption(args, "--translations");
   const providerName = readProviderName(args);
   if (providerName !== "none" && !hasFlag(args, "--draft-only")) {
     assertProviderReady(providerName);

@@ -6,6 +6,10 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Changed
 
+- `characters` accepts the translations file as an optional second positional
+  (`characters <units.json> [translations.json]`), consistent with
+  `review`/`validate`/`repair`; `--translations` remains as a deprecated alias.
+  Passing it positionally is no longer rejected.
 - Fold a prompt version into the resumable run signature and the translation
   memory key, so editing the prompt wording (and bumping the version) discards
   stale checkpoints and is a memory miss instead of silently replaying output

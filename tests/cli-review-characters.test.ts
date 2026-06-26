@@ -195,20 +195,21 @@ describe("CLI review and characters", () => {
     expect(characters.Aria).toMatchObject({ review: true });
   });
 
-  it("rejects a translations file passed as a second positional to characters", async () => {
-    const root = await createCliTempDir("rpgm-cli-characters-extra-");
+  it("accepts a translations file as the second positional to characters", async () => {
+    const root = await createCliTempDir("rpgm-cli-characters-positional-");
     const unitsPath = path.join(root, "units.json");
     const translationsPath = path.join(root, "translations.json");
+    const outPath = path.join(root, "characters.json");
     await writeJsonFixture(unitsPath, [actorNameUnit({ normalizedSource: undefined, hash: "hash-aria" })]);
-    await writeJsonFixture(translationsPath, []);
-    const errors: string[] = [];
+    await writeJsonFixture(translationsPath, [{ id: "Actors.1.name", source: "Aria", translation: "Ария", status: "translated" }]);
 
     const exitCode = await runCli(
-      ["characters", unitsPath, translationsPath, "--provider", "none", "--out", path.join(root, "characters.json")],
-      { stdout: () => undefined, stderr: (text) => errors.push(text) }
+      ["characters", unitsPath, translationsPath, "--provider", "none", "--out", outPath],
+      { stdout: () => undefined, stderr: () => undefined }
     );
 
-    expect(exitCode).toBe(1);
-    expect(errors.join("")).toContain("pass the translations file via --translations");
+    const characters = JSON.parse(await readFile(outPath, "utf8"));
+    expect(exitCode).toBe(0);
+    expect(characters.Aria).toBeDefined();
   });
 });

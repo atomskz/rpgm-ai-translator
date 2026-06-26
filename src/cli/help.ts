@@ -62,9 +62,12 @@ const COMMAND_HELP: Record<string, CommandHelpMeta> = {
   extract: { usage: "extract <game> [options]", summary: "Extract translation units from RPG Maker JSON data." },
   translate: { usage: "translate <units.json> [options]", summary: "Translate extracted units through a provider." },
   characters: {
-    usage: "characters <units.json> [options]",
+    usage: "characters <units.json> [translations.json] [options]",
     summary: "Generate a character glossary draft or provider-inferred glossary.",
-    notes: ["Pass translations with --translations (not a positional argument)."]
+    notes: [
+      "Pass the translations file as the second positional; --translations is a deprecated alias.",
+      "characters check <characters.json> validates an existing glossary instead of generating one."
+    ]
   },
   review: {
     usage: "review <units.json> <translations.json> [options]",
