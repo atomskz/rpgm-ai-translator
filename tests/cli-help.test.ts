@@ -40,6 +40,25 @@ describe("CLI help", () => {
     expect(text).not.toContain("--units");
   });
 
+  it("gives command-aware meanings for --out and --report", async () => {
+    const helpFor = async (command: string): Promise<string> => {
+      const out: string[] = [];
+      await runCli([command, "--help"], { stdout: (text) => out.push(text), stderr: () => undefined });
+      return out.join("");
+    };
+
+    const extractHelp = await helpFor("extract");
+    const applyHelp = await helpFor("apply");
+    const repairHelp = await helpFor("repair");
+
+    // --out means a units file for extract but a patch directory for apply.
+    expect(extractHelp).toContain("extracted units JSON");
+    expect(applyHelp).toContain("Patch output directory");
+    // --report is written by extract but read by repair.
+    expect(extractHelp).toContain("Write an extraction report");
+    expect(repairHelp).toContain("Read the validation report");
+  });
+
   it("notes the apply --font constraint in apply --help", async () => {
     const output: string[] = [];
     const exitCode = await runCli(["apply", "--help"], {

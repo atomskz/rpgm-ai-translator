@@ -172,6 +172,24 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--all": "clean: remove checkpoints, lock and translation memory."
 };
 
+// Per-command meanings for the flags whose meaning changes by command (--out is a
+// units file, a report, a translations file, or a patch directory; --report is
+// written by extract/validate but read by apply/repair). Falls back to the generic
+// FLAG_DESCRIPTIONS when a command has no specific entry.
+const COMMAND_FLAG_DESCRIPTIONS: Record<string, Record<string, string>> = {
+  extract: { "--out": "Write the extracted units JSON here (stdout if omitted).", "--report": "Write an extraction report JSON here." },
+  translate: { "--out": "Write the translations JSON here (stdout if omitted).", "--report": "Write a report JSON here." },
+  characters: { "--out": "Write the character glossary JSON here." },
+  review: { "--out": "Write the reviewed translations JSON here." },
+  validate: { "--out": "Write the validation report JSON here (stdout if omitted)." },
+  repair: { "--out": "Write the repaired translations JSON here.", "--report": "Read the validation report to target repairs." },
+  apply: { "--out": "Patch output directory (in --mode patch).", "--report": "Read a validation report to filter which translations apply." },
+  run: { "--out": "Patch output directory." },
+  "patch-font": { "--out": "Patch output directory to write the font settings into." },
+  status: { "--out": "Patch output directory, used to derive the default work dir." },
+  clean: { "--out": "Patch output directory, used to derive the work dir to clean." }
+};
+
 export function commandUsage(command: string): string | undefined {
   return COMMAND_HELP[command]?.usage;
 }
@@ -189,7 +207,7 @@ export function commandHelp(command: string): string {
     lines.push("", "Options:");
     for (const flag of flags) {
       const label = valueOptions.has(flag) ? `${flag} <value>` : flag;
-      const description = FLAG_DESCRIPTIONS[flag];
+      const description = COMMAND_FLAG_DESCRIPTIONS[command]?.[flag] ?? FLAG_DESCRIPTIONS[flag];
       lines.push(`  ${label}${description ? `  ${description}` : ""}`);
     }
   }

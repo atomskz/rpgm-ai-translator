@@ -6,6 +6,10 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Changed
 
+- Per-command `--help` now states the command-specific meaning of the overloaded
+  `--out` and `--report` flags (a units file vs a report vs a patch directory; a
+  report written vs read) instead of one generic description, so each command's
+  help is unambiguous.
 - `characters` accepts the translations file as an optional second positional
   (`characters <units.json> [translations.json]`), consistent with
   `review`/`validate`/`repair`; `--translations` remains as a deprecated alias.
