@@ -19,6 +19,7 @@
 
 import { applyCommand } from "./commands/apply.js";
 import { charactersCommand } from "./commands/characters.js";
+import { cleanCommand } from "./commands/clean.js";
 import { configCommand } from "./commands/config.js";
 import { detectCommand } from "./commands/detect.js";
 import { diffCommand } from "./commands/diff.js";
@@ -51,6 +52,7 @@ const COMMANDS = new Map<string, CommandHandler>([
   ["report", reportCommand],
   ["diff", diffCommand],
   ["status", statusCommand],
+  ["clean", cleanCommand],
   ["detect", detectCommand],
   ["extract", extractCommand],
   ["translate", translateCommand],

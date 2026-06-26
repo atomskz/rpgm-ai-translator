@@ -68,6 +68,14 @@ const COMMAND_HELP: Record<string, CommandHelpMeta> = {
     summary: "Inspect a run's resumability: translated/reviewed/repaired counts and resume-vs-reset.",
     notes: ["Pass the same flags you would re-run with so the resume verdict reflects the live signature."]
   },
+  clean: {
+    usage: "clean --out <dir> | --work-dir <dir> [--checkpoints] [--with-memory] [--lock] [--all] [--dry-run]",
+    summary: "Remove a run's work-dir checkpoints, lock and (optionally) translation memory.",
+    notes: [
+      "Default removes checkpoints + lock and preserves the translation memory; --all also removes memory.",
+      "Only touches files inside the work directory, never the game or the patch output. --dry-run previews."
+    ]
+  },
   detect: { usage: "detect <game>", summary: "Detect the RPG Maker engine and project paths." },
   extract: { usage: "extract <game> [options]", summary: "Extract translation units from RPG Maker JSON data." },
   translate: { usage: "translate <units.json> [options]", summary: "Translate extracted units through a provider." },
@@ -149,7 +157,11 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--review": "Run a second-pass review of dialogue and choices.",
   "--repair": "Enable validation-targeted repair.",
   "--dry-run": "Report what would be written without creating or modifying files.",
-  "--force": "Overwrite a non-empty patch output directory (refused by default to avoid mixing patches)."
+  "--force": "Overwrite a non-empty patch output directory (refused by default to avoid mixing patches).",
+  "--checkpoints": "clean: remove the per-stage JSONL checkpoints and the run signature.",
+  "--with-memory": "clean: also remove the work-dir translation memory (preserved by default).",
+  "--lock": "clean: remove a leftover work-dir lock file.",
+  "--all": "clean: remove checkpoints, lock and translation memory."
 };
 
 export function commandUsage(command: string): string | undefined {
@@ -210,6 +222,9 @@ Commands:
 
   status <game> --out <dir>
       Inspect a run's resumability (counts, stored signature, resume vs reset).
+
+  clean --out <dir>
+      Remove a run's work-dir checkpoints, lock and (optionally) translation memory.
 
   detect <game>
       Detect RPG Maker engine and project paths.

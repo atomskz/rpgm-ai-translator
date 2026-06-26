@@ -14,6 +14,7 @@ const COMMANDS = [
   "report",
   "diff",
   "status",
+  "clean",
   "detect",
   "extract",
   "translate",

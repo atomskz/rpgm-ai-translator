@@ -40,6 +40,12 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Add a `clean` command for safe recovery from a crashed or abandoned run: it
+  removes the work-dir checkpoints and the run lock by default (preserving the
+  translation memory), with `--with-memory`/`--all` to also remove memory,
+  `--checkpoints`/`--lock` to select categories, and `--dry-run` to preview. It
+  only ever touches files inside the work directory, never the game or the patch
+  output, so a translator no longer has to hand-`rm` internal files.
 - Add a `status` command that inspects a run's resumability without modifying
   anything: it reports the translated/reviewed/repaired counts against the unit
   total, the stored run signature, and — given the game and the flags you would

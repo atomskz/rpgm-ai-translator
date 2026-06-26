@@ -60,6 +60,11 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
     booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names"],
     maxPositionals: 1
   },
+  clean: {
+    valueOptions: ["--out", "--work-dir"],
+    booleanFlags: ["--checkpoints", "--with-memory", "--lock", "--all", "--dry-run"],
+    maxPositionals: 0
+  },
   detect: { valueOptions: [], booleanFlags: [], maxPositionals: 1 },
   extract: {
     valueOptions: ["--out", "--report", "--dialogue-max-length"],
