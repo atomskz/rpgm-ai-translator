@@ -132,6 +132,34 @@ describe("prompt builder", () => {
     expect(messages[0].content).not.toContain("Apply the glossary");
   });
 
+  it("explains length constraints in the translate prompt only when a unit carries them", () => {
+    const constrained: TranslationUnit = { ...unit(), constraints: { maxLength: 52, maxLines: 1 } };
+    const withConstraints = buildTranslationMessages([constrained], { targetLanguage: "ru" })[0].content;
+    const withoutConstraints = buildTranslationMessages([unit()], { targetLanguage: "ru" })[0].content;
+
+    expect(withConstraints).toContain("maxLength is the maximum display width");
+    expect(withConstraints).toContain("maxLines is the maximum number of lines");
+    // unit() has only preserveControlCodes, no length constraint, so it is omitted.
+    expect(withoutConstraints).not.toContain("maxLength is the maximum display width");
+  });
+
+  it("explains length constraints in the review prompt when a unit carries them", () => {
+    const system = buildReviewMessages(
+      [
+        {
+          id: "Map001.events.1.pages.0.list.1.parameters.0",
+          source: "I am ready.",
+          currentTranslation: "Я готов.",
+          category: "dialogue",
+          constraints: { maxLength: 52 }
+        }
+      ],
+      { targetLanguage: "ru" }
+    )[0].content;
+
+    expect(system).toContain("maxLength is the maximum display width");
+  });
+
   it("builds stable chat messages with JSON user content", () => {
     const messages = buildTranslationMessages([unit()], { targetLanguage: "ru" });
 

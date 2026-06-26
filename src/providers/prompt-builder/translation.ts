@@ -22,12 +22,24 @@ import { filterGlossaryForBatch } from "./glossary.js";
 import { buildTranslationSystemPrompt } from "./system-prompts.js";
 import type { ChatMessage } from "./types.js";
 
+// A batch carries length constraints when any unit bounds its line width or line
+// count, so the system prompt should explain how to fit the text.
+export function batchHasLengthConstraints(
+  batch: Array<{ constraints?: { maxLength?: number; maxLines?: number } }>
+): boolean {
+  return batch.some((unit) => unit.constraints?.maxLength != null || unit.constraints?.maxLines != null);
+}
+
 export function buildTranslationMessages(batch: TranslationUnit[], options: TranslateOptions): ChatMessage[] {
   const glossary = filterGlossaryForBatch(options.glossary, batch, options.onWarning);
   return [
     {
       role: "system",
-      content: buildTranslationSystemPrompt(options.targetLanguage, Object.keys(glossary).length > 0)
+      content: buildTranslationSystemPrompt(
+        options.targetLanguage,
+        Object.keys(glossary).length > 0,
+        batchHasLengthConstraints(batch)
+      )
     },
     {
       role: "user",

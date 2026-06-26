@@ -4,6 +4,16 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ## Unreleased
 
+### Changed
+
+- Explain the per-unit length constraints (`maxLength`/`maxLines`) in the
+  translate and review system prompts when a batch carries them, defining display
+  width the same way validation measures it (full-width = 2 cells, half-width = 1,
+  placeholders/escape codes = 0). The first pass now fits text to the message
+  window instead of producing overflow that the repair pass has to fix, so repair
+  converges faster. The instruction is added only when a batch actually carries a
+  length constraint.
+
 ### Added
 
 - Extract `Troops.json` — troop names and in-battle event command lists (boss and

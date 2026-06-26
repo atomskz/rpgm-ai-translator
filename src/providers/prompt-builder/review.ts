@@ -20,6 +20,7 @@
 import type { Glossary, ReviewOptions, ReviewUnit } from "../../core/types/public-api.js";
 import { filterGlossaryForReviewBatch } from "./glossary.js";
 import { buildReviewSystemPrompt } from "./system-prompts.js";
+import { batchHasLengthConstraints } from "./translation.js";
 import type { ChatMessage } from "./types.js";
 
 export function buildReviewMessages(batch: ReviewUnit[], options: ReviewOptions): ChatMessage[] {
@@ -27,7 +28,11 @@ export function buildReviewMessages(batch: ReviewUnit[], options: ReviewOptions)
   return [
     {
       role: "system",
-      content: buildReviewSystemPrompt(options.targetLanguage, Object.keys(glossary).length > 0)
+      content: buildReviewSystemPrompt(
+        options.targetLanguage,
+        Object.keys(glossary).length > 0,
+        batchHasLengthConstraints(batch)
+      )
     },
     {
       role: "user",

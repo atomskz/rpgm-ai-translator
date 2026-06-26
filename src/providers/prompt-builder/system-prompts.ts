@@ -29,7 +29,20 @@ function glossaryModeInstructions(): string[] {
   ];
 }
 
-export function buildTranslationSystemPrompt(targetLanguage: string, hasGlossary = false): string {
+// Explains the per-unit `constraints` (maxLength/maxLines) the payload already
+// carries as bare numbers, so the model fits the text instead of overflowing the
+// message window. Validation measures the same way, so honoring this converges
+// the repair loop faster (a line that already fits avoids MAX_LENGTH_EXCEEDED).
+function lengthConstraintInstructions(): string[] {
+  return [
+    "Some units carry length constraints; respect them:",
+    "- maxLength is the maximum display width of a single line, in cells: a half-width character is 1 cell, a full-width (CJK) character is 2, and placeholders, escape codes and variables count as 0.",
+    "- maxLines is the maximum number of lines the text may occupy.",
+    "Keep each line within maxLength and the whole text within maxLines. Prefer rephrasing more concisely over overflowing, and break lines only where the source already allows it."
+  ];
+}
+
+export function buildTranslationSystemPrompt(targetLanguage: string, hasGlossary = false, hasConstraints = false): string {
   return [
     `Translate RPG Maker game text to ${targetLanguage}.`,
     "Preserve meaning, tone, and style.",
@@ -38,12 +51,13 @@ export function buildTranslationSystemPrompt(targetLanguage: string, hasGlossary
     "Do not change placeholders like <PH_1>.",
     "Do not change numbers, variables, escape codes, tags, or formatting.",
     ...(hasGlossary ? glossaryModeInstructions() : []),
+    ...(hasConstraints ? lengthConstraintInstructions() : []),
     "Return only valid JSON with a top-level translations array.",
     "Do not add explanations."
   ].join("\n");
 }
 
-export function buildReviewSystemPrompt(targetLanguage: string, hasGlossary = false): string {
+export function buildReviewSystemPrompt(targetLanguage: string, hasGlossary = false, hasConstraints = false): string {
   return [
     `Review and revise RPG Maker game translations in ${targetLanguage}.`,
     "Improve coherence, pronoun/gender agreement, natural dialogue flow, and terminology consistency.",
@@ -54,6 +68,7 @@ export function buildReviewSystemPrompt(targetLanguage: string, hasGlossary = fa
     "Do not change numbers, variables, escape codes, tags, or formatting.",
     "Keep translations concise enough for RPG Maker message windows.",
     ...(hasGlossary ? glossaryModeInstructions() : []),
+    ...(hasConstraints ? lengthConstraintInstructions() : []),
     "Return only valid JSON with a top-level translations array.",
     "Do not add explanations."
   ].join("\n");
