@@ -13,6 +13,7 @@ const COMMANDS = [
   "memory",
   "report",
   "diff",
+  "status",
   "detect",
   "extract",
   "translate",

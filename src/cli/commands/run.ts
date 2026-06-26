@@ -31,7 +31,6 @@ import {
 import { estimateInputTokens, estimateTotalTokens, TokenBudget } from "../../core/cost.js";
 import { acquireDirectoryLock, LOCK_FILENAME, withDirectoryLock } from "../../core/locks.js";
 import { isNonEmptyDirectory, writeFileAtomic } from "../../core/utils/fs.js";
-import { hashCacheKey } from "../../core/utils/hash.js";
 import { JsonlTranslationMemory } from "../../core/memory/public-api.js";
 import { persistResultsToMemory, translateWithMemory } from "../../core/memory/public-api.js";
 import { repairTranslations } from "../../core/pipeline/public-api.js";
@@ -71,6 +70,8 @@ import {
   checkpointedTranslationsById,
   checkpointSignature,
   checkpointSignaturesEqual,
+  computeExtractionFlagsHash,
+  computeGameId,
   mergeCheckpointTranslations,
   missingCheckpointResult,
   readCheckpointSignatureFile,
@@ -184,17 +185,12 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   // Identify the source game so two different games translated into the same --out
   // (and therefore the same default work dir) cannot resume each other's
   // checkpoints or reuse each other's memory.
-  const gameId = hashCacheKey({ projectPath: path.resolve(projectPath), engine: detected.engine });
+  const gameId = computeGameId(projectPath, detected.engine);
   // Fold the extraction flags into the signature: they change which units exist
   // and their constraints, but the per-result source check cannot see a flag flip
   // (an unchanged dialogue line keeps its id/source even when its maxLength budget
   // changed via --dialogue-max-length), so a flag change must discard the resume.
-  const extractionFlagsHash = hashCacheKey({
-    includePlugins: extractOptions.includePlugins ?? false,
-    includeSpeakerNames: extractOptions.includeSpeakerNames ?? false,
-    includeEventComments: extractOptions.includeEventComments ?? false,
-    dialogueMaxLength: extractOptions.dialogueMaxLength ?? null
-  });
+  const extractionFlagsHash = computeExtractionFlagsHash(extractOptions);
   const signature = checkpointSignature(providerName, providerOptions, glossary, characterGlossary, {
     gameId,
     extractionFlagsHash

@@ -26,6 +26,7 @@ import { doctorCommand } from "./commands/doctor.js";
 import { initCommand } from "./commands/init.js";
 import { memoryCommand } from "./commands/memory.js";
 import { reportCommand } from "./commands/report.js";
+import { statusCommand } from "./commands/status.js";
 import { extractCommand } from "./commands/extract.js";
 import { patchFontCommand } from "./commands/patch-font.js";
 import { repairCommand } from "./commands/repair.js";
@@ -49,6 +50,7 @@ const COMMANDS = new Map<string, CommandHandler>([
   ["memory", memoryCommand],
   ["report", reportCommand],
   ["diff", diffCommand],
+  ["status", statusCommand],
   ["detect", detectCommand],
   ["extract", extractCommand],
   ["translate", translateCommand],

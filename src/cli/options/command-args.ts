@@ -52,6 +52,14 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   memory: { valueOptions: ["--memory", "--before", "--model", "--provider"], booleanFlags: [], maxPositionals: 1 },
   report: { valueOptions: ["--units", "--translations", "--out"], booleanFlags: [], maxPositionals: 2 },
   diff: { valueOptions: ["--out"], booleanFlags: [], maxPositionals: 3 },
+  status: {
+    valueOptions: [
+      "--out", "--work-dir", "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size",
+      "--timeout-ms", "--temperature", "--max-tokens", "--glossary", "--characters", "--dialogue-max-length"
+    ],
+    booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names"],
+    maxPositionals: 1
+  },
   detect: { valueOptions: [], booleanFlags: [], maxPositionals: 1 },
   extract: {
     valueOptions: ["--out", "--report", "--dialogue-max-length"],

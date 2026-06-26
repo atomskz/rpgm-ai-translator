@@ -18,14 +18,42 @@
  */
 
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import {
   readTranslationResultsJsonlFile,
   resetTranslationResultsJsonlFile
 } from "../core/translation-units.js";
 import { PROMPT_VERSION } from "../core/prompt-version.js";
-import type { CharacterGlossary, Glossary, TranslationResult, TranslationUnit } from "../core/types/public-api.js";
+import type {
+  CharacterGlossary,
+  ExtractOptions,
+  Glossary,
+  TranslationResult,
+  TranslationUnit
+} from "../core/types/public-api.js";
 import { writeFileAtomic } from "../core/utils/fs.js";
 import { hashCacheKey } from "../core/utils/hash.js";
+
+// Game identity (resolved project path + engine) folded into the signature so two
+// games translated into one --out cannot resume each other. Shared by run and
+// status so both derive it identically.
+export function computeGameId(projectPath: string, engine: string): string {
+  return hashCacheKey({ projectPath: path.resolve(projectPath), engine });
+}
+
+// Hash of the extraction flags that change which units exist and their constraints
+// but which the per-result source check cannot see. Shared by run and status.
+export function computeExtractionFlagsHash(extractOptions: Pick<
+  ExtractOptions,
+  "includePlugins" | "includeSpeakerNames" | "includeEventComments" | "dialogueMaxLength"
+>): string {
+  return hashCacheKey({
+    includePlugins: extractOptions.includePlugins ?? false,
+    includeSpeakerNames: extractOptions.includeSpeakerNames ?? false,
+    includeEventComments: extractOptions.includeEventComments ?? false,
+    dialogueMaxLength: extractOptions.dialogueMaxLength ?? null
+  });
+}
 
 export function defaultCheckpointPath(outPath: string): string {
   return outPath.endsWith(".json") ? `${outPath.slice(0, -".json".length)}.jsonl` : `${outPath}.jsonl`;

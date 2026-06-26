@@ -63,6 +63,11 @@ const COMMAND_HELP: Record<string, CommandHelpMeta> = {
     summary: "Show per-unit before/after across the translate, review and repair passes.",
     notes: ["Lists only units whose translation changed between passes; the repaired file is optional."]
   },
+  status: {
+    usage: "status <game> --out <dir> [run flags]",
+    summary: "Inspect a run's resumability: translated/reviewed/repaired counts and resume-vs-reset.",
+    notes: ["Pass the same flags you would re-run with so the resume verdict reflects the live signature."]
+  },
   detect: { usage: "detect <game>", summary: "Detect the RPG Maker engine and project paths." },
   extract: { usage: "extract <game> [options]", summary: "Extract translation units from RPG Maker JSON data." },
   translate: { usage: "translate <units.json> [options]", summary: "Translate extracted units through a provider." },
@@ -202,6 +207,9 @@ Commands:
 
   diff <raw.json> <reviewed.json> [repaired.json]
       Show per-unit before/after across the translate, review and repair passes.
+
+  status <game> --out <dir>
+      Inspect a run's resumability (counts, stored signature, resume vs reset).
 
   detect <game>
       Detect RPG Maker engine and project paths.

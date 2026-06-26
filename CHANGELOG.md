@@ -40,6 +40,12 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Add a `status` command that inspects a run's resumability without modifying
+  anything: it reports the translated/reviewed/repaired counts against the unit
+  total, the stored run signature, and — given the game and the flags you would
+  re-run with — whether the next run would RESUME from the checkpoints or RESET
+  (naming which inputs changed: language, model, glossary, game, or sampling/
+  extraction flags).
 - Add a `diff` command that shows per-unit before/after across the translate,
   review and repair passes (`diff <raw.json> <reviewed.json> [repaired.json]`),
   listing only the units whose translation changed, as Markdown to `--out` or

@@ -98,7 +98,7 @@ export const CONFIG_FIELD_SPECS: readonly ConfigFieldSpec[] = [
   // pipeline (extract/translate/validate/review/repair/characters) it is a
   // different artifact each, so config does not inject it there — pass --out
   // explicitly per step instead of silently writing to the patch directory.
-  { key: "out", flag: "--out", type: "string", commands: ["run", "apply", "patch-font"] },
+  { key: "out", flag: "--out", type: "string", commands: ["run", "apply", "patch-font", "status", "clean"] },
   { key: "workDir", flag: "--work-dir", type: "string" },
   { key: "memory", flag: "--memory", type: "string" },
   { key: "glossary", flag: "--glossary", type: "string" },
