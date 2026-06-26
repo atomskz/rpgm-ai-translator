@@ -6,6 +6,12 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Internal
 
+- Hoist the per-file database field map out of a switch into one exported
+  constant (`DATABASE_ARRAY_FIELDS`), the single source of truth for the
+  translatable per-row fields of each array-shaped database file, and add a
+  schema-coverage test that asserts each file extracts exactly its mapped fields
+  (no more, no fewer), so a dropped or mistyped field fails the suite instead of
+  silently dropping its text. No extraction behavior changed.
 - Resolve the engine through a registry (`engines/registry.ts`, `detectEngine`)
   instead of constructing the concrete `MvMzEngineDetector`/`RpgMakerMvMzExtractor`
   in every command (`detect`, `extract`, `apply`, `run`, `status`, `doctor`). A

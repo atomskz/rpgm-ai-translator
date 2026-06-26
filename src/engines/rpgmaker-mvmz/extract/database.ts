@@ -161,48 +161,49 @@ function extractArrayFile(
   return units;
 }
 
-function getArrayFileFields(fileName: string): Array<{ name: string; category: TranslationCategory }> {
-  switch (fileName) {
-    case "Actors.json":
-      return [
-        { name: "name", category: "name" },
-        { name: "nickname", category: "name" },
-        { name: "profile", category: "description" }
-      ];
-    case "Classes.json":
-      return [
-        { name: "name", category: "name" },
-        { name: "description", category: "description" }
-      ];
-    case "Skills.json":
-      return [
-        { name: "name", category: "name" },
-        { name: "description", category: "description" },
-        { name: "message1", category: "system" },
-        { name: "message2", category: "system" }
-      ];
-    case "Items.json":
-    case "Weapons.json":
-    case "Armors.json":
-      return [
-        { name: "name", category: "name" },
-        { name: "description", category: "description" }
-      ];
-    case "Enemies.json":
-      return [{ name: "name", category: "name" }];
-    case "States.json":
-      return [
-        { name: "name", category: "name" },
-        { name: "message1", category: "system" },
-        { name: "message2", category: "system" },
-        { name: "message3", category: "system" },
-        { name: "message4", category: "system" }
-      ];
-    case "MapInfos.json":
-      return [{ name: "name", category: "name" }];
-    default:
-      return [];
-  }
+export type DatabaseField = { name: string; category: TranslationCategory };
+
+const NAME_AND_DESCRIPTION: readonly DatabaseField[] = [
+  { name: "name", category: "name" },
+  { name: "description", category: "description" }
+];
+
+// Single source of truth for the translatable per-row text fields of each
+// array-shaped database file. Hoisting the field map out of a switch makes a
+// dropped field visible in one place and lets the schema-coverage test assert the
+// exact extracted id set per file (tests/extraction-schema.test.ts), guarding
+// against a silent drop. The list-shaped files (CommonEvents/Troops) have no
+// per-row field map and are handled directly in extractArrayFile; `note` is a
+// cross-file field handled separately (opt-in via --include-notes).
+export const DATABASE_ARRAY_FIELDS: Readonly<Record<string, readonly DatabaseField[]>> = {
+  "Actors.json": [
+    { name: "name", category: "name" },
+    { name: "nickname", category: "name" },
+    { name: "profile", category: "description" }
+  ],
+  "Classes.json": NAME_AND_DESCRIPTION,
+  "Skills.json": [
+    { name: "name", category: "name" },
+    { name: "description", category: "description" },
+    { name: "message1", category: "system" },
+    { name: "message2", category: "system" }
+  ],
+  "Items.json": NAME_AND_DESCRIPTION,
+  "Weapons.json": NAME_AND_DESCRIPTION,
+  "Armors.json": NAME_AND_DESCRIPTION,
+  "Enemies.json": [{ name: "name", category: "name" }],
+  "States.json": [
+    { name: "name", category: "name" },
+    { name: "message1", category: "system" },
+    { name: "message2", category: "system" },
+    { name: "message3", category: "system" },
+    { name: "message4", category: "system" }
+  ],
+  "MapInfos.json": [{ name: "name", category: "name" }]
+};
+
+function getArrayFileFields(fileName: string): readonly DatabaseField[] {
+  return DATABASE_ARRAY_FIELDS[fileName] ?? [];
 }
 
 function extractSystem(data: JsonObject, base: DraftBase): UnitDraft[] {
