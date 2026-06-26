@@ -40,6 +40,9 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Add `characters check <characters.json>` to validate a character glossary
+  (enum gender/type, alias/field shapes) and list the entries flagged
+  `review:true`, exiting non-zero on an invalid file so a CI check can gate on it.
 - Add `run --from-translations <file>` to fold hand-edited translations back into a
   resumed run. `run` resumes from the JSONL checkpoints, so a translator's edits to
   `translations.json` were silently ignored and overwritten; this seeds the

@@ -195,6 +195,43 @@ describe("CLI review and characters", () => {
     expect(characters.Aria).toMatchObject({ review: true });
   });
 
+  it("characters check validates a glossary and lists review entries", async () => {
+    const root = await createCliTempDir("rpgm-cli-characters-check-");
+    const charactersPath = path.join(root, "characters.json");
+    await writeJsonFixture(charactersPath, {
+      Aria: { gender: "female", translation: "Ария" },
+      Mystery: { gender: "unknown", review: true }
+    });
+
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const exitCode = await runCli(["characters", "check", charactersPath], {
+      stdout: (text) => stdout.push(text),
+      stderr: (text) => stderr.push(text)
+    });
+
+    expect(exitCode).toBe(0);
+    expect(stderr.join("")).toContain("is valid: 2 entries");
+    expect(stdout.join("")).toContain("- Mystery");
+    expect(stdout.join("")).not.toContain("- Aria");
+  });
+
+  it("characters check exits non-zero on an invalid glossary", async () => {
+    const root = await createCliTempDir("rpgm-cli-characters-check-bad-");
+    const charactersPath = path.join(root, "characters.json");
+    // 'alien' is not a valid gender enum value.
+    await writeJsonFixture(charactersPath, { Aria: { gender: "alien" } });
+
+    const stderr: string[] = [];
+    const exitCode = await runCli(["characters", "check", charactersPath], {
+      stdout: () => undefined,
+      stderr: (text) => stderr.push(text)
+    });
+
+    expect(exitCode).toBe(1);
+    expect(stderr.join("")).toContain("Invalid character glossary");
+  });
+
   it("accepts a translations file as the second positional to characters", async () => {
     const root = await createCliTempDir("rpgm-cli-characters-positional-");
     const unitsPath = path.join(root, "units.json");

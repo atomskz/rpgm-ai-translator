@@ -22,6 +22,7 @@ import {
   extractCharacterCandidates,
   inferCharacterGlossary
 } from "../../core/pipeline/public-api.js";
+import { loadCharacterGlossary } from "../../config/public-api.js";
 import {
   readTranslationResultsFile,
   readTranslationUnitsFile
@@ -45,6 +46,11 @@ import {
 import type { CliIO } from "../types.js";
 
 export async function charactersCommand(args: string[], io: CliIO): Promise<number> {
+  // `characters check <characters.json>` validates an existing glossary instead of
+  // generating one; it needs no provider, units, or --out.
+  if (readPositionals(args)[0] === "check") {
+    return checkCharacterGlossary(args, io);
+  }
   const unitsPath = requirePositional(args, 0, "units path");
   const out = requireOption(args, "--out");
   // Accept the translations file as an optional second positional (consistent with
@@ -77,5 +83,28 @@ export async function charactersCommand(args: string[], io: CliIO): Promise<numb
         );
   await writeJson(out, glossary);
   io.stderr(`Character candidates: ${candidates.length}. Wrote ${Object.keys(glossary).length} character entries.\n`);
+  return 0;
+}
+
+// Validate a character glossary (enum gender/type, alias shape via the loader) and
+// list the entries flagged review:true so the human knows what still needs a look.
+// Exits non-zero on an invalid file so a CI check or wrapper can gate on it.
+async function checkCharacterGlossary(args: string[], io: CliIO): Promise<number> {
+  const charactersPath = requirePositional(args, 1, "characters path");
+  let glossary;
+  try {
+    glossary = await loadCharacterGlossary(charactersPath);
+  } catch (error: unknown) {
+    io.stderr(`Invalid character glossary: ${error instanceof Error ? error.message : String(error)}\n`);
+    return 1;
+  }
+  const names = Object.keys(glossary);
+  const needReview = names.filter((name) => glossary[name].review === true);
+  io.stderr(`Character glossary '${charactersPath}' is valid: ${names.length} entr${names.length === 1 ? "y" : "ies"}.\n`);
+  if (needReview.length > 0) {
+    io.stdout(`${needReview.length} entr${needReview.length === 1 ? "y" : "ies"} flagged review:true:\n${needReview.map((name) => `- ${name}`).join("\n")}\n`);
+  } else {
+    io.stderr("No entries are flagged for review.\n");
+  }
   return 0;
 }
