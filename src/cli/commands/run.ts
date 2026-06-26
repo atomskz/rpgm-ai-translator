@@ -24,10 +24,9 @@ import { loadCharacterGlossary } from "../../config/public-api.js";
 import {
   applyFontPatch,
   assertPatchOutputOutsideGame,
-  MvMzEngineDetector,
-  RpgMakerMvMzExtractor,
   writePatch
 } from "../../engines/rpgmaker-mvmz/public-api.js";
+import { detectEngine } from "../../engines/registry.js";
 import { estimateTotalTokens, TokenBudget } from "../../core/cost.js";
 import { acquireDirectoryLock, LOCK_FILENAME, withDirectoryLock } from "../../core/locks.js";
 import { isNonEmptyDirectory, writeFileAtomic } from "../../core/utils/fs.js";
@@ -146,14 +145,13 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   // folder holds only game files and proprietary memory is not shipped with it.
   const workDir = readOption(args, "--work-dir") ?? `${outDir}-work`;
   const memoryPath = readOption(args, "--memory") ?? path.join(workDir, "translation-memory.jsonl");
-  const detector = new MvMzEngineDetector();
-  const detected = await detector.detect(projectPath);
+  const { detected, adapter } = await detectEngine(projectPath);
   if (detected.engine === "unknown") {
     throw new Error(`Unsupported or unknown RPG Maker engine for '${projectPath}'`);
   }
 
   const extractionWarnings: string[] = [];
-  const units = await new RpgMakerMvMzExtractor(detector).extract(projectPath, {
+  const units = await adapter.createExtractor().extract(projectPath, {
     ...extractOptions,
     onWarning: (warning) => {
       extractionWarnings.push(warning);

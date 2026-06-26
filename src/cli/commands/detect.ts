@@ -17,13 +17,13 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { MvMzEngineDetector } from "../../engines/rpgmaker-mvmz/public-api.js";
+import { detectEngine } from "../../engines/registry.js";
 import { requirePositional } from "../options/public-api.js";
 import type { CliIO } from "../types.js";
 
 export async function detectCommand(args: string[], io: CliIO): Promise<number> {
   const projectPath = requirePositional(args, 0, "project path");
-  const detected = await new MvMzEngineDetector().detect(projectPath);
+  const { detected } = await detectEngine(projectPath);
   io.stdout(`${JSON.stringify(detected, null, 2)}\n`);
   // Exit non-zero on an unrecognized project so a wrapping script can branch on the
   // result with `$?` instead of having to parse the JSON for "engine": "unknown".

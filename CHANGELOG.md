@@ -4,6 +4,16 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ## Unreleased
 
+### Internal
+
+- Resolve the engine through a registry (`engines/registry.ts`, `detectEngine`)
+  instead of constructing the concrete `MvMzEngineDetector`/`RpgMakerMvMzExtractor`
+  in every command (`detect`, `extract`, `apply`, `run`, `status`, `doctor`). A
+  command now detects and receives the matching adapter (so it gets the right
+  extractor without a second lookup); adding an engine becomes a sibling adapter
+  registered in one place rather than an edit in each command. Sealed the new
+  `providers/openai-chat` module behind the eslint facade rule. No behavior changed.
+
 ### Fixed
 
 - Name the configured endpoint in provider error messages instead of always

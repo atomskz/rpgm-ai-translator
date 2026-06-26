@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { MvMzEngineDetector } from "../../engines/rpgmaker-mvmz/public-api.js";
+import { detectEngine } from "../../engines/registry.js";
 import { createProvider, SUPPORTED_PROVIDER_NAMES } from "../../providers/public-api.js";
 import { readPositionals, readProviderCliOptions, readProviderConfig, readProviderName } from "../options/public-api.js";
 import type { TranslationUnit } from "../../core/types/public-api.js";
@@ -96,7 +96,7 @@ export async function doctorCommand(args: string[], io: CliIO): Promise<number> 
 
 async function checkGame(projectPath: string): Promise<CheckResult> {
   try {
-    const detected = await new MvMzEngineDetector().detect(projectPath);
+    const { detected } = await detectEngine(projectPath);
     const ok = detected.engine !== "unknown";
     return {
       ok,

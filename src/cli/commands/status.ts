@@ -19,7 +19,7 @@
 
 import path from "node:path";
 import { loadCharacterGlossary, loadGlossary } from "../../config/public-api.js";
-import { MvMzEngineDetector } from "../../engines/rpgmaker-mvmz/public-api.js";
+import { detectEngine } from "../../engines/registry.js";
 import { readTranslationResultsJsonlFile, readTranslationUnitsFile } from "../../core/translation-units.js";
 import {
   checkpointSignature,
@@ -84,7 +84,7 @@ export async function statusCommand(args: string[], io: CliIO): Promise<number> 
 }
 
 async function computeCurrentSignature(projectPath: string, args: string[]): Promise<CheckpointSignature> {
-  const detected = await new MvMzEngineDetector().detect(projectPath);
+  const { detected } = await detectEngine(projectPath);
   const providerName = readProviderName(args);
   const providerOptions = readProviderCliOptions(args);
   const glossaryPath = readOption(args, "--glossary");

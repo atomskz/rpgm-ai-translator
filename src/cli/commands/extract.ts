@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { RpgMakerMvMzExtractor } from "../../engines/rpgmaker-mvmz/public-api.js";
+import { detectEngine } from "../../engines/registry.js";
 import { createReport } from "../../core/reports/public-api.js";
 import { writeTranslationUnitsFile } from "../../core/translation-units.js";
 import { maybeWriteReport } from "../file-utils.js";
@@ -29,7 +29,11 @@ export async function extractCommand(args: string[], io: CliIO): Promise<number>
   const out = readOption(args, "--out");
   const reportPath = readOption(args, "--report");
   const warnings: string[] = [];
-  const units = await new RpgMakerMvMzExtractor().extract(projectPath, {
+  // Resolve the engine through the registry so the extractor is chosen by detection
+  // rather than hardcoded; the chosen extractor still re-checks the engine and
+  // reports an unrecognized project the same way as before.
+  const { adapter } = await detectEngine(projectPath);
+  const units = await adapter.createExtractor().extract(projectPath, {
     ...readExtractOptions(args),
     onWarning: (warning) => warnings.push(warning)
   });

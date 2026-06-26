@@ -18,6 +18,7 @@ const FACADE_MODULE_DIRS = [
   "rpgmaker-mvmz",
   "patch",
   "providers",
+  "openai-chat",
   "deepseek",
   "prompt-builder"
 ];

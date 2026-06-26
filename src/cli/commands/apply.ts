@@ -18,7 +18,8 @@
  */
 
 import path from "node:path";
-import { applyFontPatch, RpgMakerMvMzExtractor, writePatch } from "../../engines/rpgmaker-mvmz/public-api.js";
+import { applyFontPatch, writePatch } from "../../engines/rpgmaker-mvmz/public-api.js";
+import { detectEngine } from "../../engines/registry.js";
 import { LOCK_FILENAME, withDirectoryLock } from "../../core/locks.js";
 import { readReportFile } from "../../core/reports/public-api.js";
 import {
@@ -81,7 +82,7 @@ export async function applyCommand(args: string[], io: CliIO): Promise<number> {
   const applyWrite = async (): Promise<number> => {
     const result = unitsPath
       ? await writePatch(projectPath, await readTranslationUnitsFile(unitsPath), translationsToApply, applyOptions)
-      : await new RpgMakerMvMzExtractor().applyTranslations(projectPath, translationsToApply, applyOptions);
+      : await (await detectEngine(projectPath)).adapter.createExtractor().applyTranslations(projectPath, translationsToApply, applyOptions);
     // Without --units, apply re-extracts the game and matches by id. If the saved
     // translations came from a different extraction (e.g. --include-plugins), ids
     // will not match and get silently skipped. Warn (and exit non-zero below) on an
