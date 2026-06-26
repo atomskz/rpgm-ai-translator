@@ -74,7 +74,9 @@ export async function isNonEmptyDirectory(targetPath: string, ignore: readonly s
 
 export async function readJsonFile<T = unknown>(filePath: string): Promise<T> {
   const raw = await readFile(filePath, "utf8");
-  return JSON.parse(raw) as T;
+  // Strip a leading UTF-8 BOM (some Windows-saved data files carry one); JSON.parse
+  // rejects it, which would otherwise skip the whole file at extraction time.
+  return JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw) as T;
 }
 
 export async function writeJsonFile(filePath: string, value: unknown): Promise<void> {

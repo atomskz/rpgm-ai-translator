@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli/app.js";
 import { echoTargetLanguage, readTargetLanguage, validateCommandArgs } from "../src/cli/options/public-api.js";
@@ -132,8 +135,16 @@ describe("echoTargetLanguage", () => {
 
 describe("runCli option validation", () => {
   it("accepts a global flag before the subcommand", async () => {
+    // Detect a real game so the exit code reflects the global-flag handling, not an
+    // unknown-engine non-zero exit.
+    const game = await mkdtemp(path.join(tmpdir(), "rpgm-global-flag-"));
+    await mkdir(path.join(game, "data"), { recursive: true });
+    await mkdir(path.join(game, "js"), { recursive: true });
+    await writeFile(path.join(game, "js", "rpg_core.js"), "", "utf8");
+    await writeFile(path.join(game, "data", "System.json"), "{}", "utf8");
+
     const errors: string[] = [];
-    const exitCode = await runCli(["--verbose", "detect", process.cwd()], {
+    const exitCode = await runCli(["--verbose", "detect", game], {
       stdout: () => undefined,
       stderr: (text) => errors.push(text)
     });

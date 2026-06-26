@@ -194,6 +194,10 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Read a BOM-prefixed data file instead of silently skipping it. A Windows-saved
+  `System.json` (or other data file) with a leading UTF-8 BOM made `JSON.parse`
+  throw, so the whole file was skipped with a warning and its units were dropped;
+  the leading BOM is now stripped before parsing.
 - Give scroll text (Show Scrolling Text, event code 405) its own constraints
   instead of the 52-cell Show Text dialogue budget. Scroll text scrolls vertically
   with no per-line width limit, so it was being flagged with spurious
