@@ -6,6 +6,10 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Changed
 
+- The review/repair prompt now explains how to use the injected character glossary
+  (gender for agreement, `speechStyle` for voice, `translation` for the display
+  name), and the character glossary is relevance-filtered and capped per batch like
+  the term glossary, instead of sending the entire cast with every review batch.
 - Instruct the review/repair pass to read and resolve the `validationIssues` the
   payload already carries (it sent the exact violation but never told the model to
   act on it), so repair fixes the named problem — `MAX_LENGTH_EXCEEDED`, a missing

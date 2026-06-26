@@ -17,42 +17,48 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { Glossary, ReviewOptions, ReviewUnit } from "../../core/types/public-api.js";
-import { filterGlossaryForReviewBatch } from "./glossary.js";
+import type { CharacterGlossary, Glossary, ReviewOptions, ReviewUnit } from "../../core/types/public-api.js";
+import { filterCharacterGlossaryForReviewBatch, filterGlossaryForReviewBatch } from "./glossary.js";
 import { buildReviewSystemPrompt } from "./system-prompts.js";
 import { batchHasLengthConstraints } from "./translation.js";
 import type { ChatMessage } from "./types.js";
 
 export function buildReviewMessages(batch: ReviewUnit[], options: ReviewOptions): ChatMessage[] {
   const glossary = filterGlossaryForReviewBatch(options.glossary, batch, options.onWarning);
+  // Relevance-filter and cap the character glossary per batch, like the term
+  // glossary, so a large cast does not flood every review prompt and crowd out the
+  // payload (review previously sent the entire character glossary every batch).
+  const characters = filterCharacterGlossaryForReviewBatch(options.characterGlossary, batch, options.onWarning);
   return [
     {
       role: "system",
       content: buildReviewSystemPrompt(options.targetLanguage, {
         hasGlossary: Object.keys(glossary).length > 0,
         hasConstraints: batchHasLengthConstraints(batch),
+        hasCharacters: Object.keys(characters).length > 0,
         hasIssues: batch.some((unit) => (unit.issues?.length ?? 0) > 0)
       })
     },
     {
       role: "user",
-      content: JSON.stringify(buildReviewUserPayload(batch, options, glossary))
+      content: JSON.stringify(buildReviewUserPayload(batch, options, glossary, characters))
     }
   ];
 }
 
-// `glossary` is the already-filtered glossary for this batch. buildReviewMessages
-// is the single entry point that filters once and passes it in; this builder no
+// `glossary`/`characters` are already filtered for this batch. buildReviewMessages
+// is the single entry point that filters once and passes them in; this builder no
 // longer recomputes the filter by default.
 export function buildReviewUserPayload(
   batch: ReviewUnit[],
   options: ReviewOptions,
-  glossary: Glossary
+  glossary: Glossary,
+  characters: CharacterGlossary = {}
 ): Record<string, unknown> {
   return {
     targetLanguage: options.targetLanguage,
     glossary,
-    characters: options.characterGlossary ?? {},
+    characters,
     units: batch.map((unit) => ({
       id: unit.id,
       source: unit.source,

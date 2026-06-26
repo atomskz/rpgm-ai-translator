@@ -280,6 +280,35 @@ describe("prompt builder", () => {
     });
   });
 
+  it("explains speechStyle and relevance-filters characters in the review prompt", () => {
+    const messages = buildReviewMessages(
+      [
+        {
+          id: "Map001.events.1.pages.0.list.1.parameters.0",
+          source: "Aria nods.",
+          currentTranslation: "Ария кивает.",
+          normalizedSource: "Aria nods.",
+          category: "dialogue",
+          context: { speaker: "Aria" }
+        }
+      ],
+      {
+        targetLanguage: "ru",
+        characterGlossary: {
+          Aria: { gender: "female", translation: "Ария", speechStyle: "terse" },
+          Unrelated: { gender: "male", translation: "Посторонний" }
+        }
+      }
+    );
+    const system = messages[0].content;
+    const payload = JSON.parse(messages[1].content);
+
+    expect(system).toContain("speechStyle");
+    expect(payload.characters).toHaveProperty("Aria");
+    // The whole cast is no longer sent every batch; only the relevant speaker.
+    expect(payload.characters).not.toHaveProperty("Unrelated");
+  });
+
   it("builds character inference prompts with candidate evidence", () => {
     const prompt = buildCharacterInferenceSystemPrompt("ru");
     const payload = buildCharacterInferenceUserPayload(
