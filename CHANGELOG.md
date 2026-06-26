@@ -6,6 +6,12 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Changed
 
+- Inject the character glossary into the **first-pass** translate prompt (not only
+  review), relevance-filtered to the speakers/names in each batch and capped per
+  batch, so the first pass already uses the correct pronoun, display name and
+  speech style instead of leaving it all to the review pass. The first-pass cache
+  key now folds in the character glossary so a different one is a memory miss; a
+  run without a character glossary keeps its existing memory.
 - Explain the per-unit length constraints (`maxLength`/`maxLines`) in the
   translate and review system prompts when a batch carries them, defining display
   width the same way validation measures it (full-width = 2 cells, half-width = 1,

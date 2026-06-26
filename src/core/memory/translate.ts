@@ -256,7 +256,11 @@ export function translationCacheKey(unit: TranslationUnit, options: TranslateOpt
     maxTokens: options.maxTokens,
     constraints: unit.constraints ?? {},
     context: unit.context ?? {},
-    glossary: options.glossary ?? null
+    glossary: options.glossary ?? null,
+    // The first pass now uses the character glossary (PRM-02), so a different
+    // character glossary must be a memory miss. Left undefined (and dropped from
+    // the key) when none is passed, so existing no-character memory stays valid.
+    characterGlossary: options.characterGlossary
   });
 }
 

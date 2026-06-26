@@ -23,7 +23,12 @@ export {
   buildReviewSystemPrompt,
   buildTranslationSystemPrompt
 } from "./system-prompts.js";
-export { filterGlossaryForBatch, filterGlossaryForReviewBatch } from "./glossary.js";
+export {
+  filterCharacterGlossaryForBatch,
+  filterCharacterGlossaryForReviewBatch,
+  filterGlossaryForBatch,
+  filterGlossaryForReviewBatch
+} from "./glossary.js";
 // Only the message builders are exported: they are the single entry point that
 // filters the glossary once per batch. The *UserPayload builders are internal and
 // expect that already-filtered glossary, so they are not re-exported here.

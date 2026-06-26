@@ -143,6 +143,35 @@ describe("prompt builder", () => {
     expect(withoutConstraints).not.toContain("maxLength is the maximum display width");
   });
 
+  it("injects a relevant character into the first-pass translate prompt and payload", () => {
+    const ariaUnit: TranslationUnit = { ...unit(), source: "Aria smiles.", normalizedSource: "Aria smiles." };
+    const messages = buildTranslationMessages([ariaUnit], {
+      targetLanguage: "ru",
+      characterGlossary: {
+        Aria: { gender: "female", translation: "Ария", speechStyle: "confident" },
+        Byron: { gender: "male", translation: "Байрон" }
+      }
+    });
+    const system = messages[0].content;
+    const payload = JSON.parse(messages[1].content);
+
+    expect(system).toContain("A characters object describes speakers");
+    expect(system).toContain("speechStyle");
+    // Only the character actually mentioned in the batch is sent.
+    expect(payload.characters).toHaveProperty("Aria");
+    expect(payload.characters).not.toHaveProperty("Byron");
+  });
+
+  it("omits the characters payload and instructions when none are relevant", () => {
+    const messages = buildTranslationMessages([unit()], {
+      targetLanguage: "ru",
+      characterGlossary: { Zephyr: { gender: "male", translation: "Зефир" } }
+    });
+
+    expect(messages[0].content).not.toContain("A characters object describes speakers");
+    expect(JSON.parse(messages[1].content)).not.toHaveProperty("characters");
+  });
+
   it("explains length constraints in the review prompt when a unit carries them", () => {
     const system = buildReviewMessages(
       [

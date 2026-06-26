@@ -28,11 +28,10 @@ export function buildReviewMessages(batch: ReviewUnit[], options: ReviewOptions)
   return [
     {
       role: "system",
-      content: buildReviewSystemPrompt(
-        options.targetLanguage,
-        Object.keys(glossary).length > 0,
-        batchHasLengthConstraints(batch)
-      )
+      content: buildReviewSystemPrompt(options.targetLanguage, {
+        hasGlossary: Object.keys(glossary).length > 0,
+        hasConstraints: batchHasLengthConstraints(batch)
+      })
     },
     {
       role: "user",

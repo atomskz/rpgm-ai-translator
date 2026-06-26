@@ -17,8 +17,8 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { Glossary, TranslateOptions, TranslationUnit } from "../../core/types/public-api.js";
-import { filterGlossaryForBatch } from "./glossary.js";
+import type { CharacterGlossary, Glossary, TranslateOptions, TranslationUnit } from "../../core/types/public-api.js";
+import { filterCharacterGlossaryForBatch, filterGlossaryForBatch } from "./glossary.js";
 import { buildTranslationSystemPrompt } from "./system-prompts.js";
 import type { ChatMessage } from "./types.js";
 
@@ -32,33 +32,37 @@ export function batchHasLengthConstraints(
 
 export function buildTranslationMessages(batch: TranslationUnit[], options: TranslateOptions): ChatMessage[] {
   const glossary = filterGlossaryForBatch(options.glossary, batch, options.onWarning);
+  const characters = filterCharacterGlossaryForBatch(options.characterGlossary, batch, options.onWarning);
   return [
     {
       role: "system",
-      content: buildTranslationSystemPrompt(
-        options.targetLanguage,
-        Object.keys(glossary).length > 0,
-        batchHasLengthConstraints(batch)
-      )
+      content: buildTranslationSystemPrompt(options.targetLanguage, {
+        hasGlossary: Object.keys(glossary).length > 0,
+        hasConstraints: batchHasLengthConstraints(batch),
+        hasCharacters: Object.keys(characters).length > 0
+      })
     },
     {
       role: "user",
-      content: JSON.stringify(buildTranslationUserPayload(batch, options, glossary))
+      content: JSON.stringify(buildTranslationUserPayload(batch, options, glossary, characters))
     }
   ];
 }
 
-// `glossary` is the already-filtered glossary for this batch. buildTranslationMessages
-// is the single entry point that filters once and passes it in; this builder no
+// `glossary`/`characters` are already filtered for this batch. buildTranslationMessages
+// is the single entry point that filters once and passes them in; this builder no
 // longer recomputes the filter (an O(glossary x batch) regex scan) by default.
 export function buildTranslationUserPayload(
   batch: TranslationUnit[],
   options: TranslateOptions,
-  glossary: Glossary
+  glossary: Glossary,
+  characters: CharacterGlossary = {}
 ): Record<string, unknown> {
   return {
     targetLanguage: options.targetLanguage,
     glossary,
+    // Only included when non-empty so a glossary-free batch keeps the prior payload.
+    ...(Object.keys(characters).length > 0 ? { characters } : {}),
     units: batch.map((unit) => ({
       id: unit.id,
       source: unit.source,

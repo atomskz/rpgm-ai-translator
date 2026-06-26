@@ -17,13 +17,17 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { Glossary, ReviewUnit, TranslationUnit } from "../../core/types/public-api.js";
+import type { CharacterGlossary, Glossary, ReviewUnit, TranslationUnit } from "../../core/types/public-api.js";
 import { glossaryTermMatches } from "../../core/utils/text.js";
 
 // Even after relevance filtering, a large glossary against a batch of common terms
 // (or short CJK substrings) can match enough entries to inflate the prompt and risk
 // truncating the actual translation payload. Bound the count per batch.
 const MAX_GLOSSARY_ENTRIES_PER_BATCH = 100;
+
+// Character entries are richer (gender, speechStyle, aliases) so each costs more
+// tokens; cap them lower than term-glossary entries to keep the payload in budget.
+const MAX_CHARACTER_ENTRIES_PER_BATCH = 50;
 
 function capRelevant(
   matched: Array<[string, Glossary[string]]>,
@@ -74,4 +78,55 @@ export function filterGlossaryForReviewBatch(
     )
   );
   return capRelevant(matched, onWarning);
+}
+
+// Keep only the character entries whose name or an alias appears in the batch's
+// text (or matches a unit's speaker), so a large cast does not flood every prompt
+// with unrelated characters. Mirrors the term-glossary filter + cap.
+function filterCharacters(
+  characters: CharacterGlossary,
+  texts: string[],
+  onWarning?: (message: string) => void
+): CharacterGlossary {
+  const present = texts.filter((text) => text.length > 0);
+  const matched = Object.entries(characters).filter(([name, entry]) =>
+    [name, ...(entry.aliases ?? [])].some((term) => present.some((text) => glossaryTermMatches(text, term)))
+  );
+  if (matched.length <= MAX_CHARACTER_ENTRIES_PER_BATCH) {
+    return Object.fromEntries(matched);
+  }
+  const kept = [...matched].sort(([a], [b]) => b.length - a.length).slice(0, MAX_CHARACTER_ENTRIES_PER_BATCH);
+  onWarning?.(
+    `Character glossary matched ${matched.length} entries for a batch; keeping the ${MAX_CHARACTER_ENTRIES_PER_BATCH} most specific to keep the prompt within budget.`
+  );
+  return Object.fromEntries(kept);
+}
+
+export function filterCharacterGlossaryForBatch(
+  characters: CharacterGlossary | undefined,
+  batch: TranslationUnit[],
+  onWarning?: (message: string) => void
+): CharacterGlossary {
+  if (!characters) {
+    return {};
+  }
+  const texts = batch.flatMap((unit) => [unit.source, unit.normalizedSource ?? "", unit.context?.speaker ?? ""]);
+  return filterCharacters(characters, texts, onWarning);
+}
+
+export function filterCharacterGlossaryForReviewBatch(
+  characters: CharacterGlossary | undefined,
+  batch: ReviewUnit[],
+  onWarning?: (message: string) => void
+): CharacterGlossary {
+  if (!characters) {
+    return {};
+  }
+  const texts = batch.flatMap((unit) => [
+    unit.source,
+    unit.normalizedSource ?? "",
+    unit.currentTranslation ?? "",
+    unit.context?.speaker ?? ""
+  ]);
+  return filterCharacters(characters, texts, onWarning);
 }

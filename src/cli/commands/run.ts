@@ -268,6 +268,9 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
     {
       ...providerOptions,
       glossary,
+      // Give the first pass the character glossary too (not just review), so it
+      // already uses the right pronoun/voice instead of leaving it all to review.
+      characterGlossary,
       onProgress: createProgressLogger(io),
       onBatchResults: async (batchResults) => {
         await appendTranslationResultsJsonlFile(rawCheckpointPath, batchResults);
