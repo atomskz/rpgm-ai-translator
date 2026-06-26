@@ -148,6 +148,9 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Documentation
 
+- Add a CLI changes / migration reference ([docs/migration.md](docs/migration.md))
+  listing the new commands, flag aliases/renames (with the old forms that still
+  work), new flags, and behavior changes.
 - Add a "translate your first game" end-to-end tutorial
   ([docs/tutorial.md](docs/tutorial.md)) covering init, dry run, doctor preflight,
   the full `run`, review/diff, hand-edit re-import, and shipping the patch.
