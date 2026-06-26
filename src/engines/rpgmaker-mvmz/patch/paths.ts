@@ -63,6 +63,26 @@ export function assertSafeRelativePath(relativeFilePath: string): void {
   }
 }
 
+// Re-validate that a patch file's parent directory still resolves inside the
+// output directory immediately before writing it. Patch mode joins outDir + the
+// relative path and writes; a directory symlink planted under outDir (a subfolder
+// swapped to point elsewhere) would otherwise redirect the write — and the
+// pre-write rollback copy — out of the patch directory. The parent is created
+// first so the realpath resolves; this mirrors the in-place TOCTOU re-check on the
+// patch side. `realOutDir` is the realpath of the output directory, resolved once.
+export async function assertParentInsideOutDir(realOutDir: string, targetPath: string): Promise<void> {
+  const parent = path.dirname(targetPath);
+  let realParent: string;
+  try {
+    realParent = await realpath(parent);
+  } catch {
+    throw new Error(`'${targetPath}' parent directory could not be resolved before writing`);
+  }
+  if (realParent !== realOutDir && !isInsideDirectory(realOutDir, realParent)) {
+    throw new Error(`'${targetPath}' resolves outside the output directory via a symlink`);
+  }
+}
+
 // Re-validate that a target still resolves inside the project immediately before an
 // in-place write. The read-time realpath check can be defeated by a symlink swapped
 // into a path component afterwards (TOCTOU); re-resolving here narrows that window so

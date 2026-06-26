@@ -22,6 +22,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Re-check that a patch file's parent directory still resolves inside the output
+  directory immediately before writing it, so a directory symlink planted under
+  the patch `--out` (a subfolder swapped to point elsewhere) can no longer
+  redirect a write — or the pre-write rollback copy — outside the patch directory.
+  This mirrors the existing in-place TOCTOU re-check on the patch side.
 - Back up an in-place original byte-for-byte with `copyFile` instead of a UTF-8
   string round-trip, so a non-UTF-8 file (for example a legacy Shift-JIS
   `plugins.js`) is preserved exactly and can be restored faithfully, rather than

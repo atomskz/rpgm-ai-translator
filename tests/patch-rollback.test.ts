@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
@@ -76,6 +76,23 @@ describe("patch-mode publish rollback", () => {
     expect(restored).toEqual({ v: "orig-A1" });
     // The file that did not exist before the run must be gone again.
     await expect(readFile(path.join(outDir, "data", "A2.json"), "utf8")).rejects.toThrow();
+  });
+});
+
+describe("patch-mode symlink guard", () => {
+  it("refuses to write through a directory symlink planted under the output dir", async () => {
+    const base = await mkdtemp(path.join(tmpdir(), "rpgm-patch-symlink-"));
+    const outDir = path.join(base, "out");
+    await mkdir(outDir, { recursive: true });
+    // Plant a directory symlink: outDir/data -> an unrelated directory outside outDir.
+    const outside = await mkdtemp(path.join(tmpdir(), "rpgm-out-escape-"));
+    await symlink(outside, path.join(outDir, "data"), "dir");
+
+    const prepared = fileSet([jsonFile("data/Foo.json", path.join(base, "src-Foo.json"), { v: "new" })]);
+
+    await expect(writePatchFiles(prepared, outDir, 0)).rejects.toThrow(/outside the output directory/);
+    // The file must not have been written through the symlink into the outside dir.
+    await expect(readFile(path.join(outside, "Foo.json"), "utf8")).rejects.toThrow();
   });
 });
 

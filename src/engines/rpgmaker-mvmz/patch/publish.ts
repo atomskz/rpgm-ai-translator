@@ -30,7 +30,7 @@ import {
   writeBackupFile,
   writePreparedFile
 } from "./fs-ops.js";
-import { assertResolvesInsideProject } from "./paths.js";
+import { assertParentInsideOutDir, assertResolvesInsideProject } from "./paths.js";
 import type { PreparedFile, PreparedFileSet } from "./prepare.js";
 
 type PatchWriteRecord = {
@@ -75,6 +75,7 @@ async function publishPatchFiles(
   files: PreparedFile[]
 ): Promise<void> {
   const published: PatchWriteRecord[] = [];
+  const realOutDir = await realpath(outDir).catch(() => path.resolve(outDir));
 
   try {
     for (const file of files) {
@@ -82,8 +83,14 @@ async function publishPatchFiles(
       const sourcePath = path.join(stagingDir, relativeFilePath);
       const targetPath = path.join(outDir, relativeFilePath);
       const rollbackPath = path.join(rollbackDir, relativeFilePath);
-      const existed = await pathExists(targetPath);
 
+      // Create the parent, then re-check it still resolves inside the output dir
+      // before reading or writing the target, so a directory symlink planted under
+      // outDir cannot redirect the write (or the rollback copy) outside it.
+      await mkdir(path.dirname(targetPath), { recursive: true });
+      await assertParentInsideOutDir(realOutDir, targetPath);
+
+      const existed = await pathExists(targetPath);
       if (existed) {
         await mkdir(path.dirname(rollbackPath), { recursive: true });
         await copyFile(targetPath, rollbackPath);
