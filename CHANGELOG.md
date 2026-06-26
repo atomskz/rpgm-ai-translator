@@ -40,6 +40,10 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Add a `diff` command that shows per-unit before/after across the translate,
+  review and repair passes (`diff <raw.json> <reviewed.json> [repaired.json]`),
+  listing only the units whose translation changed, as Markdown to `--out` or
+  stdout — so a translator can see and trust what each pass changed.
 - Add `characters check <characters.json>` to validate a character glossary
   (enum gender/type, alias/field shapes) and list the entries flagged
   `review:true`, exiting non-zero on an invalid file so a CI check can gate on it.

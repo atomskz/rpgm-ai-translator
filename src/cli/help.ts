@@ -58,6 +58,11 @@ const COMMAND_HELP: Record<string, CommandHelpMeta> = {
     summary: "Render a JSON validation report as a human-readable Markdown review document.",
     notes: ["Joins each issue to its source, translation and file location, grouped by file and severity."]
   },
+  diff: {
+    usage: "diff <raw.json> <reviewed.json> [repaired.json] [--out <file.md>]",
+    summary: "Show per-unit before/after across the translate, review and repair passes.",
+    notes: ["Lists only units whose translation changed between passes; the repaired file is optional."]
+  },
   detect: { usage: "detect <game>", summary: "Detect the RPG Maker engine and project paths." },
   extract: { usage: "extract <game> [options]", summary: "Extract translation units from RPG Maker JSON data." },
   translate: { usage: "translate <units.json> [options]", summary: "Translate extracted units through a provider." },
@@ -194,6 +199,9 @@ Commands:
 
   report summarize <report.json>
       Render a validation report as a human-readable Markdown review document.
+
+  diff <raw.json> <reviewed.json> [repaired.json]
+      Show per-unit before/after across the translate, review and repair passes.
 
   detect <game>
       Detect RPG Maker engine and project paths.
