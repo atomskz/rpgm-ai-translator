@@ -171,6 +171,32 @@ describe("run command", () => {
     expect(errors.join("")).not.toContain("no --target was given");
   });
 
+  it("imports hand-edited translations with --from-translations instead of re-translating", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-import-"));
+    const gamePath = path.join(root, "game");
+    const outDir = path.join(root, "out");
+    const editsPath = path.join(root, "edits.json");
+    await mkdir(path.join(gamePath, "data"), { recursive: true });
+    await mkdir(path.join(gamePath, "js"), { recursive: true });
+    await writeFile(path.join(gamePath, "js", "rpg_core.js"), "", "utf8");
+    await writeJson(path.join(gamePath, "data", "Actors.json"), [null, { id: 1, name: "Aria" }]);
+    // A hand-edited translation the run must honor instead of the mock [ru] output.
+    await writeJson(editsPath, [
+      { id: "Actors.1.name", source: "Aria", translation: "РУЧНАЯ ПРАВКА", provider: "manual", model: "manual", status: "translated" }
+    ]);
+
+    const output: string[] = [];
+    const exitCode = await runCli(
+      ["run", gamePath, "--provider", "mock", "--target", "ru", "--out", outDir, "--from-translations", editsPath],
+      { stdout: (text) => output.push(text), stderr: (text) => output.push(text) }
+    );
+
+    const patched = JSON.parse(await readFile(path.join(outDir, "data", "Actors.json"), "utf8"));
+    expect(exitCode).toBe(0);
+    expect(output.join("")).toContain("Imported 1 hand-edited translation");
+    expect(patched[1].name).toBe("РУЧНАЯ ПРАВКА");
+  });
+
   it("warns that run ignores --mode and --backup", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "rpgm-run-mode-"));
     const gamePath = path.join(root, "game");

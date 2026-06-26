@@ -105,6 +105,7 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--translations": "Translations JSON used as context for the character glossary.",
   "--checkpoint": "JSONL checkpoint to resume from and append batch results to.",
   "--memory": "JSONL translation memory reused across runs.",
+  "--from-translations": "Seed a resumed run's checkpoint from a hand-edited translations file so manual edits are honored.",
   "--glossary": "Glossary JSON for prompts and validation.",
   "--characters": "Character glossary JSON for review or repair.",
   "--provider": "Translation provider: mock or deepseek (characters also accepts none for a heuristic glossary).",

@@ -107,7 +107,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   run: {
     valueOptions: [
       "--out", "--work-dir", "--provider", "--base-url", "--api-dialect", "--target", "--model", "--batch-size", "--timeout-ms", "--temperature",
-      "--max-tokens", "--max-tokens-budget", "--retry-attempts", "--memory", "--glossary", "--characters", "--repair-attempts",
+      "--max-tokens", "--max-tokens-budget", "--retry-attempts", "--memory", "--glossary", "--characters", "--from-translations", "--repair-attempts",
       "--repair-codes", "--font", "--number-font", "--mode", "--backup", "--dialogue-max-length"
     ],
     booleanFlags: ["--include-comments", "--include-plugins", "--include-speaker-names", "--review", "--repair", "--dry-run", "--force"],

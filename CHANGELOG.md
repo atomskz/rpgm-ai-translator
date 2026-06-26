@@ -36,6 +36,12 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Add `run --from-translations <file>` to fold hand-edited translations back into a
+  resumed run. `run` resumes from the JSONL checkpoints, so a translator's edits to
+  `translations.json` were silently ignored and overwritten; this seeds the
+  checkpoint from the given file (matching by id and source) so the edits are
+  honored and not re-translated. `run` also now warns on resume when a work-dir
+  `translations.json` is newer than the checkpoint, pointing at the new flag.
 - Add a `report summarize` command that renders the JSON validation report as a
   human-readable Markdown review document, joining each issue to its source text,
   translation and file location, grouped by file and ordered by severity — so a

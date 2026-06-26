@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { mkdir, readFile, rm } from "node:fs/promises";
+import { mkdir, readFile, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { loadGlossary } from "../../config/public-api.js";
 import { loadCharacterGlossary } from "../../config/public-api.js";
@@ -39,6 +39,7 @@ import { createReport, summarizeReport, writeReportFile } from "../../core/repor
 import { reviewTranslations } from "../../core/pipeline/public-api.js";
 import {
   appendTranslationResultsJsonlFile,
+  readTranslationResultsFile,
   readTranslationResultsJsonlFile,
   resetTranslationResultsJsonlFile,
   writeTranslationResultsFile,
@@ -216,7 +217,7 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   const rawCheckpointById: Map<string, TranslationResult> = resume
     ? checkpointedTranslationsById(units, await readTranslationResultsJsonlFile(rawCheckpointPath))
     : new Map();
-  const unitsToTranslate = units.filter((unit) => !rawCheckpointById.has(unit.id));
+  let unitsToTranslate = units.filter((unit) => !rawCheckpointById.has(unit.id));
   // Estimate over the units actually being sent (after checkpoint resume), not the
   // full extraction, and before any files are written, so a resumed run is not
   // falsely blocked and an over-budget run leaves nothing behind.
@@ -258,6 +259,37 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
     }
   }
   await writeCheckpointSignatureFile(checkpointMeta, signature);
+  // Fold hand-edited translations back into the run. A translator can correct
+  // translations.json (or any results file) and pass --from-translations to seed
+  // those edits into the checkpoint, instead of resume silently overwriting them.
+  // Done after the stale-checkpoint reset so a fresh run still honors the import.
+  const fromTranslationsPath = readOption(args, "--from-translations");
+  if (fromTranslationsPath) {
+    const importedById = checkpointedTranslationsById(units, await readTranslationResultsFile(fromTranslationsPath));
+    if (importedById.size > 0) {
+      importedById.forEach((result, id) => rawCheckpointById.set(id, result));
+      await appendTranslationResultsJsonlFile(rawCheckpointPath, Array.from(importedById.values()));
+      unitsToTranslate = units.filter((unit) => !rawCheckpointById.has(unit.id));
+      io.stderr(`Imported ${importedById.size} hand-edited translation(s) from ${fromTranslationsPath} into the checkpoint.\n`);
+    } else {
+      io.stderr(
+        `Warning: --from-translations '${fromTranslationsPath}' had no entries matching this game's units (by id and source); ignoring it.\n`
+      );
+    }
+  } else if (resume) {
+    // Discoverability: a translator who edited the work-dir translations.json may
+    // not know resume reads the JSONL checkpoint, not that file. If it is newer
+    // than the checkpoint, point them at --from-translations rather than dropping
+    // their edits silently.
+    const editable = path.join(workDir, "translations.json");
+    const [editedAt, checkpointAt] = await Promise.all([fileMtimeMs(editable), fileMtimeMs(rawCheckpointPath)]);
+    if (editedAt != null && checkpointAt != null && editedAt > checkpointAt) {
+      io.stderr(
+        `Warning: '${editable}' was edited after the last checkpoint, but resume reads the checkpoint, not that file. ` +
+          `Re-run with --from-translations '${editable}' to fold those edits in.\n`
+      );
+    }
+  }
   const provider = createProvider(providerName, readProviderConfig(args));
   const memory = new JsonlTranslationMemory(memoryPath);
   // The cache-key inputs shared by the translate lookup and the reviewed/repaired
@@ -448,4 +480,14 @@ async function readRepairAttemptsCompleted(progressPath: string): Promise<number
 
 async function writeRepairAttemptsCompleted(progressPath: string, attemptsCompleted: number): Promise<void> {
   await writeFileAtomic(progressPath, `${JSON.stringify({ attemptsCompleted })}\n`);
+}
+
+// Modification time in ms, or undefined when the file is missing. Used to notice a
+// translations.json a translator edited after the last checkpoint.
+async function fileMtimeMs(filePath: string): Promise<number | undefined> {
+  try {
+    return (await stat(filePath)).mtimeMs;
+  } catch {
+    return undefined;
+  }
 }
