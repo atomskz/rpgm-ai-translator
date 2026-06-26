@@ -22,6 +22,10 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Back up an in-place original byte-for-byte with `copyFile` instead of a UTF-8
+  string round-trip, so a non-UTF-8 file (for example a legacy Shift-JIS
+  `plugins.js`) is preserved exactly and can be restored faithfully, rather than
+  having its bytes replaced with the U+FFFD replacement character on backup.
 - Name the configured endpoint in provider error messages instead of always
   saying "DeepSeek": a failure against a custom `--base-url` is now labeled by its
   host (for example `localhost:11434 API error 500: …`), so a generic or local

@@ -17,7 +17,7 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { copyFile, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathExists, serializeJson, writeFileAtomic, type JsonStyle } from "../../../core/utils/fs.js";
 import type { PreparedFile } from "./prepare.js";
@@ -71,8 +71,11 @@ export async function writePreparedFile(filePath: string, file: PreparedFile): P
 
 export async function writeBackupFile(filePath: string, file: PreparedFile): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true });
-  // Back up the exact original bytes rather than re-serializing them.
-  await writeFile(filePath, await readFile(file.sourcePath, "utf8"), "utf8");
+  // Copy the exact original bytes. A UTF-8 string round-trip (readFile/writeFile
+  // "utf8") corrupts a non-UTF-8 original — for example a legacy Shift-JIS
+  // plugins.js — so the backup could not faithfully restore it; copyFile preserves
+  // the bytes regardless of encoding.
+  await copyFile(file.sourcePath, filePath);
 }
 
 // Replace a directory atomically: move the existing one aside, rename the staging
