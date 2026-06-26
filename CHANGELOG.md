@@ -60,6 +60,13 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Add a `glossary` command. `glossary extract <units.json>` drafts a glossary by
+  mining frequently recurring proper nouns from the units (capitalized words that
+  never appear lowercased, so a sentence-initial common word is excluded), in
+  mode `keep`, as an editable starting point (`--min-occurrences` sets the recur
+  threshold, default 2; `--out` or stdout). `glossary check <glossary.json>`
+  lints a glossary — structure (naming the offending term), empty term keys and
+  case-duplicate terms — exiting non-zero on a problem so a CI check can gate on it.
 - Add `--thinking on|off|auto` (config `thinking`) to control DeepSeek reasoning.
   Reasoning is now decided by the model's capability rather than only the pass:
   in the default `auto` mode the review pass reasons only for a reasoning-capable

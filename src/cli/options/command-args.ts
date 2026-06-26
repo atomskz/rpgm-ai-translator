@@ -52,6 +52,7 @@ export const COMMAND_OPTION_SPECS: Record<string, CommandOptionSpec> = {
   memory: { valueOptions: ["--memory", "--before", "--model", "--provider"], booleanFlags: [], maxPositionals: 1 },
   report: { valueOptions: ["--units", "--translations", "--out"], booleanFlags: [], maxPositionals: 2 },
   diff: { valueOptions: ["--out"], booleanFlags: [], maxPositionals: 3 },
+  glossary: { valueOptions: ["--out", "--min-occurrences"], booleanFlags: [], maxPositionals: 2 },
   estimate: { valueOptions: ["--batch-size", "--price-per-1k"], booleanFlags: [], maxPositionals: 1 },
   status: {
     valueOptions: [

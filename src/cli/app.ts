@@ -25,6 +25,7 @@ import { detectCommand } from "./commands/detect.js";
 import { diffCommand } from "./commands/diff.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { estimateCommand } from "./commands/estimate.js";
+import { glossaryCommand } from "./commands/glossary.js";
 import { initCommand } from "./commands/init.js";
 import { memoryCommand } from "./commands/memory.js";
 import { reportCommand } from "./commands/report.js";
@@ -55,6 +56,7 @@ const COMMANDS = new Map<string, CommandHandler>([
   ["estimate", estimateCommand],
   ["status", statusCommand],
   ["clean", cleanCommand],
+  ["glossary", glossaryCommand],
   ["detect", detectCommand],
   ["extract", extractCommand],
   ["translate", translateCommand],

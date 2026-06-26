@@ -81,6 +81,14 @@ const COMMAND_HELP: Record<string, CommandHelpMeta> = {
       "Only touches files inside the work directory, never the game or the patch output. --dry-run previews."
     ]
   },
+  glossary: {
+    usage: "glossary extract <units.json> [--out <file>] [--min-occurrences <n>] | glossary check <glossary.json>",
+    summary: "Draft a glossary by mining frequent proper nouns, or lint an existing glossary.",
+    notes: [
+      "extract drafts terms in mode \"keep\" (a Latin/Cyrillic-script heuristic); review and edit the result.",
+      "check validates structure and reports empty or case-duplicate terms, exiting non-zero on a problem."
+    ]
+  },
   detect: { usage: "detect <game>", summary: "Detect the RPG Maker engine and project paths." },
   extract: { usage: "extract <game> [options]", summary: "Extract translation units from RPG Maker JSON data." },
   translate: { usage: "translate <units.json> [options]", summary: "Translate extracted units through a provider." },
@@ -148,6 +156,7 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   "--retry-attempts": "Provider retry attempts for transient failures (timeout, network, rate limit, 5xx). Default: 2.",
   "--concurrency": "Translation batches to keep in flight at once. Default: 1 (serial).",
   "--price-per-1k": "Optional USD price per 1k tokens; adds a rough cost band to an estimate or dry run.",
+  "--min-occurrences": "glossary extract: minimum times a proper noun must recur to be drafted (default: 2).",
   "--codes": "Comma-separated validation issue codes to repair.",
   "--attempts": "Number of repair passes.",
   "--repair-codes": "Comma-separated validation issue codes for run --repair.",
@@ -188,7 +197,8 @@ const COMMAND_FLAG_DESCRIPTIONS: Record<string, Record<string, string>> = {
   run: { "--out": "Patch output directory." },
   "patch-font": { "--out": "Patch output directory to write the font settings into." },
   status: { "--out": "Patch output directory, used to derive the default work dir." },
-  clean: { "--out": "Patch output directory, used to derive the work dir to clean." }
+  clean: { "--out": "Patch output directory, used to derive the work dir to clean." },
+  glossary: { "--out": "Write the drafted glossary JSON here (stdout if omitted)." }
 };
 
 export function commandUsage(command: string): string | undefined {
@@ -255,6 +265,9 @@ Commands:
 
   clean --out <dir>
       Remove a run's work-dir checkpoints, lock and (optionally) translation memory.
+
+  glossary extract <units.json> | glossary check <glossary.json>
+      Draft a glossary from frequent proper nouns, or lint an existing glossary.
 
   detect <game>
       Detect RPG Maker engine and project paths.
