@@ -27,11 +27,13 @@ import {
   readTranslationUnitsFile
 } from "../../core/translation-units.js";
 import { isNonEmptyDirectory } from "../../core/utils/fs.js";
+import { printOwnershipNotice } from "../legal.js";
 import { filterTranslationsWithoutValidationErrors } from "../../core/validators/public-api.js";
 import { hasFlag, readApplyOptions, readFontOptions, readOption, requirePositional, UsageError } from "../options/public-api.js";
 import type { CliIO } from "../types.js";
 
 export async function applyCommand(args: string[], io: CliIO): Promise<number> {
+  printOwnershipNotice(io.stderr);
   const projectPath = requirePositional(args, 0, "project path");
   const translationsPath = requirePositional(args, 1, "translations path");
   const applyOptions = readApplyOptions(args);

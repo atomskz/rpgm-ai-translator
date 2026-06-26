@@ -546,6 +546,12 @@ npm run pack:check
 - [docs/architecture.md](docs/architecture.md) — module boundaries and pipeline details.
 - [CHANGELOG.md](CHANGELOG.md) — release notes.
 
+## Contributing & security
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) — dev setup, the validation baseline, and the
+  layering/facade rules for adding a command, engine, or provider.
+- [SECURITY.md](SECURITY.md) — how to report a vulnerability privately.
+
 
 ## License
 

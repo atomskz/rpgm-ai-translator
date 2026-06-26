@@ -182,6 +182,8 @@ describe("run command", () => {
     expect(exitCode).toBe(0);
     expect(errors.join("")).toContain("Target language: ru (default)");
     expect(errors.join("")).toContain("no --target was given");
+    // run prints the ownership/distribution reminder to stderr.
+    expect(errors.join("")).toContain("translate only games you own");
   });
 
   it("echoes an explicit target without the default warning", async () => {

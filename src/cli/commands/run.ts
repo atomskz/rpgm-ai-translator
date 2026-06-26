@@ -27,6 +27,7 @@ import {
   writePatch
 } from "../../engines/rpgmaker-mvmz/public-api.js";
 import { detectEngine } from "../../engines/registry.js";
+import { printOwnershipNotice } from "../legal.js";
 import { estimateTotalTokens, TokenBudget } from "../../core/cost.js";
 import { acquireDirectoryLock, LOCK_FILENAME, withDirectoryLock } from "../../core/locks.js";
 import { isNonEmptyDirectory, writeFileAtomic } from "../../core/utils/fs.js";
@@ -82,6 +83,7 @@ import type { TranslateOptions, TranslationResult, TranslationUnit } from "../..
 import type { CliIO } from "../types.js";
 
 export async function runCommand(args: string[], io: CliIO): Promise<number> {
+  printOwnershipNotice(io.stderr);
   const projectPath = requirePositional(args, 0, "project path");
   const outDir = requireOption(args, "--out");
   assertPatchOutputOutsideGame(projectPath, outDir);

@@ -11,6 +11,10 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
   `v*` version tag is pushed. The publish job is gated on the same
   typecheck/lint/coverage/build verify matrix CI runs and refuses to publish if
   the tag does not match `package.json`'s version.
+- Add project governance docs: `SECURITY.md` (private vulnerability reporting and
+  scope notes), `CONTRIBUTING.md` (dev setup, the validation baseline, and the
+  layering/facade rules for adding a command/engine/provider), and GitHub issue
+  and pull-request templates under `.github/`.
 - Add display-width and number-canonicalization edge tests
   (`tests/display-width.test.ts`): emoji (two cells, once per surrogate pair),
   fullwidth vs halfwidth forms, supplementary-plane CJK, zero-width
@@ -65,6 +69,10 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Added
 
+- Print a one-line ownership/distribution reminder on the commands that produce a
+  translated game (`run`, `apply`) — "translate only games you own or have the
+  right to modify, and do not redistribute copyrighted assets" — to stderr, so the
+  obligation is visible at the point of use, not only in the docs.
 - Add a `verify` command (`verify <game> <patch-dir>`) that checks a written patch
   against the game it overlays: it confirms the patch directory is outside the
   game, re-parses each patch JSON / `plugins.js`, and confirms each one
