@@ -35,3 +35,6 @@ translated-patch/
 
 # Local backlog and task notes.
 backlog/
+
+# Release notes are drafted locally for the GitHub Release; not committed.
+RELEASE_NOTES_*.md
