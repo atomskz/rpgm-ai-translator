@@ -25,5 +25,11 @@ export async function detectCommand(args: string[], io: CliIO): Promise<number> 
   const projectPath = requirePositional(args, 0, "project path");
   const detected = await new MvMzEngineDetector().detect(projectPath);
   io.stdout(`${JSON.stringify(detected, null, 2)}\n`);
+  // Exit non-zero on an unrecognized project so a wrapping script can branch on the
+  // result with `$?` instead of having to parse the JSON for "engine": "unknown".
+  if (detected.engine === "unknown") {
+    io.stderr(`Could not detect a supported RPG Maker MV/MZ project at '${projectPath}'.\n`);
+    return 1;
+  }
   return 0;
 }

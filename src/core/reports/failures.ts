@@ -19,6 +19,19 @@
 
 import type { BatchFailureSummary, TranslationResult } from "../types/public-api.js";
 
+// A short suffix naming the most common failure reason across the results, for the
+// total-failure abort message so the pasted line is self-explanatory (auth vs
+// billing vs network vs truncation) instead of just "all units failed". Empty when
+// nothing failed.
+export function dominantFailureCause(results: TranslationResult[]): string {
+  const summary = summarizeBatchFailures(results);
+  if (summary.length === 0) {
+    return "";
+  }
+  const top = summary[0];
+  return ` Dominant cause: ${top.code} — ${top.message}.`;
+}
+
 // Aggregate the distinct failure reasons across a batch's results so progress
 // output can name the cause (auth, network, schema...) instead of just a count.
 // Grouped by issue code, keeping the first message seen and ordered by how many

@@ -34,7 +34,7 @@ import { isNonEmptyDirectory, writeFileAtomic } from "../../core/utils/fs.js";
 import { JsonlTranslationMemory } from "../../core/memory/public-api.js";
 import { persistResultsToMemory, translateWithMemory } from "../../core/memory/public-api.js";
 import { repairTranslations } from "../../core/pipeline/public-api.js";
-import { createReport, summarizeReport, writeReportFile } from "../../core/reports/public-api.js";
+import { createReport, dominantFailureCause, summarizeReport, writeReportFile } from "../../core/reports/public-api.js";
 import { reviewTranslations } from "../../core/pipeline/public-api.js";
 import {
   appendTranslationResultsJsonlFile,
@@ -320,7 +320,9 @@ async function executeRun(args: string[], io: CliIO): Promise<number> {
   // so the run fails loudly instead of writing an empty patch and exiting 0.
   const translatedCount = translations.filter((result) => result.status === "translated").length;
   if (units.length > 0 && translatedCount === 0) {
-    io.stderr(`All ${units.length} translation units failed; no translations were produced. Aborting before writing a patch.\n`);
+    io.stderr(
+      `All ${units.length} translation units failed; no translations were produced.${dominantFailureCause(translations)} Aborting before writing a patch.\n`
+    );
     return 1;
   }
   await writeTranslationResultsFile(path.join(workDir, "translations.raw.json"), translations);

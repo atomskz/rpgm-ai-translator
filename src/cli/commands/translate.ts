@@ -20,7 +20,7 @@
 import { estimateTotalTokens, TokenBudget } from "../../core/cost.js";
 import { JsonlTranslationMemory } from "../../core/memory/public-api.js";
 import { translateWithMemory } from "../../core/memory/public-api.js";
-import { createReport } from "../../core/reports/public-api.js";
+import { createReport, dominantFailureCause } from "../../core/reports/public-api.js";
 import {
   appendTranslationResultsJsonlFile,
   readTranslationUnitsFile,
@@ -132,7 +132,7 @@ export async function translateCommand(args: string[], io: CliIO): Promise<numbe
   // proceed to validate/apply on an empty translation set.
   const translated = results.filter((result) => result.status === "translated").length;
   if (results.length > 0 && translated === 0) {
-    io.stderr(`All ${results.length} translation units failed; no translations were produced.\n`);
+    io.stderr(`All ${results.length} translation units failed; no translations were produced.${dominantFailureCause(results)}\n`);
     return 1;
   }
   return 0;

@@ -2,8 +2,37 @@ import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
-import { createReport, readReportFile, summarizeReport, writeReportFile } from "../src/core/reports/public-api.js";
+import {
+  createReport,
+  dominantFailureCause,
+  readReportFile,
+  summarizeReport,
+  writeReportFile
+} from "../src/core/reports/public-api.js";
 import type { TranslationResult, TranslationUnit, ValidationIssue } from "../src/core/types/public-api.js";
+
+describe("dominantFailureCause", () => {
+  it("names the most common failure code, or empty when nothing failed", () => {
+    const failed = (code: ValidationIssue["code"], message: string): TranslationResult => ({
+      id: code,
+      source: "s",
+      translation: "",
+      provider: "deepseek",
+      model: "m",
+      status: "failed",
+      issues: [{ severity: "error", code, message }]
+    });
+    const results = [
+      failed("PROVIDER_AUTH_ERROR", "Invalid API key"),
+      failed("PROVIDER_AUTH_ERROR", "Invalid API key"),
+      failed("PROVIDER_TIMEOUT", "Timed out")
+    ];
+
+    expect(dominantFailureCause(results)).toContain("PROVIDER_AUTH_ERROR");
+    expect(dominantFailureCause(results)).toContain("Invalid API key");
+    expect(dominantFailureCause([])).toBe("");
+  });
+});
 
 describe("reports", () => {
   it("builds JSON reports from units, translations and validation issues", () => {

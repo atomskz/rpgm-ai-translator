@@ -169,6 +169,13 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- `detect` exits non-zero when the project is not a recognized RPG Maker MV/MZ
+  game (it still prints the JSON), so a wrapping script can branch on `$?` instead
+  of parsing the output for `"engine": "unknown"`.
+- Append the dominant failure cause to the total-failure abort message in `run`
+  and `translate` (for example `Dominant cause: PROVIDER_AUTH_ERROR — Invalid API
+  key.`), so a pasted "all units failed" line says *why* — auth, billing, network,
+  or response truncation — instead of just the count.
 - Name the offending entry and field when a glossary or character glossary fails
   to load, instead of one generic message for the whole file — for example
   `Invalid glossary term 'Aria' in '<file>': 'mode' must be one of …` or

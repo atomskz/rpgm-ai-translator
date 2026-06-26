@@ -82,6 +82,22 @@ describe("MvMzEngineDetector", () => {
       dataPath: path.join(root, "data")
     });
   });
+
+  it("exits non-zero from the CLI when the engine is unknown", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rpgm-detect-unknown-"));
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+
+    const exitCode = await runCli(["detect", root], {
+      stdout: (text) => stdout.push(text),
+      stderr: (text) => stderr.push(text)
+    });
+
+    // The JSON still prints, but the exit code lets a wrapper branch on `$?`.
+    expect(exitCode).toBe(1);
+    expect(JSON.parse(stdout.join("")).engine).toBe("unknown");
+    expect(stderr.join("")).toContain("Could not detect a supported RPG Maker");
+  });
 });
 
 async function makeProject(engine: "mv" | "mz", useWww = false): Promise<string> {
