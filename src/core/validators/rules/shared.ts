@@ -104,9 +104,36 @@ export function extractTechnicalTokens(text: string): string[] {
 export function displayWidth(text: string): number {
   let width = 0;
   for (const char of text) {
-    width += isWideCodePoint(char.codePointAt(0) ?? 0) ? 2 : 1;
+    const codePoint = char.codePointAt(0) ?? 0;
+    // A combining mark attaches to the preceding base glyph and adds no cell of its
+    // own (a decomposed `é` = `e` + U+0301 renders one cell, not two); the same goes
+    // for a few zero-width formatting controls. Counting them as width 0 keeps
+    // maxLength aligned with what the message box renders.
+    if (isZeroWidthCodePoint(codePoint)) {
+      continue;
+    }
+    width += isWideCodePoint(codePoint) ? 2 : 1;
   }
   return width;
+}
+
+// Zero-width code points: combining diacritical marks (which stack on the previous
+// glyph) and a handful of zero-width formatting controls (ZWSP/ZWNJ/ZWJ, the word
+// joiner, the BOM/ZWNBSP, and emoji variation selectors).
+function isZeroWidthCodePoint(codePoint: number): boolean {
+  return (
+    (codePoint >= 0x0300 && codePoint <= 0x036f) || // Combining Diacritical Marks
+    (codePoint >= 0x1ab0 && codePoint <= 0x1aff) || // Combining Diacritical Marks Extended
+    (codePoint >= 0x1dc0 && codePoint <= 0x1dff) || // Combining Diacritical Marks Supplement
+    (codePoint >= 0x20d0 && codePoint <= 0x20ff) || // Combining Diacritical Marks for Symbols
+    (codePoint >= 0xfe00 && codePoint <= 0xfe0f) || // Variation selectors
+    (codePoint >= 0xfe20 && codePoint <= 0xfe2f) || // Combining Half Marks
+    codePoint === 0x200b || // zero-width space
+    codePoint === 0x200c || // zero-width non-joiner
+    codePoint === 0x200d || // zero-width joiner
+    codePoint === 0x2060 || // word joiner
+    codePoint === 0xfeff // zero-width no-break space / BOM
+  );
 }
 
 function isWideCodePoint(codePoint: number): boolean {

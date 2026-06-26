@@ -22,6 +22,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Fixed
 
+- Measure a combining diacritical mark (and a few zero-width formatting controls)
+  as zero display width, so a decomposed accented letter (`e` + U+0301) counts as
+  one cell like its precomposed form. Length validation (`maxLength`) no longer
+  over-counts text in combining-diacritic languages and reports spurious
+  overflow.
 - Refuse an explicit in-place `--backup` directory that is not empty. In-place mode
   publishes the backup with a whole-directory rename-swap, which would discard
   whatever was already in an explicitly named backup directory; it now errors
