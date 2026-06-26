@@ -22,6 +22,7 @@ import {
   readTranslationResultsJsonlFile,
   resetTranslationResultsJsonlFile
 } from "../core/translation-units.js";
+import { PROMPT_VERSION } from "../core/prompt-version.js";
 import type { CharacterGlossary, Glossary, TranslationResult, TranslationUnit } from "../core/types/public-api.js";
 import { writeFileAtomic } from "../core/utils/fs.js";
 import { hashCacheKey } from "../core/utils/hash.js";
@@ -75,7 +76,10 @@ export function checkpointSignature(
       temperature: options.temperature ?? null,
       maxTokens: options.maxTokens ?? null,
       batchSize: options.batchSize ?? null,
-      extractionFlags: context?.extractionFlagsHash ?? ""
+      extractionFlags: context?.extractionFlagsHash ?? "",
+      // Fold the prompt version in so editing the prompts (and bumping the
+      // version) discards checkpoints produced under the old wording.
+      promptVersion: PROMPT_VERSION
     })
   };
 }

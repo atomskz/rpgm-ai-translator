@@ -18,6 +18,7 @@
  */
 
 import { normalizeBatchSize } from "../batching.js";
+import { PROMPT_VERSION } from "../prompt-version.js";
 import { summarizeBatchFailures } from "../reports/public-api.js";
 import type { LLMProvider } from "../ports/public-api.js";
 import type { TranslateOptions, TranslationMetadata, TranslationResult, TranslationUnit } from "../types/public-api.js";
@@ -260,7 +261,10 @@ export function translationCacheKey(unit: TranslationUnit, options: TranslateOpt
     // The first pass now uses the character glossary (PRM-02), so a different
     // character glossary must be a memory miss. Left undefined (and dropped from
     // the key) when none is passed, so existing no-character memory stays valid.
-    characterGlossary: options.characterGlossary
+    characterGlossary: options.characterGlossary,
+    // Editing the prompts and bumping PROMPT_VERSION makes a memory miss, so a
+    // later prompt change cannot silently replay output produced under the old one.
+    promptVersion: PROMPT_VERSION
   });
 }
 

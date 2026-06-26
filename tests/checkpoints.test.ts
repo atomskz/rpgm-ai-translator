@@ -5,11 +5,34 @@ import { tmpdir } from "node:os";
 import {
   checkpointMetaPath,
   checkpointSignature,
+  checkpointSignaturesEqual,
   readCheckpointSignatureFile,
   resolveCheckpoint
 } from "../src/cli/checkpoints.js";
+import { PROMPT_VERSION } from "../src/core/prompt-version.js";
+import { hashCacheKey } from "../src/core/utils/hash.js";
 
 const SIGNATURE = checkpointSignature("deepseek", { targetLanguage: "ru", model: "m" });
+
+describe("prompt version in the signature", () => {
+  it("folds PROMPT_VERSION into inputsHash, so a pre-version checkpoint is discarded", () => {
+    const current = checkpointSignature("mock", {});
+    // The composition before PRM-04 (no promptVersion); a checkpoint stamped with
+    // it must not match the current signature once the prompt version is folded in.
+    const legacyInputsHash = hashCacheKey({ temperature: null, maxTokens: null, batchSize: null, extractionFlags: "" });
+    const withVersion = hashCacheKey({
+      temperature: null,
+      maxTokens: null,
+      batchSize: null,
+      extractionFlags: "",
+      promptVersion: PROMPT_VERSION
+    });
+
+    expect(current.inputsHash).toBe(withVersion);
+    expect(current.inputsHash).not.toBe(legacyInputsHash);
+    expect(checkpointSignaturesEqual(current, { ...current, inputsHash: legacyInputsHash })).toBe(false);
+  });
+});
 
 function resultLine(translation: string): string {
   return `${JSON.stringify({ id: "a", source: "a", translation, provider: "p", model: "m", status: "translated" })}\n`;

@@ -6,6 +6,11 @@ All notable changes to `rpgm-ai-translator` are documented in this file.
 
 ### Changed
 
+- Fold a prompt version into the resumable run signature and the translation
+  memory key, so editing the prompt wording (and bumping the version) discards
+  stale checkpoints and is a memory miss instead of silently replaying output
+  produced under the old prompts. The Phase 2 prompt changes above bump it once,
+  resetting checkpoints/memory a single time on the next run.
 - The review/repair prompt now explains how to use the injected character glossary
   (gender for agreement, `speechStyle` for voice, `translation` for the display
   name), and the character glossary is relevance-filtered and capped per batch like

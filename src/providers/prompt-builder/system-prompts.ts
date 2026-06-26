@@ -17,6 +17,10 @@
  * along with rpgm-ai-translator. If not, see <https://www.gnu.org/licenses/>.
  */
 
+// NOTE: when you change the wording of any prompt below in a way that affects
+// output, bump PROMPT_VERSION in src/core/prompt-version.ts so resumed runs and
+// the translation memory are invalidated instead of replaying stale output.
+
 // Explains the meaning of each glossary term's `mode` field so the model knows
 // how to handle the glossary entries included in the user payload.
 function glossaryModeInstructions(): string[] {
